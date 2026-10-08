@@ -123,7 +123,7 @@ function viewBreed() {
   const a = getFish(UI.sel[0]), b = getFish(UI.sel[1]);
   const water = a ? SPECIES[a.sp].w : null;
   let h = `<h2>Breeding</h2><p class="lead">Pick two fully grown fish of the same water type. They produce eggs that may carry traits of either parent, a small chance of a higher-tier species, and inherited modifiers that stack — each modifier only once per fish.</p>`;
-  const slot = (f, label) => `<div class="card parent ${f ? '' : 'flat'}" ${f ? '' : 'style="border-style:dashed"'}>${f ? `${fishSVG(f.sp, f.mods, 128)}<div><b>${esc(fishName(f))}</b> ${tierBadge(SPECIES[f.sp].t)}</div><div>${modChips(f.mods)}</div>${btn('Remove', 'breedSel', { x: f.id }, 'sm')}` : `<span class="dim">${label}<br>select a fish below</span>`}</div>`;
+  const slot = (f, label) => `<div class="card parent ${f ? '' : 'flat'}" ${f ? '' : 'style="border-style:dashed"'}>${f ? `${fishSVG(f.sp, f.mods, 200)}<div><b>${esc(fishName(f))}</b> ${tierBadge(SPECIES[f.sp].t)}</div><div>${modChips(f.mods)}</div>${btn('Remove', 'breedSel', { x: f.id }, 'sm')}` : `<span class="dim">${label}<br>select a fish below</span>`}</div>`;
   h += `<div class="parents">${slot(a, 'Parent A')}<div class="heart" style="align-self:center">${ico('💞', 40)}</div>${slot(b, 'Parent B')}</div>`;
   if (a && b) {
     const why = breedCheck(a, b), o = breedOdds(a, b);
@@ -142,7 +142,7 @@ function viewBreed() {
   for (const f of adults) {
     const selected = UI.sel.includes(f.id), cd = f.ready - S.time;
     const incompatible = water && !selected && SPECIES[f.sp].w !== water;
-    h += `<div class="card click ${selected ? 'sel' : ''} ${incompatible ? 'dis' : ''}" data-act="breedSel" data-x="${f.id}">${fishSVG(f.sp, f.mods, 80)}<b>${esc(fishName(f))}</b><div>${modChips(f.mods)}</div>
+    h += `<div class="card click ${selected ? 'sel' : ''} ${incompatible ? 'dis' : ''}" data-act="breedSel" data-x="${f.id}">${fishSVG(f.sp, f.mods, 120)}<b>${esc(fishName(f))}</b><div>${modChips(f.mods)}</div>
       <div class="small ${cd > 0 ? 'badc' : 'good'}" data-cd="${f.id}">${cd > 0 ? '💤 Rests ' + Math.ceil(cd) + 's' : 'Ready'}</div><div class="small dim">${f.loc === 'store' ? 'In store' : esc(getTank(f.loc).name)}</div></div>`;
   }
   return h + '</div>';
@@ -170,7 +170,7 @@ function viewShop() {
           for (const e of EGG_TYPES.filter(e => e.w === water && e.t === tier)) {
             const locked = lv < need || (water === 'salt' && !hasSaltTank());
             const price = eggPrice(e.id);
-            h += `<div class="card egg ${locked ? 'locked' : ''}"><div class="top">${eggArt(e, 44)}<div class="grow"><b>${e.n}</b><div class="small dim">avg value ~${fmt(avgValue(e.pool))}</div></div></div>
+            h += `<div class="card egg ${locked ? 'locked' : ''}"><div class="top">${eggArt(e, 60)}<div class="grow"><b>${e.n}</b><div class="small dim">avg value ~${fmt(avgValue(e.pool))}</div></div></div>
               <div class="small dim">${e.pool.map(id => SPECIES[id].n).join(', ')}</div>${btn(`Buy · ${fmt(price)}`, 'buyEgg', { x: e.id }, 'pri', !locked && S.money < price)}</div>`.replace('data-act="buyEgg"', locked ? 'data-act="noop"' : 'data-act="buyEgg"');
           }
           h += `</div>`;
@@ -228,7 +228,7 @@ function viewInv() {
   let h = `<h2>Inventory</h2><h3>Eggs · ${S.eggs.length}</h3>`;
   if (!S.eggs.length) h += `<div class="card flat dim">No eggs. Buy some in the shop or breed your fish!</div>`;
   h += `<div class="grid sm">`;
-  for (const e of S.eggs) h += `<div class="card row">${eggArt(e, 40)}<div class="grow"><b>${eggTitle(e)}</b><div>${tierBadge(e.tier)} <span class="small dim">${waterTag(e.water)}</span></div></div>${btn('Hatch', 'hatchPick', { x: e.id }, 'pri sm')}</div>`;
+  for (const e of S.eggs) h += `<div class="card row">${eggArt(e, 52)}<div class="grow"><b>${eggTitle(e)}</b><div>${tierBadge(e.tier)} <span class="small dim">${waterTag(e.water)}</span></div></div>${btn('Hatch', 'hatchPick', { x: e.id }, 'pri sm')}</div>`;
   h += `</div><h3>Mutagens</h3><div class="stats">${CONSUMABLES.map(c => `<span class="pill row" style="gap:6px">${ico(c.e, 20)} ${c.n} <b>×${S.items[c.id]}</b> <span class="small">(+${Math.round(c.boost * 100)}%)</span></span>`).join('')}</div>`;
   h += `<h3>Decorations</h3>`;
   const owned = DECOR.filter(d => S.decorInv[d.id] > 0);

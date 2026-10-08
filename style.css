@@ -51,7 +51,7 @@ h3{margin:22px 0 10px;font-size:12px;font-weight:700;letter-spacing:1.2px;text-t
 .lead{color:var(--dim);margin:-6px 0 16px;max-width:760px}
 
 /* scene */
-canvas.tankscene{display:block;image-rendering:pixelated;image-rendering:crisp-edges;margin:0 auto}
+canvas.tankscene{display:block;margin:0 auto}
 canvas.tankscene.mini{pointer-events:none}
 .scenewrap{background:radial-gradient(ellipse at 50% 30%,#0e2a44,#071522 70%);border:2px solid var(--line);border-radius:var(--r);padding:14px 8px;box-shadow:0 4px 0 #04101b}
 .card .scenewrap{padding:6px;box-shadow:none}
