@@ -44,3 +44,9 @@ Progress auto-saves to local storage (and fish keep growing while you're away, u
 - **Events** – eggs cost event tokens and event fish sell for tokens only. Each event gives welcome tokens and now has 7 rewards (skin, background, decoration, trophy, mutagen kit, egg crate and a permanent charm).
 - **Home** – an isometric living room with a huge aquarium showing your 20 most valuable fish ever. Boop fish, lure them with the mouse and sprinkle food.
 - **End-game** – build *The Great Sanctuary* (Stats page) in five stages to become an Ocean Legend.
+
+## Expeditions, shows and dailies
+- **Expeditions** – an isometric sea map with 8 voxel islands (Coral Lagoon, Mangrove Swamp, Kelp Forest, Amazon River, Arctic Ice Shelf, Deep Trench, Volcanic Vents, Sunken City). Boats sail there in real time (even while you are away) and return with **wild eggs** of 41 exclusive species plus a special modifier per location (Reef-Glow, Kelp-Wrapped, Mud-Skinned, Jungle-Painted, Glacial, Abyssal, Ember-Forged, Ancient). Choose supplies, buy more boats and upgrade the fleet (hull, crew, nets, sonar, storm shelter). Storms can cut a trip short.
+- **Fish shows** – five leagues (Local Fair → World Aquatic Grand Prix) unlocked with store level and fame. Each show has a category (Grand Champion, Modifier Marvel, Rare Breed, Bloodline Cup, Freshwater Cup, Reef Cup); enter up to three fish, then the judges rank you against seven rival breeders. Top three win prizes, fame and **medals** (+5% / +2.5% / +1.2% fish value, up to +60%). Watch it all happen in an isometric show hall with a podium and an audience.
+- **Tournaments** – three head-to-head rounds in different categories; every fish can fight once. The prize is triple the league's first prize.
+- **Daily page** – a 7-day login streak with escalating rewards (shields forgive a missed day, long streaks give permanent value bonuses) and three daily quests with a bonus chest.

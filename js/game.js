@@ -35,6 +35,7 @@ function newState() {
     heroes: [], tokens: {}, evSeen: {}, cashierOn: true, seenHelp: false, bredCount: 0, bestValue: 0,
   };
   S.tanks.push(newTank('starter', 'My First Tank'));
+  ensureG3();
   S.eggs.push({ id: 'e' + S.nextId++, water: 'fresh', tier: 1, kind: 'fresh1_pond', bred: null });
   S.eggs.push({ id: 'e' + S.nextId++, water: 'fresh', tier: 1, kind: 'fresh1_livebearer', bred: null });
   return S;
@@ -63,6 +64,7 @@ function importSave(raw, offline) {
     S.staff = Object.assign({ feeder: 0, aquarist: 0, handler: 0, hatcher: 0 }, d.staff);
     S.unlocks = Object.assign({}, d.unlocks);
     ['lineage', 'ach', 'staffT', 'tokens', 'evSeen', 'lab', 'staffPaused', 'evBought', 'charms'].forEach(k => { if (!S[k]) S[k] = {}; }); ['contracts', 'heroes', 'hof', 'titles'].forEach(k => { if (!S[k]) S[k] = []; });
+    ensureG3();
     S.tanks.forEach(t => { if (t.wq == null) t.wq = 100; TANK_UPGRADES.forEach(u => { if (t.up[u.id] == null) t.up[u.id] = 0; }); });
     S.fish.forEach(f => { if (!f.name) f.name = defaultName(f.id); if (f.fav == null) f.fav = false; if (!S.lineage[f.id]) S.lineage[f.id] = { n: f.name, sp: f.sp, m: f.mods.slice(), p: f.parents || [], g: f.gen || 0 }; if (f.g >= 1) { if (!S.book.sp[f.sp]) S.book.sp[f.sp] = { n: 1, best: 0 }; f.mods.forEach(m => { if (!S.book.mods[m]) S.book.mods[m] = 1; }); } });
     S.items = Object.assign(Object.fromEntries(CONSUMABLES.map(c => [c.id, 0])), d.items);
@@ -113,7 +115,7 @@ function tankBonus(t) {
   const hero = S.heroes.find(h => h.tank === t.id); if (hero && HERO[hero.kind]) add(HERO[hero.kind].b);
   return b;
 }
-const globalValueBonus = () => sanctValue() + 0.03 * lab('market') + EVENTS.reduce((a, e) => a + (S.charms[e.id] ? EVENT_CHARM_VALUE : 0), 0);
+const globalValueBonus = () => sanctValue() + fameBonus() + streakBonus() + 0.03 * lab('market') + EVENTS.reduce((a, e) => a + (S.charms[e.id] ? EVENT_CHARM_VALUE : 0), 0);
 const wqValueMult = q => (q >= 80 ? 1 : 0.45 + 0.55 * Math.max(0, q) / 80);
 /* value of a fish; nowq ignores the water-quality penalty (used for records) */
 function fishValue(f, nowq) {
@@ -121,7 +123,7 @@ function fishValue(f, nowq) {
   f.mods.forEach(m => (v *= MODS[m].m));
   const t = f.loc && f.loc !== 'store' ? getTank(f.loc) : null;
   const vb = (t ? tankBonus(t).value : (f.vb || 0)) + globalValueBonus();
-  return Math.round(v * (1 + vb) * (t && !nowq ? wqValueMult(wqOf(t)) : 1));
+  return Math.round(v * (1 + vb) * (1 + medalBonus(f)) * (t && !nowq ? wqValueMult(wqOf(t)) : 1));
 }
 const previewValue = f => fishValue(f);
 /* babies look identical and hide species and modifiers until they are fully grown */
@@ -132,7 +134,7 @@ function fishName(f) {
 const isAdult = f => f.g >= 1;
 
 /* ---------- fish creation ---------- */
-const waterMods = water => MODS_LIST.filter(m => !m.ev || 'ev_' + m.ev === water);
+const waterMods = water => MODS_LIST.filter(m => (!m.ev && !m.exp) || 'ev_' + m.ev === water);
 const maxTierOf = water => (water.startsWith('ev_') ? 3 : 5);
 function rollMods(existing, bonus, water) {
   const mods = existing.slice();
@@ -144,7 +146,7 @@ function rollMods(existing, bonus, water) {
 const NAME_POOL = ['Bubbles', 'Finley', 'Nemo', 'Goldie', 'Splash', 'Coral', 'Shelly', 'Marlin', 'Pebbles', 'Ripple', 'Sushi', 'Wanda', 'Biscuit', 'Neptune', 'Dory', 'Flash', 'Pearl', 'Mochi', 'Zippy', 'Captain', 'Gill', 'Fin Diesel', 'Moby', 'Squirt', 'Tide', 'Ziggy', 'Bruce', 'Sparkle', 'Nugget', 'Bubba', 'Pip', 'Mango', 'Ginger', 'Olive', 'Waffles', 'Jelly', 'Rocky', 'Misty', 'Doodle', 'Sunny', 'Comet', 'Poppy', 'Tango', 'Ollie', 'Skipper', 'Lulu', 'Boba', 'Kiwi', 'Atlas', 'Luna', 'Echo', 'Wasabi', 'Pickle', 'Maple', 'Basil', 'Cinder', 'Dash', 'Fern', 'Gizmo', 'Hazel'];
 const defaultName = id => NAME_POOL[hash(id) % NAME_POOL.length];
 function makeFish(sp, mods, loc, parents, gen) {
-  const id = 'f' + S.nextId++, f = { id, sp, mods, g: 0, vb: 0, loc, ready: 0, name: pick(NAME_POOL), fav: false, parents: parents || [null, null], gen: gen || 0 };
+  const id = 'f' + S.nextId++, f = { id, sp, mods, g: 0, vb: 0, loc, ready: 0, name: pick(NAME_POOL), fav: false, parents: parents || [null, null], gen: gen || 0, medals: { g: 0, s: 0, b: 0 } };
   S.lineage[id] = { n: f.name, sp, m: mods.slice(), p: f.parents, g: f.gen };
   return f;
 }
@@ -304,6 +306,7 @@ function hatchEgg(eid, tid, boostId) {
 function moveFish(fid, loc) {
   const f = getFish(fid);
   if (!f) return fail('Missing');
+  if (fishLocked(f)) return fail('That fish is away at a show');
   if (loc === 'store') {
     if (!isAdult(f)) return fail('Only fully grown fish can be displayed');
     if (SPECIES[f.sp].ev) return fail('Event fish can only be sold at the market for event tokens');
@@ -327,6 +330,7 @@ function sellMarket(fid) {
   const f = getFish(fid);
   if (!f || !isAdult(f)) return fail('Only fully grown fish can be sold');
   if (f.fav) return fail('Remove the favourite star first');
+  if (fishLocked(f)) return fail('That fish is away at a show');
   noteRecord(f); S.stats.marketSold++; const bk = S.book.sp[f.sp]; if (bk) bk.best = Math.max(bk.best, fishValue(f));
   let price = 0, tokens = 0;
   if (SPECIES[f.sp].ev) tokens = awardTokens(f);        // event fish pay tokens only, never money
@@ -355,7 +359,7 @@ function feedAll(auto) {
 function fillStore() {
   const free = storeCap() - storeFish().length;
   if (free <= 0) return fail('Your display cases are full');
-  const cand = S.fish.filter(f => isAdult(f) && f.loc !== 'store' && !f.fav && !SPECIES[f.sp].ev).sort((a, b) => fishValue(b) - fishValue(a)).slice(0, free);
+  const cand = S.fish.filter(f => isAdult(f) && f.loc !== 'store' && !f.fav && !SPECIES[f.sp].ev && !fishLocked(f)).sort((a, b) => fishValue(b) - fishValue(a)).slice(0, free);
   if (!cand.length) return fail('No fully grown fish to display');
   cand.forEach(f => (f.loc = 'store')); G.dirty = true; return { ok: true, n: cand.length };
 }
@@ -376,6 +380,7 @@ function breedCheck(a, b) {
   if (a.id === b.id) return 'Pick two different fish';
   if (!isAdult(a) || !isAdult(b)) return 'Both fish must be fully grown';
   if (SPECIES[a.sp].w !== SPECIES[b.sp].w) return 'Fresh and saltwater fish cannot breed';
+  if (fishLocked(a) || fishLocked(b)) return 'A fish is away at a show';
   if (a.ready > S.time) return fishName(a) + ' needs to rest';
   if (b.ready > S.time) return fishName(b) + ' needs to rest';
   return null;
@@ -416,7 +421,7 @@ function breedFish(aid, bid, boostId) {
   for (let i = 0; i < odds.eggs; i++) {
     let sp = pick([a, b]).sp, up = false;
     const s = SPECIES[sp];
-    if (s.t < maxTierOf(water) && Math.random() < odds.tierUp) { sp = pick(speciesOf(water, s.t + 1)).id; up = true; }
+    if (s.t < maxTierOf(water) && Math.random() < odds.tierUp) { sp = pick(speciesOf(water, s.t + 1).filter(x => !x.exp)).id; up = true; }
     let mods = [];
     [a, b].forEach(p => p.mods.forEach(m => { if (!mods.includes(m) && Math.random() < odds.inh) mods.push(m); }));
     const inherited = mods.length;
@@ -494,7 +499,7 @@ function growthRate(f, t) {
   return base * (1 + b.growth) * fed * wqGrowth(t);
 }
 function matureFish(f, t) {
-  f.g = 1; f.vb = tankBonus(t).value; discover(f); noteRecord(f);
+  f.g = 1; f.vb = tankBonus(t).value; discover(f); noteRecord(f); S.stats.matured++;
   G.msg(`${f.name} grew up into a ${fishName(f)}!` + (SPECIES[f.sp].ev ? ` (${tokenReward(f)} tokens)` : ` (${fmt(fishValue(f))})`), f.mods.length ? 'gold' : 'good'); if (G.sfx) G.sfx(f.mods.length ? 'good' : 'pop');
   G.dirty = true;
 }
@@ -505,7 +510,7 @@ function advanceGrowth(secs) {
     if (f.loc === 'store' || f.g >= 1) return;
     const t = getTank(f.loc); if (!t) return;
     f.g += growthRate({ sp: f.sp }, t) * secs / (t.fedUntil > S.time ? foodMult() : 1);
-    if (f.g >= 1) { f.vb = tankBonus(t).value; f.g = 1; n++; discover(f); noteRecord(f); }
+    if (f.g >= 1) { f.vb = tankBonus(t).value; f.g = 1; n++; discover(f); noteRecord(f); S.stats.matured++; }
   });
   return n;
 }

@@ -179,6 +179,14 @@ function modTint(m, c, u, v, x, y, fin) {
     case 'candycane': return (((x * 2 + y + Math.floor(u * 6)) % 10) < 5) ? [235, 40, 52] : [250, 248, 248];
     case 'festive': { const ly = Math.round(Math.sin(u * 14) * 2.2 + 5); const onLine = Math.abs((y % 12) - ly) < 1 && (x % 3 === 0); return onLine ? [[255, 60, 60], [255, 220, 70], [70, 220, 90], [80, 150, 255]][(x >> 1) % 4] : mixC(c, [20, 40, 30], 0.7); }
     case 'celestial': return mixC(c, v < 0.5 ? [255, 250, 225] : [255, 226, 150], 0.78);
+    case 'reefglow': return vnoise(u * 5, v * 4, 'rg') > 0.5 ? mixC(c, [255, 120, 160], 0.8) : (hash('rgs' + x + ',' + y) % 9 === 0 ? [255, 214, 120] : mixC(c, [255, 160, 120], 0.35));
+    case 'mudskin': return hash('mu' + x + ',' + y) % 4 === 0 ? [70, 56, 40] : mixC(c, [128, 104, 70], 0.55);
+    case 'kelpwrap': return Math.sin((u * 9 + v * 3) * 1.2) > 0.35 ? [204, 172, 62] : mixC(c, [50, 140, 72], 0.66);
+    case 'jungle': { const n = vnoise(u * 5, v * 4, 'jg'); return n > 0.62 ? [30, 92, 42] : n > 0.4 ? [92, 162, 52] : [202, 192, 72]; }
+    case 'glacial': return hash('gl' + x + ',' + y) % 11 === 0 ? [255, 255, 255] : mixC(c, v < 0.5 ? [205, 242, 255] : [120, 190, 240], 0.75);
+    case 'abyssal': return hash('ab' + x + ',' + y) % 9 === 0 ? [60, 255, 220] : mixC(c, [6, 8, 22], 0.88);
+    case 'ember': { const r = Math.abs(Math.sin((u * 6 + vnoise(u * 4, v * 4, 'em') * 4) * 1.2)); return r < 0.16 ? [255, 120, 30] : (hash('emr' + x + y) % 6 === 0 ? [90, 50, 40] : [48, 36, 34]); }
+    case 'ancient': return (((x >> 1) + (y >> 1)) % 4 === 0) ? [232, 194, 90] : mixC(c, [60, 150, 140], 0.6);
   }
   return c;
 }

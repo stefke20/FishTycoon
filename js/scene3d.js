@@ -543,7 +543,7 @@ class TankScene3D {
     const r = this.cv.getBoundingClientRect(), k = this.cv.width / r.width, x = (cx - r.left) * k, y = (cy - r.top) * (this.cv.height / r.height), rad = (30 + 8 * lab('sponge')) * k;
     for (const b of this.blobs) if (Math.hypot(b.px - x, b.py - y) < b.pr * 0.9 + rad) { b.hp -= Math.max(0.1, moved * k / (b.pr * 1.4 + 1)); for (let i = 0; i < 2; i++) this.sparks.push({ x: b.px + (Math.random() - 0.5) * b.pr, y: b.py + (Math.random() - 0.5) * b.pr, vx: (Math.random() - 0.5) * 30, vy: -20 - Math.random() * 30, r: 1.5 + Math.random() * 2.5, t: 0 }); }
     const before = this.blobs.length; this.blobs = this.blobs.filter(b => b.hp > 0);
-    const n = before - this.blobs.length; if (n) wipedSmudge(this.tank.id, this.blobs.length);
+    const n = before - this.blobs.length; if (n) wipedSmudge(this.tank.id, this.blobs.length, n);
     return n;
   }
   drawSel() {
@@ -567,8 +567,10 @@ const Scenes = {
       claim('tank:' + t.id + ':' + (mini ? 1 : 0), cv, sc => sc.refresh(t, onFish, onHero), () => new TankScene3D(cv, t, mini, onFish, onHero));
     });
     document.querySelectorAll('canvas.storescene').forEach(cv => { if (typeof StoreScene === 'undefined') return; const onSlot = () => { UI.modal = { type: 'storeAdd' }; render(); }; claim('store', cv, sc => { sc.onFish = onStoreFish; sc.onSlot = onSlot; }, () => new StoreScene(cv, onStoreFish, onSlot)); });
+    document.querySelectorAll('canvas.expscene').forEach(cv => { if (typeof ExpScene !== 'undefined') claim('exp', cv, sc => {}, () => new ExpScene(cv)); });
+    document.querySelectorAll('canvas.showscene').forEach(cv => { if (typeof ShowScene !== 'undefined') claim('show', cv, sc => {}, () => new ShowScene(cv)); });
     document.querySelectorAll('canvas.homescene').forEach(cv => { if (typeof HomeScene === 'undefined') return; claim('home', cv, sc => {}, () => new HomeScene(cv)); });
-    old.forEach((sc, k) => { if (k === 'store' || k === 'home') this.cache.set(k, sc); else sc.dispose(); });
+    old.forEach((sc, k) => { if (k === 'store' || k === 'home' || k === 'exp' || k === 'show') this.cache.set(k, sc); else sc.dispose(); });
     this.list = next;
     if (!this.running) { this.running = true; requestAnimationFrame(t => Scenes.loop(t)); }
   },

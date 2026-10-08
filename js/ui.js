@@ -42,6 +42,9 @@ const SVG = {
   ev: '<path d="M12 3l2.6 5.6 6 .7-4.5 4.1 1.2 6L12 16.5 6.7 19.4l1.2-6L3.4 9.3l6-.7L12 3z"/>',
   stats: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
   home: '<path d="M3 11l9-8 9 8M5 10v10h5v-6h4v6h5V10"/>',
+  exp: '<path d="M12 3v13M12 4c4 2 6 6 6 11h-6M12 7c-4 2-6 5-6 9h6M3 19c3 2 6 2 9 0s6-2 9 0"/>',
+  shows: '<path d="M7 4h10v5a5 5 0 01-10 0V4zM7 6H4v1a3 3 0 003 3M17 6h3v1a3 3 0 01-3 3M12 14v4M8 21h8M10 18h4"/>',
+  daily: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M8 15l2.5 2.5L16 13"/>',
   menu: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/>',
 };
 const pageHead = (title, sub, actions) => `<div class="page-head"><div><h1>${title}</h1>${sub ? `<div class="sub">${sub}</div>` : ''}</div>${actions ? `<div class="actions">${actions}</div>` : ''}</div>`;
@@ -51,7 +54,7 @@ function bonusText(b) {
   const out = Object.keys(b || {}).filter(k => b[k]).map(k => `+${Math.round(b[k] * 100)}% ${names[k]}`);
   return out.length ? out.join(' · ') : 'cosmetic only';
 }
-const eggTitle = e => e.bred ? 'Bred Egg' : eggType(e).n;
+const eggTitle = e => e.wild ? 'Wild Egg · ' + LOCATION[e.wild].n : e.bred ? 'Bred Egg' : eggType(e).n;
 const sceneHTML = (t, mini) => `<canvas class="tankscene ${mini ? 'mini' : ''}" data-tank="${t.id}" data-mini="${mini ? 1 : 0}"></canvas>`;
 
 const SORTS = { value: 'Value', tier: 'Tier', mods: 'Modifiers', name: 'Name', growth: 'Growth' };
@@ -68,10 +71,11 @@ const sortBar = () => { if (UI.filterTank !== 'all' && UI.filterTank !== 'store'
 const zoomCtl = (tank, home) => `<div class="zoomctl">${tank ? '<button data-act="cam" data-x="rotL" title="Rotate left">↺</button><button data-act="cam" data-x="rotR" title="Rotate right">↻</button><button data-act="cam" data-x="tilt" title="Change camera angle">⇅</button><button data-act="cam" data-x="photo" title="Save a picture">📷</button>' : ''}<button data-act="zoom" data-x="in" title="Zoom in (+)">＋</button><button data-act="zoom" data-x="out" title="Zoom out (−)">－</button><button data-act="zoom" data-x="reset" title="Reset view (0)">⟲</button></div><div class="zoomhint">${home ? 'Scroll to zoom' : 'Scroll to zoom · drag to pan · double-click to reset'}${tank ? ' · ↺ ↻ rotate' : ''}</div>`;
 
 /* ---------- chrome ---------- */
+const TABS = [['store', 'Store'], ['home', 'Home'], ['hall', 'Aquariums'], ['breed', 'Breeding'], ['exp', 'Expeditions'], ['shows', 'Fish Shows'], ['shop', 'Shop'], ['inv', 'Inventory'], ['book', 'Collection'], ['daily', 'Daily'], ['ev', 'Events'], ['stats', 'Stats'], ['menu', 'Menu']];
 function renderHeader() {
-  const tabs = [['store', 'Store'], ['home', 'Home'], ['hall', 'Aquariums'], ['breed', 'Breeding'], ['shop', 'Shop'], ['inv', 'Inventory'], ['book', 'Collection'], ['ev', 'Events'], ['stats', 'Stats'], ['menu', 'Menu']];
+  const tabs = TABS;
   $('#tabs').innerHTML = tabs.map(([id, l]) => {
-    const n = id === 'store' ? S.customers.filter(c => c.ready).length + S.contracts.length : id === 'inv' ? S.eggs.length : id === 'ev' ? activeEvents().length : 0;
+    const n = id === 'store' ? S.customers.filter(c => c.ready).length + S.contracts.length : id === 'inv' ? S.eggs.length : id === 'ev' ? activeEvents().length : id === 'exp' ? boatsReady() : id === 'daily' ? (loginClaimable() ? 1 : 0) + questsClaimable() : 0;
     return `<button class="${UI.tab === id ? 'on' : ''}" data-act="tab" data-x="${id}"><svg viewBox="0 0 24 24">${SVG[id]}</svg><span>${l}</span>${n ? `<span class="badge">${n}</span>` : ''}</button>`;
   }).join('');
   if (!$('#logoimg').firstChild) $('#logoimg').innerHTML = `<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#2ad4c0" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${SVG.hall}</svg>`;
@@ -144,7 +148,7 @@ function selPanel(t) {
   const f = getFish(UI.selFish);
   if (!f || f.loc !== t.id) { UI.selFish = null; return `<div class="selpanel dim small">Click a fish in the aquarium or in the list to select it. Then you can sell, breed or move it.</div>`; }
   const sp = SPECIES[f.sp], adult = isAdult(f);
-  return `<div class="selpanel"><div class="row" style="align-items:flex-start;gap:12px"><div style="width:120px;flex:none">${fishPic(f, 120)}</div><div class="grow" style="min-width:0">${fishTitle(f)}<div style="margin:4px 0">${adult ? tierBadge(sp.t) + ' ' + genChip(f) : '<span class="chip m1">Baby</span>'}</div><div>${fishChips(f)}</div>${adult ? `<div class="gold" style="font-weight:700;margin-top:4px">${worthText(f)}</div>` : `<div class="bar" style="margin-top:6px"><i data-gbar="${f.id}" style="width:${Math.round(f.g * 100)}%"></i></div><div class="small dim" style="margin-top:3px">Growing: <span data-gtext="${f.id}">${Math.round(f.g * 100)}</span>% — what it is gets revealed when fully grown</div>`}</div></div>${fishActions(f)}<div class="row" style="margin-top:8px">${btn('Details', 'openFish', { x: f.id }, 'sm ghost')}${btn('Deselect', 'selFish', { x: f.id }, 'sm ghost')}</div></div>`;
+  return `<div class="selpanel"><div class="row" style="align-items:flex-start;gap:12px"><div style="width:120px;flex:none">${fishPic(f, 120)}</div><div class="grow" style="min-width:0">${fishTitle(f)}<div style="margin:4px 0">${adult ? tierBadge(sp.t) + ' ' + genChip(f) : '<span class="chip m1">Baby</span>'}</div><div>${fishChips(f)}${medalChips(f)}</div>${adult ? `<div class="gold" style="font-weight:700;margin-top:4px">${worthText(f)}</div>` : `<div class="bar" style="margin-top:6px"><i data-gbar="${f.id}" style="width:${Math.round(f.g * 100)}%"></i></div><div class="small dim" style="margin-top:3px">Growing: <span data-gtext="${f.id}">${Math.round(f.g * 100)}</span>% — what it is gets revealed when fully grown</div>`}</div></div>${fishActions(f)}<div class="row" style="margin-top:8px">${btn('Details', 'openFish', { x: f.id }, 'sm ghost')}${btn('Deselect', 'selFish', { x: f.id }, 'sm ghost')}</div></div>`;
 }
 function tankFishRow(f) {
   const adult = isAdult(f);
@@ -171,7 +175,7 @@ function viewTank() {
 function fishRow(f) {
   const sp = SPECIES[f.sp], adult = isAdult(f), sellable = adult && !f.fav && UI.tab === 'inv';
   return `<div class="fishrow" data-act="openFish" data-x="${f.id}"><div class="pic">${fishPic(f, 78)}</div>
-    <div class="grow">${fishTitle(f)} ${adult ? tierBadge(sp.t) + ' ' + genChip(f) : ''}<div>${fishChips(f)}</div><div class="small dim">${f.loc === 'store' ? 'In store' : esc((getTank(f.loc) || { name: '?' }).name)}</div>
+    <div class="grow">${fishTitle(f)} ${adult ? tierBadge(sp.t) + ' ' + genChip(f) : ''}<div>${fishChips(f)}${medalChips(f)}</div><div class="small dim">${f.loc === 'store' ? 'In store' : esc((getTank(f.loc) || { name: '?' }).name)}</div>
     ${adult ? '<span class="good small">Fully grown</span>' : `<div class="bar"><i data-gbar="${f.id}" style="width:${Math.round(f.g * 100)}%"></i></div>`}</div>
     <div class="gold" style="font-weight:600">${adult ? worthText(f) : '<span class="dim small">???</span>'}</div>${sellable ? btn(isEv(f) ? 'Sell' : `Sell ${fmt(fishValue(f) * quickSell())}`, 'sellRow', { x: f.id }, 'sm bad') : ''}</div>`;
 }
@@ -343,6 +347,10 @@ function modalHTML() {
       h += fishActions(f); break;
     }
     case 'tree': h += treeModal(m.id); break;
+    case 'expResult': h += expResultModal(m.r); break;
+    case 'showEnter': h += showEnterModal(m.id); break;
+    case 'tourneyPick': h += tourneyModal(); break;
+    case 'daily': h += dailyModal(); break;
     case 'hero': h += heroModal(m.id); break;
     case 'contract': h += contractModal(m.id); break;
     case 'pickTank': {
@@ -383,7 +391,8 @@ function modalHTML() {
       <p><b>3.</b> Keep the glass clean: smudges appear as the <b>water quality</b> drops, and dirty water makes your fish worth less. Drag the <b>sponge</b> over the glass to wipe it.</p>
       <p><b>4.</b> Spend profits in the <b>Shop</b>: tanks, filters, decorations, food, store and breeding upgrades, research, staff and hero fish. High-tier eggs cost more than the fish they hatch — <b>breed</b> instead!</p>
       <p><b>5.</b> <b>Breed</b> two adults: every modifier the parents carry can be passed on (none, one or several) with a small chance of a brand-new one, so modifiers stack over generations.</p>
-      <p><b>6.</b> Your 20 most valuable fish ever live in the big aquarium at <b>Home</b>. The end-game goal is to build <b>The Great Sanctuary</b> (Stats page).</p><div class="row" style="margin-top:14px">${btn("Let's go", 'closeModal', {}, 'pri')}</div>`; break;
+      <p><b>6.</b> Send boats on <b>Expeditions</b> for wild eggs of exclusive fish, enter your best fish in <b>Fish Shows</b> and tournaments for medals (permanent value) and fame, and check the <b>Daily</b> page for quests and your login streak.</p>
+      <p><b>7.</b> Your 20 most valuable fish ever live in the big aquarium at <b>Home</b>. The end-game goal is to build <b>The Great Sanctuary</b> (Stats page).</p><div class="row" style="margin-top:14px">${btn("Let's go", 'closeModal', {}, 'pri')}</div>`; break;
     }
     case 'text': { h += `<h2>${esc(m.title)}</h2><textarea id="txt" style="width:100%;height:160px;background:#0a1626;color:#cfe;border:1px solid var(--line2);border-radius:10px;padding:10px;user-select:text" ${m.ro ? 'readonly' : ''}>${esc(m.text || '')}</textarea><div class="row" style="margin-top:10px">${m.ro ? '' : btn('Load', 'doImport', {}, 'pri')}${btn('Close', 'closeModal')}</div>`; break; }
   }
@@ -393,9 +402,10 @@ function modalHTML() {
 /* ---------- render ---------- */
 function render() {
   G.dirty = false;
+  if (G.showResult) { UI.showLeague = G.showResult; UI.showResult = true; G.showResult = null; }
   const view = $('#view'), st = view.scrollTop;
   renderHeader(); renderStats();
-  view.innerHTML = { store: viewStore, home: viewHome, hall: () => (UI.tankId ? viewTank() : viewHall()), breed: viewBreed, shop: viewShop, inv: viewInv, book: viewCollection, ev: viewEvents, stats: viewStats, menu: viewMenu }[UI.tab]();
+  view.innerHTML = { store: viewStore, home: viewHome, exp: viewExp, shows: viewShows, daily: viewDaily, hall: () => (UI.tankId ? viewTank() : viewHall()), breed: viewBreed, shop: viewShop, inv: viewInv, book: viewCollection, ev: viewEvents, stats: viewStats, menu: viewMenu }[UI.tab]();
   view.scrollTop = st;
   const mo = $('#modal');
   if (UI.modal) { const keep = mo.firstChild && mo.firstChild.scrollTop; mo.innerHTML = modalHTML(); mo.classList.toggle('hidden', !UI.modal); if (mo.firstChild && keep) mo.firstChild.scrollTop = keep; } else { mo.classList.add('hidden'); mo.innerHTML = ''; }
@@ -413,6 +423,23 @@ const activeBoost = () => (UI.boost && S.items[UI.boost] > 0 ? UI.boost : null);
 /* ---------- actions ---------- */
 const ACT = {
   cam: d => { const sc = Scenes.list.find(x => x.zp && !x.people); if (!sc) return false; const v = sc.zp.v; if (d.x === 'rotL') { v.yaw--; v.px = v.py = 0; } else if (d.x === 'rotR') { v.yaw++; v.px = v.py = 0; } else if (d.x === 'tilt') { const L = [0.45, 0.78, 1.3, 2.4], i = L.findIndex(t => Math.abs(t - v.tilt) < 0.05); v.tilt = L[((i < 0 ? 1 : i) + 1) % L.length]; } else if (d.x === 'photo') { sc.photo(); toast('Picture saved to your downloads', 'good'); } return false; },
+  expLoc: d => { UI.expLoc = d.x; },
+  expSend: d => { const r = res(sendExpedition(d.x, +d.y)); if (r.ok) { toast('Your boat set sail for ' + LOCATION[d.x].n, 'good'); Sfx.play('buy'); } },
+  expCollect: d => { const r = collectExpedition(+d.x); if (r.ok) { UI.modal = { type: 'expResult', r }; Sfx.play(r.res.storm ? 'err' : 'good'); G.dirty = true; } else res(r); },
+  buyBoat: () => res(buyBoat()),
+  expUp: d => { const r = res(buyExpUpgrade(d.x)); if (r.ok) Sfx.play('buy'); },
+  showLeague: d => { UI.showLeague = d.x; UI.showResult = false; },
+  showView: d => { UI.showResult = d.x === 'result'; },
+  showEnterPick: d => { UI.modal = { type: 'showEnter', id: d.x }; },
+  showEnter: d => { const r = res(enterShow(d.x, d.y)); if (r.ok) { toast('Fish entered — good luck!', 'good'); Sfx.play('buy'); if (S.shows.leagues[d.x].entries.length >= 3) UI.modal = null; } },
+  tourneyStart: d => { const r = res(startTourney(d.x)); if (r.ok) { Sfx.play('buy'); UI.modal = { type: 'tourneyPick' }; } },
+  tourneyPick: () => { UI.modal = { type: 'tourneyPick' }; },
+  tourneyFight: d => { const r = res(tourneyFight(d.y)); if (r.ok) { toast(r.won ? `Round won! ${r.mine} vs ${r.theirs}` : `Round lost… ${r.mine} vs ${r.theirs}`, r.won ? 'gold' : 'bad'); Sfx.play(r.won ? 'level' : 'err'); UI.modal = null; } },
+  tourneyDismiss: () => res(dismissTourney()),
+  claimLogin: () => { const r = res(claimLogin()); if (r.ok) { toast('Day ' + (r.day + 1) + ' reward: ' + r.text, 'gold'); Sfx.play('level'); UI.modal = null; } },
+  claimQuest: d => { const r = res(claimQuest(+d.x)); if (r.ok) { toast('Quest reward +' + fmt(r.reward), 'gold'); Sfx.play('sale'); } },
+  claimDailyBonus: () => { const r = res(claimDailyBonus()); if (r.ok) { toast('Bonus chest opened!', 'gold'); Sfx.play('level'); } },
+  goDaily: () => { UI.tab = 'daily'; UI.modal = null; },
   selFish: d => { UI.selFish = UI.selFish === d.x ? null : d.x; },
   sellRow: d => { const r = res(sellMarket(d.x)); if (r.ok) { Sfx.play('sale'); toast(r.tokens ? `Sold for ${r.tokens} tokens` : 'Sold for ' + fmt(r.price), 'gold'); } },
   sellAll: () => { const ids = sortFish(S.fish).filter(f => isAdult(f) && !f.fav).map(f => f.id); if (!ids.length) return false; const val = ids.reduce((a, id) => a + (isEv(getFish(id)) ? 0 : fishValue(getFish(id)) * quickSell()), 0); if (!confirm(`Sell ${ids.length} fish for about ${fmt(val)}? Favourites and growing fish are kept.`)) return false; const r = res(sellMany(ids)); if (r.ok) { Sfx.play('sale'); toast(`Sold ${r.n} fish for ${fmt(r.money)}` + (r.tokens ? ` and ${r.tokens} tokens` : ''), 'gold'); } },
@@ -523,7 +550,7 @@ document.addEventListener('change', e => {
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && UI.modal) { UI.modal = null; render(); return; }
   if (e.target.matches && e.target.matches('textarea,input,select') || e.ctrlKey || e.metaKey || e.altKey) return;
-  const tabs = ['store', 'home', 'hall', 'breed', 'shop', 'inv', 'book', 'ev', 'stats', 'menu'];
+  const tabs = TABS.map(t => t[0]);
   if (e.key >= '1' && e.key <= '9') { UI.tab = tabs[+e.key - 1]; if (UI.tab !== 'hall') UI.tankId = null; render(); }
   else if (e.key === '+' || e.key === '=' || e.key === '-' || e.key === '_' || e.key === '0') { const sc = Scenes.list.find(x => x.zp); if (!sc) return; if (e.key === '0') sc.zp.reset(); else sc.zp.zoomAt(e.key === '+' || e.key === '=' ? 1.25 : 0.8, 0, 0); e.preventDefault(); }
 });
@@ -575,6 +602,11 @@ function live() {
   document.querySelectorAll('[data-ctl]').forEach(el => { const c = S.contracts.find(x => x.id === el.dataset.ctl); if (c) el.textContent = mmss(c.left); });
   document.querySelectorAll('[data-wq]').forEach(el => { const t = getTank(el.dataset.wq); if (t) { el.style.width = Math.round(wqOf(t)) + '%'; el.style.background = wqColor(wqOf(t)); } });
   document.querySelectorAll('[data-wqtext]').forEach(el => { const t = getTank(el.dataset.wqtext); if (t) { el.textContent = wqLabel(wqOf(t)) + ' ' + Math.round(wqOf(t)) + '%'; el.style.color = wqColor(wqOf(t)); } });
+  document.querySelectorAll('[data-boat]').forEach(el => { const b = S.exp.boats[+el.dataset.boat]; if (b) el.style.width = Math.round(boatProgress(b) * 100) + '%'; });
+  document.querySelectorAll('[data-boateta]').forEach(el => { const b = S.exp.boats[+el.dataset.boateta]; if (b && !boatReady(b)) el.textContent = 'Returns in ' + fmtDur((1 - boatProgress(b)) * b.dur / 1000); });
+  document.querySelectorAll('[data-showt]').forEach(el => { const sh = S.shows.leagues[el.dataset.showt]; if (sh) el.textContent = 'closes in ' + fmtDur((sh.closes - nowMs()) / 1000); });
+  document.querySelectorAll('[data-quest]').forEach(el => { const q = S.daily.quests[+el.dataset.quest]; if (q) el.style.width = questProgress(q) / q.goal * 100 + '%'; });
+  document.querySelectorAll('[data-questt]').forEach(el => { const q = S.daily.quests[+el.dataset.questt]; if (q) el.textContent = q.type === 'earn' ? fmt(questProgress(q)) + ' / ' + fmt(q.goal) : questProgress(q) + ' / ' + q.goal; });
   document.querySelectorAll('[data-fed]').forEach(el => { const t = getTank(el.dataset.fed); if (t) el.textContent = t.fedUntil > S.time ? 'Well fed — ' + Math.ceil(t.fedUntil - S.time) + 's left' : 'Hungry — feeding speeds up growth'; });
 }
 
@@ -585,7 +617,8 @@ G.lowFx = false;
 function boot() {
   const r = loadGame(); G.lowFx = !S.settings.fx;
   if (r.away > 60) toast(`Welcome back! Your fish kept growing for ${Math.round(r.away / 60)} min` + (r.matured ? ` — ${r.matured} reached adulthood.` : '.'), 'good');
-  if (!S.seenHelp) { UI.modal = { type: 'help' }; S.seenHelp = true; }
+  updateDaily(); ensureShows();
+  if (!S.seenHelp) { UI.modal = { type: 'help' }; S.seenHelp = true; } else if (loginClaimable()) UI.modal = { type: 'daily' };
   render();
   let last = performance.now(), lastMoney = S.money, saveT = 0, renderT = 0;
   setInterval(() => {

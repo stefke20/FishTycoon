@@ -98,14 +98,17 @@ function viewCollection() {
         h += `</div>`;
       }
     }
+    h += `<h3>Expedition species · ${SPECIES_LIST.filter(s => s.exp && S.book.sp[s.id]).length}/${EXP_SPECIES.length}</h3>`;
+    for (const L of LOCATIONS) { const list = SPECIES_LIST.filter(s => s.exp === L.id); h += `<div class="tierhead"><span class="dim">${L.icon} ${L.n}</span><span class="dim small">${list.filter(s => S.book.sp[s.id]).length}/${list.length}</span></div><div class="bookgrid">${list.map(s => { const d = S.book.sp[s.id]; return d ? `<div class="card booktile">${fishSVG(s.id, [], 110)}<b>${s.n}</b><div class="small dim">${TIER_NAMES[s.t]} · hatched ×${d.n}</div></div>` : `<div class="card booktile unk"><div class="q">?</div><b>???</b><div class="small dim">${TIER_NAMES[s.t]} · ${L.n}</div></div>`; }).join('')}</div>`; }
     const evs = EVENTS.filter(e => SPECIES_LIST.some(s => s.ev === e.id && S.book.sp[s.id]));
     if (evs.length) { h += `<h3>Event species</h3>`; for (const e of evs) { h += `<div class="tierhead"><span class="dim">${e.icon} ${e.n}</span></div><div class="bookgrid">`; for (const s of SPECIES_LIST.filter(x => x.ev === e.id)) { const d = S.book.sp[s.id]; h += d ? `<div class="card booktile">${fishSVG(s.id, [], 110)}<b>${s.n}</b><div class="small dim">Hatched ×${d.n}</div></div>` : `<div class="card booktile unk"><div class="q">?</div><b>???</b></div>`; } h += `</div>`; } }
   } else {
     for (const t of [1, 2, 3, 4]) {
-      const list = MODS_LIST.filter(m => !m.ev && m.t === t); h += `<div class="tierhead"><span class="chip m${t}">${MOD_TIER_NAMES[t]}</span><span class="dim small">${list.filter(m => S.book.mods[m.id]).length}/${list.length}</span></div><div class="modgrid">`;
+      const list = MODS_LIST.filter(m => !m.ev && !m.exp && m.t === t); h += `<div class="tierhead"><span class="chip m${t}">${MOD_TIER_NAMES[t]}</span><span class="dim small">${list.filter(m => S.book.mods[m.id]).length}/${list.length}</span></div><div class="modgrid">`;
       for (const m of list) { const c = S.book.mods[m.id]; h += c ? `<div class="card"><span class="chip m${m.t}">${m.icon} ${m.n}</span><div class="small dim" style="margin-top:6px">${m.d}</div><div class="small gold">×${m.m} value · seen ${c}×</div></div>` : `<div class="card unk"><b class="dim">???</b><div class="small dim">Undiscovered ${MOD_TIER_NAMES[t]} modifier</div></div>`; }
       h += `</div>`;
     }
+    h += `<h3>Expedition modifiers</h3><div class="modgrid">${MODS_LIST.filter(m => m.exp).map(m => S.book.mods[m.id] ? `<div class="card"><span class="chip m${m.t}">${m.icon} ${m.n}</span><div class="small dim" style="margin-top:6px">${m.d}</div><div class="small gold">×${m.m} · ${LOCATION[m.exp].n}</div></div>` : `<div class="card unk"><b class="dim">???</b><div class="small dim">Found on expeditions: ${LOCATION[m.exp].n}</div></div>`).join('')}</div>`;
     const evm = MODS_LIST.filter(m => m.ev && S.book.mods[m.id]);
     if (evm.length) { h += `<h3>Event modifiers</h3><div class="modgrid">${evm.map(m => `<div class="card"><span class="chip m${m.t}">${m.icon} ${m.n}</span><div class="small dim" style="margin-top:6px">${m.d}</div><div class="small gold">×${m.m} · ${EVENT[m.ev].short}</div></div>`).join('')}</div>`; }
   }

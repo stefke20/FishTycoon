@@ -45,8 +45,8 @@ function qualityForDirt(n) {
   return n <= 0 ? 100 : 0;
 }
 /* wiping a smudge: the water gets cleaner so that the number of smudges matches the quality again */
-function wipedSmudge(tid, remaining) {
-  const t = getTank(tid); if (!t) return;
+function wipedSmudge(tid, remaining, n) {
+  const t = getTank(tid); if (!t) return; S.stats.wiped += n || 1;
   t.wq = Math.min(100, Math.max(wqOf(t), qualityForDirt(remaining)) + 0.9 * lab('sponge'));
   if (remaining <= 0 && wqOf(t) < 97) t.wq = 100;
   if (remaining <= 0) S.stats.cleaned++;
@@ -200,7 +200,7 @@ function contractSpec(c) {
 }
 function contractMatches(c, f) {
   if (!isAdult(f)) return false; const s = SPECIES[f.sp];
-  if (s.ev) return false;
+  if (s.ev || fishLocked(f)) return false;
   if (c.sp && f.sp !== c.sp) return false;
   if (c.tier && (s.t !== c.tier || s.w !== c.water)) return false;
   if (c.mod && !f.mods.includes(c.mod)) return false;
@@ -209,14 +209,14 @@ function contractMatches(c, f) {
 }
 function genContract() {
   const lv = level(), maxT = maxSpeciesTier(), waters = ['fresh'].concat(hasSaltTank() ? ['salt'] : []);
-  const modPool = MODS_LIST.filter(m => !m.ev && m.t <= (lv < 4 ? 2 : lv < 6 ? 3 : 4));
+  const modPool = MODS_LIST.filter(m => !m.ev && !m.exp && m.t <= (lv < 4 ? 2 : lv < 6 ? 3 : 4));
   const kind = pick(lv < 2 ? ['species', 'tier'] : lv < 4 ? ['species', 'tier', 'mod'] : ['species', 'tier', 'mod', 'combo', 'mod2']);
   const c = { id: 'k' + S.nextId++, left: 900 + Math.round(rnd(0, 600)) };
   let base = 0;
-  if (kind === 'species') { const s = pick(SPECIES_LIST.filter(s => !s.ev && s.t <= maxT && waters.includes(s.w))); c.sp = s.id; base = s.value; }
+  if (kind === 'species') { const s = pick(SPECIES_LIST.filter(s => !s.ev && !s.exp && s.t <= maxT && waters.includes(s.w))); c.sp = s.id; base = s.value; }
   else if (kind === 'tier') { c.water = pick(waters); c.tier = Math.max(1, Math.min(maxT, 1 + Math.floor(Math.random() * maxT))); base = avgValue(speciesOf(c.water, c.tier).map(s => s.id)); }
   else if (kind === 'mod') { const m = pick(modPool); c.mod = m.id; base = 80 * BASE_VALUE[Math.max(1, Math.min(maxT, m.t + 1))] / 80 * m.m; }
-  else if (kind === 'combo') { const s = pick(SPECIES_LIST.filter(s => !s.ev && s.t <= maxT && waters.includes(s.w))), m = pick(modPool); c.sp = s.id; c.mod = m.id; base = s.value * m.m; }
+  else if (kind === 'combo') { const s = pick(SPECIES_LIST.filter(s => !s.ev && !s.exp && s.t <= maxT && waters.includes(s.w))), m = pick(modPool); c.sp = s.id; c.mod = m.id; base = s.value * m.m; }
   else { const m1 = pick(modPool); let m2 = pick(modPool); while (m2.id === m1.id) m2 = pick(modPool); c.mod = m1.id; c.mod2 = m2.id; base = BASE_VALUE[Math.min(maxT, 2)] * m1.m * m2.m; }
   c.reward = Math.round(base * rnd(1.7, 2.8) * (1 + 0.1 * lab('broker')) / 5) * 5 + 20; c.rep = 1 + Math.floor(Math.random() * 3) + (c.mod2 ? 2 : 0);
   return c;
@@ -238,8 +238,8 @@ function tickContracts(dt) {
 
 /* ---------- collection book ---------- */
 const BOOK_MILESTONES = [{ n: 10, reward: 2500 }, { n: 25, reward: 15000 }, { n: 50, reward: 100000 }, { n: 80, reward: 600000 }];
-const bookCount = () => SPECIES_LIST.filter(s => !s.ev && S.book.sp[s.id]).length;
-const bookTotal = () => SPECIES_LIST.filter(s => !s.ev).length;
+const bookCount = () => SPECIES_LIST.filter(s => !s.ev && !s.exp && S.book.sp[s.id]).length;
+const bookTotal = () => SPECIES_LIST.filter(s => !s.ev && !s.exp).length;
 function claimBook(n) { const m = BOOK_MILESTONES.find(x => x.n === n); if (!m || S.book.claimed[n] || bookCount() < n) return fail('Not available'); S.book.claimed[n] = true; S.money += m.reward; S.earned += m.reward; return ok(); }
 
 /* ---------- achievements ---------- */
@@ -254,10 +254,10 @@ const ACHIEVEMENTS = [
   { id: 'e100m', n: 'Tycoon', d: 'Earn $100,000,000 in total', goal: 1e8, val: () => S.earned, reward: 5e6 },
   { id: 'sp10', n: 'Collector', d: 'Discover 10 species', goal: 10, val: bookCount, reward: 1000 },
   { id: 'sp40', n: 'Naturalist', d: 'Discover 40 species', goal: 40, val: bookCount, reward: 25000 },
-  { id: 'spall', n: 'Completionist', d: 'Discover every regular species', goal: SPECIES_LIST.filter(s => !s.ev).length, val: bookCount, reward: 500000 },
-  { id: 'm5', n: 'Mutant', d: 'Discover 5 modifiers', goal: 5, val: () => Object.keys(S.book.mods).filter(m => !MODS[m].ev).length, reward: 2000 },
-  { id: 'm20', n: 'Gene Splicer', d: 'Discover 20 modifiers', goal: 20, val: () => Object.keys(S.book.mods).filter(m => !MODS[m].ev).length, reward: 60000 },
-  { id: 'mall', n: 'Mutation Master', d: 'Discover every regular modifier', goal: MODS_LIST.filter(m => !m.ev).length, val: () => Object.keys(S.book.mods).filter(m => !MODS[m].ev).length, reward: 1e6 },
+  { id: 'spall', n: 'Completionist', d: 'Discover every regular species', goal: SPECIES_LIST.filter(s => !s.ev && !s.exp).length, val: bookCount, reward: 500000 },
+  { id: 'm5', n: 'Mutant', d: 'Discover 5 modifiers', goal: 5, val: () => Object.keys(S.book.mods).filter(m => !MODS[m].ev && !MODS[m].exp).length, reward: 2000 },
+  { id: 'm20', n: 'Gene Splicer', d: 'Discover 20 modifiers', goal: 20, val: () => Object.keys(S.book.mods).filter(m => !MODS[m].ev && !MODS[m].exp).length, reward: 60000 },
+  { id: 'mall', n: 'Mutation Master', d: 'Discover every regular modifier', goal: MODS_LIST.filter(m => !m.ev && !m.exp).length, val: () => Object.keys(S.book.mods).filter(m => !MODS[m].ev && !MODS[m].exp).length, reward: 1e6 },
   { id: 'b1', n: 'First Litter', d: 'Breed fish for the first time', goal: 1, val: () => S.bredCount, reward: 200 },
   { id: 'b50', n: 'Matchmaker', d: 'Breed fish 50 times', goal: 50, val: () => S.bredCount, reward: 12000 },
   { id: 'b250', n: 'Breeding Dynasty', d: 'Breed fish 250 times', goal: 250, val: () => S.bredCount, reward: 150000 },
@@ -280,6 +280,16 @@ const ACHIEVEMENTS = [
   { id: 'l5', n: 'Rising Star', d: 'Reach store level 5', goal: 5, val: level, reward: 5000 },
   { id: 'l7', n: 'Master Aquarist', d: 'Reach the maximum store level', goal: MAX_LEVEL, val: level, reward: 400000 },
   { id: 'sanct', n: 'Ocean Legend', d: 'Complete the Great Sanctuary', goal: 5, val: () => S.sanct, reward: 20e6 },
+  { id: 'x1', n: 'Bon Voyage', d: 'Send your first expedition', goal: 1, val: () => S.stats.exps, reward: 3000 },
+  { id: 'x30', n: 'Seasoned Explorer', d: 'Send 30 expeditions', goal: 30, val: () => S.stats.exps, reward: 150000 },
+  { id: 'xc100', n: 'Wild Collector', d: 'Bring home 100 wild catches', goal: 100, val: () => S.stats.catches, reward: 400000 },
+  { id: 'xsp', n: 'Cartographer', d: 'Discover every expedition species', goal: EXP_SPECIES.length, val: () => SPECIES_LIST.filter(s => s.exp && S.book.sp[s.id]).length, reward: 3e6 },
+  { id: 'sh1', n: 'Blue Ribbon', d: 'Win a fish show', goal: 1, val: () => S.stats.showWins, reward: 5000 },
+  { id: 'sh20', n: 'Show Circuit', d: 'Win 20 shows', goal: 20, val: () => S.stats.showWins, reward: 500000 },
+  { id: 'fame', n: 'Household Name', d: 'Reach the fame rank National Celebrity', goal: 3, val: () => fameRank(), reward: 300000 },
+  { id: 'to1', n: 'Cup Winner', d: 'Win a tournament', goal: 1, val: () => S.shows.tourney && S.shows.tourney.state === 'won' ? 1 : (S.stats.tourneyWins || 0), reward: 20000 },
+  { id: 'st7', n: 'Regular', d: 'Reach a 7-day login streak', goal: 7, val: () => S.streak.best, reward: 10000 },
+  { id: 'st30', n: 'Devoted Keeper', d: 'Reach a 30-day login streak', goal: 30, val: () => S.streak.best, reward: 1e6 },
   { id: 'fav5', n: 'Pet Lover', d: 'Favourite 5 fish', goal: 5, val: () => S.fish.filter(f => f.fav).length, reward: 2500 },
 ];
 function checkAchievements() {
@@ -291,7 +301,7 @@ function checkAchievements() {
 
 /* ---------- end-game: the Great Sanctuary ---------- */
 const maxMods = () => S.fish.reduce((a, f) => Math.max(a, f.g >= 1 ? f.mods.length : 0), 0);
-const regMods = () => Object.keys(S.book.mods).filter(m => !MODS[m].ev).length;
+const regMods = () => Object.keys(S.book.mods).filter(m => !MODS[m].ev && !MODS[m].exp).length;
 const SANCT = [
   { n: 'Foundations', cost: 5e6, reqT: 'Discover 40 species', req: () => bookCount() >= 40, bonus: { value: 0.10 }, d: 'Lay the foundations of your life\'s work.' },
   { n: 'The Grand Hall', cost: 25e6, reqT: 'Own a fully grown fish with 4 modifiers', req: () => maxMods() >= 4, bonus: { value: 0.10, growth: 0.10 }, d: 'A hall worthy of the finest bloodlines.' },
@@ -311,6 +321,6 @@ function buildSanct() {
 /* ---------- tick ---------- */
 let _achT = 0, _evT = 99;
 function tickExtras(dt) {
-  tickWater(dt); tickStaff(dt); tickContracts(dt); _evT += dt; if (_evT > 3) { _evT = 0; tickEventWelcome(); }
+  tickWater(dt); tickStaff(dt); tickContracts(dt); tickG3(dt); _evT += dt; if (_evT > 3) { _evT = 0; tickEventWelcome(); }
   _achT += dt; if (_achT > 2) { _achT = 0; checkAchievements(); }
 }
