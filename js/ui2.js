@@ -29,13 +29,21 @@ function contractsPanel() {
 
 /* ---------- management (staff & unlocks) ---------- */
 function viewMgmt() {
-  let h = `<h3>Upgrades</h3>`;
-  for (const u of UNLOCKS) h += item(ico(u.icon, 28), u.n, u.d, u.price, 'Buy', 'buyUnlock', { x: u.id }, { maxed: S.unlocks[u.id] });
-  h += `<h3>Staff</h3><p class="lead">Staff work automatically while you play and while the page is open. They draw a wage every minute — total now <b class="gold">${fmt(staffWage())}/min</b>. If you can't pay them they stop working.</p>`;
-  for (const s of STAFF) {
-    const l = S.staff[s.id];
-    h += item(ico(s.icon, 28), `${s.n} <span class="dim small">Lv ${l}/3</span>`, `${s.d}<br>${l ? `Works every ${s.every[l - 1]}s · wage ${fmt(s.wage[l - 1])}/min` : `Hire: first shift every ${s.every[0]}s · wage ${fmt(s.wage[0])}/min`}`, l >= 3 ? null : s.hire[l], l ? 'Upgrade' : 'Hire', 'hire', { x: s.id }, { maxed: l >= 3 });
+  let h = `<h3>Your staff</h3>`;
+  const hired = STAFF.filter(x => S.staff[x.id] > 0);
+  if (!hired.length) h += `<div class="empty">You have not hired anyone yet — hire staff below to automate the boring jobs.</div>`;
+  else {
+    h += `<p class="lead">Wages are paid every minute — right now <b class="gold">${fmt(staffWage())}/min</b>${S.unpaid ? ' <span class="badc">(unpaid — they are on strike!)</span>' : ''}. Pause anyone while money is tight: paused staff cost nothing and don't work.</p><div class="grid sm">`;
+    for (const x of hired) { const l = S.staff[x.id], pz = !!S.staffPaused[x.id], left = Math.max(0, Math.ceil((x.every[l - 1] - (S.staffT[x.id] || 0)) / (1 + 0.08 * lab('automation')))); h += `<div class="card staffcard ${pz ? 'paused' : ''}"><div class="row"><span class="eico">${x.icon}</span><div class="grow"><b>${x.n}</b> <span class="dim small">Lv ${l}/3</span><div class="small dim">${x.d}</div></div></div><div class="row" style="margin-top:8px"><span class="small">${pz ? '<span class="badc">⏸ Paused</span>' : `<span class="good">● Working</span> · next job in ${left}s`}</span><span class="grow"></span><span class="gold small">${pz ? '$0' : fmt(Math.round(x.wage[l - 1] * (1 - 0.05 * lab('automation'))))}/min</span></div><div class="row" style="margin-top:8px">${btn(pz ? '▶ Resume' : '⏸ Pause', 'pauseStaff', { x: x.id }, pz ? 'pri sm' : 'sm')}</div></div>`; }
+    h += `</div>`;
   }
+  h += `<h3>Hire & upgrade</h3>`;
+  for (const x of STAFF) {
+    const l = S.staff[x.id];
+    h += item(ico(x.icon, 28), `${x.n} <span class="dim small">Lv ${l}/3</span>`, `${x.d}<br>${l ? `Works every ${x.every[l - 1]}s · wage ${fmt(x.wage[l - 1])}/min` : `Hire: first shift every ${x.every[0]}s · wage ${fmt(x.wage[0])}/min`}`, l >= 3 ? null : x.hire[l], l ? 'Upgrade' : 'Hire', 'hire', { x: x.id }, { maxed: l >= 3 });
+  }
+  h += `<h3>Facilities</h3>`;
+  for (const u of UNLOCKS) h += item(ico(u.icon, 28), u.n, u.d, u.price, 'Buy', 'buyUnlock', { x: u.id }, { maxed: S.unlocks[u.id] });
   return h;
 }
 
@@ -65,7 +73,8 @@ function heroModal(id) {
 function treeNode(n, depth) {
   if (!n) return `<div class="tnode unknown"><div class="tcard dim small">Unknown</div></div>`;
   const kids = n.parents.filter(Boolean).length || n.parents.length ? `<div class="tparents">${n.parents.map(p => treeNode(p, depth + 1)).join('')}</div>` : '';
-  const sp = SPECIES[n.sp];
+  const sp = SPECIES[n.sp], gf = getFish(n.id), baby = gf && gf.g < 1;
+  if (baby) return `<div class="tnode"><div class="tcard"><div class="tpic">${fishSVG('_baby', [], 84)}</div><div><b>${esc(n.n)}</b></div><div class="small dim">Baby — a mystery</div><div class="small">${n.g ? 'Gen ' + n.g : 'Founder'}</div></div>${kids}</div>`;
   return `<div class="tnode"><div class="tcard ${n.alive ? '' : 'gone'}"><div class="tpic">${fishSVG(n.sp, n.m, 84)}</div><div><b>${esc(n.n)}</b></div><div class="small dim">${esc(n.m.map(m => MODS[m].n).join(' ') + (n.m.length ? ' ' : '') + sp.n)}</div><div class="small">${n.g ? 'Gen ' + n.g : 'Founder'}${n.alive ? '' : ' · gone'}</div></div>${kids}</div>`;
 }
 function treeModal(id) {
@@ -106,24 +115,29 @@ function viewCollection() {
 /* ---------- events ---------- */
 function evCountdown(ev) { const st = eventStatus(ev); if (S.settings.event === 'all' || S.settings.event === ev.id) return `<span class="good">Preview mode — active</span>`; return st.active ? `<span class="good">Active · ${st.daysLeft} day${st.daysLeft === 1 ? '' : 's'} left</span>` : `<span class="dim">Returns in ${st.daysTo} days (${st.start.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })})</span>`; }
 function viewEvents() {
-  const act = activeEvents();
-  let h = pageHead('Seasonal Events', 'Limited-time fish, modifiers and a dedicated tank for each holiday. Sell event fish to earn tokens, then spend them on exclusive cosmetics.');
+  let h = pageHead('Seasonal Events', 'Limited-time fish, modifiers and a dedicated tank for each holiday. Event eggs cost event tokens, and event fish sell for tokens — never money — so the event economy stays separate. Spend tokens on exclusive rewards.');
   const order = EVENTS.slice().sort((a, b) => (eventActive(b.id) ? 1 : 0) - (eventActive(a.id) ? 1 : 0));
   for (const ev of order) {
     const on = eventActive(ev.id), tk = eventTank(ev.id), tokens = S.tokens[ev.id] || 0, sh = EVENT_SHOP[ev.id], w = 'ev_' + ev.id;
-    h += `<div class="card evcard" style="--ev:${ev.color}"><div class="evhead"><div class="evicon">${ev.icon}</div><div class="grow"><b style="font-size:18px">${ev.n}</b><div class="small">${evCountdown(ev)}</div></div><div class="tokens"><div class="lbl">${ev.short} tokens</div><div class="gold" style="font-size:20px;font-weight:700">${tokens}</div></div></div>`;
+    h += `<div class="card evcard" style="--ev:${ev.color}"><div class="evhead"><div class="evicon">${ev.icon}</div><div class="grow"><b style="font-size:18px">${ev.n}</b><div class="small">${evCountdown(ev)}</div></div><div class="tokens"><div class="lbl">${ev.short} tokens</div><div class="gold" style="font-size:20px;font-weight:700">🎟 ${tokens}</div></div></div>`;
     if (on || tokens > 0 || tk) {
-      h += `<div class="row" style="margin:12px 0">${tk ? btn('Open event tank', 'openTank', { x: tk.id }, 'pri') : btn('Claim event tank', 'evClaim', { x: ev.id }, 'pri', !on)}<span class="dim small">${tk ? esc(tk.name) + ' — free of charge and doesn\'t use a hall slot.' : 'A dedicated tank for event fish.'}</span></div>`;
-      h += `<div class="dim small" style="margin-bottom:6px">Event eggs ${on ? '' : '— only sold while the event is running'}</div><div class="grid sm">`;
+      h += `<div class="row" style="margin:12px 0">${tk ? btn('Open event tank', 'openTank', { x: tk.id }, 'pri') : btn('Claim event tank', 'evClaim', { x: ev.id }, 'pri', !on)}<span class="dim small">${tk ? esc(tk.name) + ' — free of charge and doesn\'t use a hall slot.' : 'A dedicated tank for event fish.'} New to the event? You get ${EVENT_WELCOME_TOKENS} welcome tokens.</span></div>`;
+      h += `<div class="dim small" style="margin-bottom:6px">Event eggs — paid in tokens ${on ? '' : '(only sold while the event is running)'}</div><div class="grid sm">`;
       for (let t = 1; t <= 3; t++) {
-        const e = EGG_TYPE[w + t + '_mix'], price = eggPrice(e.id) * UI.qty, can = on && !!tk;
-        h += `<div class="card egg flat ${can ? '' : 'locked'}"><div class="top">${eggArt(e, 52)}<div class="grow"><b>${e.n}</b> ${tierBadge(t)}<div class="small dim">${e.pool.map(id => SPECIES[id].n).join(', ')}</div></div></div>${btn(`Buy${UI.qty > 1 ? ' ×' + UI.qty : ''} · ${fmt(price)}`, can ? 'buyEgg' : 'noop', { x: e.id }, 'pri', can && S.money < price)}</div>`;
+        const e = EGG_TYPE[w + t + '_mix'], price = e.tokens * UI.qty, can = on && !!tk;
+        h += `<div class="card egg flat ${can ? '' : 'locked'}"><div class="top">${eggArt(e, 52)}<div class="grow"><b>${e.n}</b> ${tierBadge(t)}<div class="small dim">${e.pool.map(id => SPECIES[id].n).join(', ')}</div></div></div>${btn(`Buy${UI.qty > 1 ? ' ×' + UI.qty : ''} · 🎟 ${price}`, can ? 'buyEgg' : 'noop', { x: e.id }, 'pri', can && tokens < price)}<div class="small dim" style="margin-top:4px">Sells for about 🎟 ${TOKEN_BASE[t]}+ each when fully grown</div></div>`;
       }
       h += `</div><div class="dim small" style="margin:14px 0 6px">Event modifiers: ${MODS_LIST.filter(m => m.ev === ev.id).map(m => `<span class="chip m${m.t}" title="${esc(m.d)}">${m.icon} ${m.n}</span>`).join('')}</div>`;
-      h += `<div class="dim small" style="margin:10px 0 6px">Token shop</div><div class="grid sm">`;
-      const skin = SKIN['sk_' + ev.id];
-      h += `<div class="card flat evitem"><div class="swatch" style="background:linear-gradient(135deg,${skin.frame},${skin.gravel})"></div><b>${skin.n}</b><div class="small dim">Tank skin · ${bonusText(skin.b)}</div>${S.skins[skin.id] ? '<span class="good small">Owned</span>' : btn(`${skin.tokens} tokens`, 'evBuy', { x: ev.id, y: 'skin' }, 'sm pri', tokens < skin.tokens)}</div>`;
-      for (const [kind, did] of [['bg', 'bg_' + ev.id], ['decor', 'dc_' + ev.id]]) { const d = DECOR_BY_ID[did]; h += `<div class="card flat evitem"><div class="swatchimg">${decorPic(d, 74)}</div><b>${d.n}</b><div class="small dim">${kind === 'bg' ? 'Background' : 'Decoration'} · ${bonusText(d.b)}${S.decorInv[did] ? ' · owned ' + S.decorInv[did] : ''}</div>${btn(`${d.tokens} tokens`, 'evBuy', { x: ev.id, y: kind }, 'sm pri', tokens < d.tokens)}</div>`; }
+      h += `<div class="dim small" style="margin:10px 0 6px">Token shop — goals to work towards</div><div class="grid sm">`;
+      for (const kind of EVENT_KINDS) {
+        const cost = EVENT_COST[kind], name = sh[kind][0], icon = sh[kind][1] || ev.icon, bought = S.evBought[ev.id + ':' + kind] || 0;
+        const once = kind === 'skin' || kind === 'charm', owned = kind === 'skin' ? !!S.skins['sk_' + ev.id] : kind === 'charm' ? !!S.charms[ev.id] : false;
+        let pic, desc;
+        if (kind === 'skin') { const sk = SKIN['sk_' + ev.id]; pic = `<div class="swatch" style="background:linear-gradient(135deg,${sk.frame},${sk.gravel})"></div>`; desc = bonusText(sk.b); }
+        else if (kind === 'bg' || kind === 'decor' || kind === 'trophy') { const d = DECOR_BY_ID[evItemId(ev.id, kind)]; pic = `<div class="swatchimg">${decorPic(d, 74)}</div>`; desc = bonusText(d.b); }
+        else { pic = `<div class="swatch big">${icon}</div>`; desc = kind === 'kit' ? '3 × Mutagen Reactor (+50% mutation chance each)' : kind === 'crate' ? '2 Epic (tier 4) mystery eggs' : `+${Math.round(EVENT_CHARM_VALUE * 100)}% value on every fish, forever`; }
+        h += `<div class="card flat evitem ${kind === 'charm' || kind === 'trophy' ? 'grand' : ''}">${pic}<b>${name}</b><div class="small dim">${EVENT_KIND_LABEL[kind]} · ${desc}${bought && !once ? ' · bought ' + bought + '×' : ''}</div>${owned ? '<span class="good small">Owned</span>' : btn(`🎟 ${cost}`, 'evBuy', { x: ev.id, y: kind }, 'sm pri', tokens < cost)}</div>`;
+      }
       h += `</div>`;
     } else h += `<div class="dim small" style="margin-top:8px">Come back when the event starts to claim its exclusive tank, eggs and fish.</div>`;
     h += `</div>`;
@@ -131,13 +145,32 @@ function viewEvents() {
   return h;
 }
 
+/* ---------- home ---------- */
+function viewHome() {
+  let h = pageHead('Home', 'Your living room. The big aquarium shows your 20 most valuable fish of all time — even the ones you have sold. They are yours to play with, but never for sale.');
+  h += `<div class="homewrap"><div><div class="scenewrap" style="position:relative"><canvas class="homescene"></canvas>${zoomCtl(false, true)}</div><div class="dim small" style="margin-top:8px">🖱 Click a fish to boop it · hold the mouse button to wave a lure the fish will follow · quickly tap the water to sprinkle food</div></div>`;
+  h += `<aside class="hofpanel"><h3 style="margin-top:0">Hall of fame · ${S.hof.length}/20</h3>`;
+  if (!S.hof.length) h += `<div class="empty">Grow a fish to adulthood and it will move in here. The more valuable it is, the better its spot in the ranking.</div>`;
+  S.hof.forEach((e, i) => { h += `<div class="hofrow"><span class="rank">${i + 1}</span><div class="hofpic">${fishSVG(e.sp, e.mods, 52)}</div><div class="grow" style="min-width:0"><div class="tfname">${esc(e.name)}</div><div class="small dim tfsub">${esc(e.label)}${e.gen ? ' · Gen ' + e.gen : ''}</div></div><div class="gold small">${fmt(e.value)}</div></div>`; });
+  return h + `</aside></div>`;
+}
+
 /* ---------- stats & achievements ---------- */
 function viewStats() {
   const done = ACHIEVEMENTS.filter(a => S.ach[a.id]).length;
   const st = [['Total earned', fmt(S.earned)], ['Sales to customers', S.sales], ['Best single sale', fmt(S.bestValue || 0)], ['Eggs hatched', S.stats.hatched], ['Times bred', S.bredCount], ['Fish sold at market', S.stats.marketSold], ['Special orders done', S.stats.contracts], ['Fish owned', S.fish.length], ['Highest generation', maxGen()], ['Species discovered', bookCount() + ' / ' + bookTotal()], ['Event tokens earned', S.stats.tokens], ['Tanks cleaned', S.stats.cleaned], ['Staff wages / min', fmt(staffWage())], ['Play time', Math.round(S.time / 60) + ' min']];
-  let h = pageHead('Stats & Achievements', `${done} of ${ACHIEVEMENTS.length} achievements unlocked.`) + `<div class="statgrid">${st.map(([k, v]) => `<div class="card flat"><div class="lbl">${k}</div><div style="font-size:20px;font-weight:650">${v}</div></div>`).join('')}</div><h3>Achievements</h3><div class="grid sm">`;
+  let h = pageHead('Stats & Achievements', `${done} of ${ACHIEVEMENTS.length} achievements unlocked.${S.titles.length ? ' Titles: <b class="gold">' + S.titles.join(', ') + '</b>' : ''}`) + sanctuaryCard() + `<div class="statgrid">${st.map(([k, v]) => `<div class="card flat"><div class="lbl">${k}</div><div style="font-size:20px;font-weight:650">${v}</div></div>`).join('')}</div><h3>Achievements</h3><div class="grid sm">`;
   for (const a of ACHIEVEMENTS) { const d = S.ach[a.id], v = Math.min(a.goal, a.val()); h += `<div class="card ach ${d ? 'done' : ''}"><div class="row"><b class="grow">${d ? '✓ ' : ''}${a.n}</b><span class="gold small">${fmt(a.reward)}</span></div><div class="small dim">${a.d}</div><div class="bar" style="margin-top:8px"><i style="width:${v / a.goal * 100}%"></i></div><div class="small dim" style="margin-top:3px">${d ? 'Completed' : fmt2(v) + ' / ' + fmt2(a.goal)}</div></div>`; }
   return h + `</div>`;
+}
+function sanctuaryCard() {
+  const done = S.sanct >= SANCT.length;
+  let h = `<div class="card sanct"><div class="row"><b style="font-size:18px">🏛️ The Great Sanctuary</b><span class="grow"></span><span class="gold small">${S.sanct}/${SANCT.length} built · +${Math.round(sanctValue() * 100)}% value${sanctGrowth() ? ' · +' + Math.round(sanctGrowth() * 100) + '% growth' : ''}</span></div><div class="dim small" style="margin:4px 0 10px">The end-game goal: a sanctuary for every fish in the sea. Each stage needs a huge sum and proof of your breeding mastery, and permanently boosts your whole empire.</div><div class="sanctsteps">`;
+  SANCT.forEach((st, i) => {
+    const built = i < S.sanct, cur = i === S.sanct, okReq = st.req();
+    h += `<div class="sanctstep ${built ? 'built' : cur ? 'cur' : ''}"><div class="n">${built ? '✓' : i + 1}</div><div class="grow"><b>${st.n}</b> <span class="dim small">${st.d}</span><div class="small ${okReq || built ? 'good' : 'dim'}">${built ? 'Built' : (okReq ? '✔ ' : '✖ ') + st.reqT}</div></div><div style="text-align:right"><div class="gold">${fmt(st.cost)}</div><div class="small dim">${st.bonus.value ? '+' + Math.round(st.bonus.value * 100) + '% value' : ''}${st.bonus.growth ? ' +' + Math.round(st.bonus.growth * 100) + '% growth' : ''}</div></div>${cur ? btn('Build', 'buildSanct', {}, 'pri sm', !okReq || S.money < st.cost) : ''}</div>`;
+  });
+  return h + `</div>${done ? '<div class="good" style="margin-top:10px;font-weight:600">★ You are an Ocean Legend! Keep playing — your sanctuary hall of fame lives in Home.</div>' : ''}</div>`;
 }
 const fmt2 = n => (n >= 1e4 ? fmt(n).replace('$', '') : Math.floor(n).toLocaleString('en-US'));
 

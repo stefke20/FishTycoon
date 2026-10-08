@@ -60,17 +60,24 @@ const EVENT_MODS = [
   ['winter', 'candycane', 'Candy Cane', 1, 3, 0.07, '#ff5a5a', '🍭', 'Red-and-white spiral stripes'],
   ['winter', 'festive', 'Festive Lights', 2, 8, 0.016, '#fff0a0', '🎄', 'Strung with twinkling fairy lights'],
 ];
-/* skins / backgrounds / decor bought with event tokens: [evId, kind, name, tokens] */
+/* Token shop. Eggs cost tokens (never money) and event fish sell for tokens (never money), keeping the event economy separate.
+   Each event has 7 rewards: [name, emoji]; token costs per kind are shared. */
+const EVENT_COST = { skin: 60, bg: 120, decor: 200, kit: 150, crate: 260, trophy: 450, charm: 700 };
+const EVENT_KIND_LABEL = { skin: 'Tank skin', bg: 'Background', decor: 'Decoration', kit: 'Mutagen kit', crate: 'Egg crate', trophy: 'Trophy decoration', charm: 'Permanent charm' };
+const EVENT_EGG_TOKENS = [0, 2, 6, 18];
+const EVENT_WELCOME_TOKENS = 6;
+const EVENT_CHARM_VALUE = 0.04;      // each owned charm adds +4% to the value of every fish
 const EVENT_SHOP = {
-  stpat: { skin: ['Emerald Isle Frame', 80], bg: ['Rainbow Meadow', 110], decor: ['Pot of Gold', 160, '🪙'] },
-  valentine: { skin: ['Rosewood Frame', 80], bg: ['Heart Balloons', 110], decor: ['Rose Arch', 160, '🌹'] },
-  spring: { skin: ['Blossom Frame', 80], bg: ['Cherry Orchard', 110], decor: ['Easter Basket', 160, '🧺'] },
-  summer: { skin: ['Driftwood Frame', 80], bg: ['Beach Sunset', 110], decor: ['Sandcastle & Umbrella', 160, '🏖️'] },
-  halloween: { skin: ['Cursed Frame', 80], bg: ['Graveyard Moon', 110], decor: ['Jack-o-Lantern', 160, '🎃'] },
-  winter: { skin: ['Candy Cane Frame', 80], bg: ['Snowy Village', 110], decor: ['Christmas Tree', 160, '🎄'] },
+  stpat: { skin: ['Emerald Isle Frame'], bg: ['Rainbow Meadow'], decor: ['Pot of Gold', '🪙'], kit: ['Lucky Mutagen Kit', '🍀'], crate: ["Leprechaun's Crate", '🎁'], trophy: ['Golden Shamrock Trophy', '🏆'], charm: ['Four-Leaf Charm', '☘️'] },
+  valentine: { skin: ['Rosewood Frame'], bg: ['Heart Balloons'], decor: ['Rose Arch', '🌹'], kit: ['Love Potion Kit', '💘'], crate: ['Sweetheart Hamper', '🎁'], trophy: ["Cupid's Golden Arrow", '🏆'], charm: ['Locket of Love', '💞'] },
+  spring: { skin: ['Blossom Frame'], bg: ['Cherry Orchard'], decor: ['Easter Basket', '🧺'], kit: ['Spring Tonic Kit', '🌷'], crate: ['Garden Hamper', '🎁'], trophy: ['Golden Egg Trophy', '🏆'], charm: ['Daisy Chain Charm', '🌼'] },
+  summer: { skin: ['Driftwood Frame'], bg: ['Beach Sunset'], decor: ['Sandcastle & Umbrella', '🏖️'], kit: ['Suncream Mutagen Kit', '🧴'], crate: ['Beach Bag', '🎁'], trophy: ['Surf Champion Trophy', '🏆'], charm: ['Sea-Glass Charm', '🐚'] },
+  halloween: { skin: ['Cursed Frame'], bg: ['Graveyard Moon'], decor: ['Jack-o-Lantern', '🎃'], kit: ["Witch's Brew Kit", '🧪'], crate: ['Trick-or-Treat Bag', '🎁'], trophy: ['Golden Pumpkin Trophy', '🏆'], charm: ['Black Cat Charm', '🐈‍⬛'] },
+  winter: { skin: ['Candy Cane Frame'], bg: ['Snowy Village'], decor: ['Christmas Tree', '🎄'], kit: ['Eggnog Mutagen Kit', '🥛'], crate: ['Stocking Stuffer', '🎁'], trophy: ['Golden Bauble Trophy', '🏆'], charm: ['Snowflake Charm', '❄️'] },
 };
-const EVENT_BASE_VALUE_MULT = 1.3, EVENT_EGG_MULT = 1.6;
-const TOKEN_BASE = [0, 2, 6, 16];
+const EVENT_KINDS = Object.keys(EVENT_COST);
+const EVENT_BASE_VALUE_MULT = 1.3;
+const TOKEN_BASE = [0, 3, 9, 27];
 
 /* ---- register into the global tables ---- */
 (function registerEvents() {
@@ -85,15 +92,16 @@ const TOKEN_BASE = [0, 2, 6, 16];
     TANK_TYPES.push({ id: w, n: ev.tank, w, base: 3, cap: 12, price: 0, lvl: 99, mult: 8, ev: ev.id }); TANK_TYPE[w] = TANK_TYPES[TANK_TYPES.length - 1];
     for (let t = 1; t <= 3; t++) {
       const pool = SPECIES_LIST.filter(s => s.w === w && s.t === t).map(s => s.id);
-      const e = { id: w + t + '_mix', n: ev.short + ' Egg', w, t, pool, pm: EVENT_EGG_MULT, ev: ev.id };
+      const e = { id: w + t + '_mix', n: ev.short + ' Egg', w, t, pool, pm: 1, ev: ev.id, tokens: EVENT_EGG_TOKENS[t] };
       EGG_TYPES.push(e); EGG_TYPE[e.id] = e;
     }
     const sh = EVENT_SHOP[ev.id];
-    const sk = { id: 'sk_' + ev.id, n: sh.skin[0], price: 0, tokens: sh.skin[1], gravel: ev.gravel, frame: ev.frame, b: { value: 0.06, growth: 0.03 }, ev: ev.id };
+    const sk = { id: 'sk_' + ev.id, n: sh.skin[0], price: 0, tokens: EVENT_COST.skin, gravel: ev.gravel, frame: ev.frame, b: { value: 0.06, growth: 0.03 }, ev: ev.id };
     SKINS.push(sk); SKIN[sk.id] = sk;
-    const bg = { id: 'bg_' + ev.id, n: sh.bg[0], e: ev.icon, k: 'bg', w: 'both', price: 0, tokens: sh.bg[1], b: { value: 0.1, mod: 0.1 }, css: '', ev: ev.id };
-    const dc = { id: 'dc_' + ev.id, n: sh.decor[0], e: sh.decor[2], k: 'acc', w: 'both', price: 0, tokens: sh.decor[1], b: { mod: 0.15, tier: 0.12 }, ev: ev.id };
-    DECOR.push(bg, dc); DECOR_BY_ID[bg.id] = bg; DECOR_BY_ID[dc.id] = dc;
+    const bg = { id: 'bg_' + ev.id, n: sh.bg[0], e: ev.icon, k: 'bg', w: 'both', price: 0, tokens: EVENT_COST.bg, b: { value: 0.1, mod: 0.1 }, css: '', ev: ev.id };
+    const dc = { id: 'dc_' + ev.id, n: sh.decor[0], e: sh.decor[1], k: 'acc', w: 'both', price: 0, tokens: EVENT_COST.decor, b: { mod: 0.15, tier: 0.12 }, ev: ev.id };
+    const tr = { id: 'tr_' + ev.id, n: sh.trophy[0], e: sh.trophy[1], k: 'acc', w: 'both', price: 0, tokens: EVENT_COST.trophy, b: { value: 0.18, mod: 0.12, tier: 0.1, inherit: 0.1 }, ev: ev.id };
+    DECOR.push(bg, dc, tr); DECOR_BY_ID[bg.id] = bg; DECOR_BY_ID[dc.id] = dc; DECOR_BY_ID[tr.id] = tr;
   });
 })();
 

@@ -5,14 +5,15 @@ const TIER_NAMES = ['', 'Common', 'Uncommon', 'Rare', 'Epic', 'Legendary'];
 const TIER_COLORS = ['', '#9fb3c8', '#4cc9a0', '#4d9fff', '#b36bff', '#ffb830'];
 
 const BASE_VALUE = [0, 18, 80, 320, 1300, 5500];
-const EGG_PRICE = [0, 10, 45, 180, 750, 3200];
+const EGG_PRICE = [0, 10, 55, 380, 2600, 19000]; // high-tier eggs cost more than the fish they hatch: breed instead!
 const GROW_TIME = [0, 40, 80, 160, 320, 640]; // seconds at base speed
 const SALT_VALUE_MULT = 1.5;
-const SALT_EGG_MULT = 1.4;
+const SALT_EGG_MULT = 1.5;
 const EGG_UNLOCK_LEVEL = [0, 1, 2, 3, 5, 7];
 const SALT_EGG_UNLOCK_LEVEL = [0, 3, 4, 5, 6, 7];
 
-const LEVELS = [0, 0, 10, 30, 80, 160, 300, 600]; // sales needed for level index
+const LEVELS = [0, 0, 10, 30, 80, 160, 300, 600, 1100, 2000, 3500]; // sales needed for level index
+const MAX_LEVEL = LEVELS.length - 1;
 
 // shape: round | slender | tall | eel ; pattern: none|stripes|spots|band|patch|belly
 const SPECIES_LIST = [
@@ -112,6 +113,7 @@ SPECIES_LIST.forEach(s => {
   s.value = Math.round(BASE_VALUE[s.t] * s.v * (s.w === 'salt' ? SALT_VALUE_MULT : 1));
   SPECIES[s.id] = s;
 });
+SPECIES._baby = { id: '_baby', n: 'Baby', t: 1, w: 'fresh', f: 'Baby', c: '#c2cdb4', c2: '#e8eddc', sh: 'slender', pt: 'none', v: 1, value: 0 };
 const speciesOf = (water, tier) => SPECIES_LIST.filter(s => s.w === water && s.t === tier);
 
 /* Egg types: one per family (3 species) + a cheaper random 'Mystery' egg per water/tier */
@@ -131,9 +133,11 @@ const EGG_TYPE = {};
 
 /* Consumables: chance (flat, 0-1) that a hatch / breeding gets one extra random modifier */
 const CONSUMABLES = [
-  { id: 'mut1', n: 'Mutagen Drops', e: '🧪', boost: 0.05, price: 150 },
-  { id: 'mut2', n: 'Mutagen Vial', e: '⚗️', boost: 0.15, price: 500 },
-  { id: 'mut3', n: 'Mutagen Elixir', e: '☣️', boost: 0.30, price: 1250 },
+  { id: 'mut1', n: 'Mutagen Drops', e: '🧪', boost: 0.05, price: 250 },
+  { id: 'mut2', n: 'Mutagen Vial', e: '⚗️', boost: 0.15, price: 1000 },
+  { id: 'mut3', n: 'Mutagen Elixir', e: '☣️', boost: 0.30, price: 4000 },
+  { id: 'mut4', n: 'Mutagen Reactor', e: '🧬', boost: 0.50, price: 18000 },
+  { id: 'mut5', n: 'Genesis Serum', e: '🌀', boost: 0.80, price: 75000 },
 ];
 const CONSUMABLE = {};
 CONSUMABLES.forEach(c => (CONSUMABLE[c.id] = c));
@@ -180,36 +184,46 @@ const MOD_TIER_NAMES = ['', 'Common', 'Uncommon', 'Rare', 'Mythic'];
 /* Tanks */
 const TANK_TYPES = [
   { id: 'starter', n: 'Starter Tank', w: 'fresh', base: 1, cap: 4, price: 150, lvl: 1, mult: 1 },
-  { id: 'medium', n: 'Medium Tank', w: 'fresh', base: 2, cap: 8, price: 500, lvl: 2, mult: 2.5 },
-  { id: 'large', n: 'Large Tank', w: 'fresh', base: 3, cap: 12, price: 3000, lvl: 4, mult: 6 },
-  { id: 'huge', n: 'Grand Aquarium', w: 'fresh', base: 4, cap: 20, price: 15000, lvl: 6, mult: 15 },
-  { id: 'reef_s', n: 'Reef Starter', w: 'salt', base: 1, cap: 6, price: 3500, lvl: 3, mult: 6 },
-  { id: 'reef_m', n: 'Reef Tank', w: 'salt', base: 2, cap: 10, price: 11000, lvl: 4, mult: 14 },
-  { id: 'reef_l', n: 'Large Reef', w: 'salt', base: 3, cap: 16, price: 40000, lvl: 6, mult: 35 },
-  { id: 'reef_g', n: 'Grand Reef', w: 'salt', base: 4, cap: 26, price: 140000, lvl: 7, mult: 90 },
+  { id: 'medium', n: 'Medium Tank', w: 'fresh', base: 2, cap: 8, price: 900, lvl: 2, mult: 2.5 },
+  { id: 'large', n: 'Large Tank', w: 'fresh', base: 3, cap: 12, price: 6500, lvl: 4, mult: 6 },
+  { id: 'huge', n: 'Grand Aquarium', w: 'fresh', base: 4, cap: 20, price: 60000, lvl: 6, mult: 15 },
+  { id: 'mega', n: 'Colossal Aquarium', w: 'fresh', base: 5, cap: 30, price: 450000, lvl: 8, mult: 40 },
+  { id: 'reef_s', n: 'Reef Starter', w: 'salt', base: 1, cap: 6, price: 8000, lvl: 3, mult: 6 },
+  { id: 'reef_m', n: 'Reef Tank', w: 'salt', base: 2, cap: 10, price: 28000, lvl: 4, mult: 14 },
+  { id: 'reef_l', n: 'Large Reef', w: 'salt', base: 3, cap: 16, price: 110000, lvl: 6, mult: 35 },
+  { id: 'reef_g', n: 'Grand Reef', w: 'salt', base: 4, cap: 26, price: 450000, lvl: 7, mult: 90 },
+  { id: 'reef_x', n: 'Leviathan Reef', w: 'salt', base: 5, cap: 40, price: 2000000, lvl: 9, mult: 220 },
 ];
 const TANK_TYPE = {};
 TANK_TYPES.forEach(t => (TANK_TYPE[t.id] = t));
 const START_HALL_SLOTS = 3;
-const MAX_HALL_SLOTS = 10;
-const hallSlotPrice = n => Math.round(300 * Math.pow(2.6, n - START_HALL_SLOTS)); // price of slot number n+1
+const MAX_HALL_SLOTS = 12;
+const hallSlotPrice = n => Math.round(500 * Math.pow(3, n - START_HALL_SLOTS)); // price of slot number n+1
 
 /* Per-tank upgrades: cost = base * tank.mult */
 const TANK_UPGRADES = [
-  { id: 'filter', n: 'Water Filter', icon: '🧪', max: 2, costs: [200, 900], desc: '+1 water rating & +5% growth per level' },
-  { id: 'aerator', n: 'Aerator', icon: '🫧', max: 1, costs: [350], desc: '+1 water rating & +10% growth' },
-  { id: 'light', n: 'Grow Lights', icon: '💡', max: 3, costs: [300, 1200, 4000], desc: '+15% modifier chance per level' },
-  { id: 'feeder', n: 'Auto-Feeder', icon: '🍽️', max: 1, costs: [500], desc: 'Feeds the tank automatically (costs food money)' },
+  { id: 'filter', n: 'Water Filter', icon: '🧪', max: 2, costs: [250, 1100], desc: '+1 water rating & +5% growth per level' },
+  { id: 'aerator', n: 'Aerator', icon: '🫧', max: 1, costs: [450], desc: '+1 water rating & +10% growth' },
+  { id: 'light', n: 'Grow Lights', icon: '💡', max: 5, costs: [300, 1200, 4000, 14000, 45000], desc: '+15% modifier chance per level' },
+  { id: 'feeder', n: 'Auto-Feeder', icon: '🍽️', max: 1, costs: [600], desc: 'Feeds the tank automatically (costs food money)' },
+  { id: 'uv', n: 'UV Sterilizer', icon: '🔆', max: 3, costs: [800, 3000, 11000], desc: 'Water gets dirty 25% slower per level' },
+  { id: 'heater', n: 'Thermostat Heater', icon: '🌡️', max: 4, costs: [500, 2000, 7500, 25000], desc: '+6% growth per level' },
+  { id: 'spot', n: 'Showcase Lighting', icon: '🔦', max: 4, costs: [1500, 6000, 24000, 90000], desc: '+4% fish value per level' },
+  { id: 'nest', n: 'Breeding Box', icon: '🪺', max: 3, costs: [2500, 9000, 32000], desc: 'Fish in this tank rest 12% less after breeding, per level' },
+  { id: 'dna', n: 'Gene Scanner', icon: '🧬', max: 3, costs: [4000, 16000, 64000], desc: '+6% modifier inheritance per level for fish in this tank' },
 ];
 
 /* Food */
 const FOOD = [
   { n: 'Basic Flakes', mult: 2, price: 0 },
-  { n: 'Fish Pellets', mult: 3, price: 150 },
-  { n: 'Spirulina Blend', mult: 4, price: 700 },
-  { n: 'Live Brine Shrimp', mult: 6, price: 3000 },
-  { n: 'Gourmet Krill', mult: 9, price: 12000 },
-  { n: 'Ambrosia Feed', mult: 14, price: 50000 },
+  { n: 'Fish Pellets', mult: 3, price: 250 },
+  { n: 'Spirulina Blend', mult: 4, price: 1500 },
+  { n: 'Live Brine Shrimp', mult: 6, price: 8000 },
+  { n: 'Gourmet Krill', mult: 9, price: 40000 },
+  { n: 'Ambrosia Feed', mult: 14, price: 180000 },
+  { n: 'Phoenix Nectar', mult: 18, price: 700000 },
+  { n: 'Leviathan Feast', mult: 24, price: 2500000 },
+  { n: 'Cosmic Plankton', mult: 32, price: 10000000 },
 ];
 const FED_DURATION = 45; // seconds a feeding lasts
 const FEED_COST_PER_FISH = 1;
@@ -258,29 +272,54 @@ const SKINS = [
   { id: 'blacksand', n: 'Black Sand', price: 250, gravel: '#2a2a33', frame: '#1f2430', b: { value: 0.02 } },
   { id: 'pink', n: 'Pink Sakura', price: 600, gravel: '#f2b5d4', frame: '#a94472', b: { growth: 0.03 } },
   { id: 'neonframe', n: 'Neon Frame', price: 1500, gravel: '#1b1b3a', frame: '#00f5d4', b: { mod: 0.05 } },
-  { id: 'gold', n: 'Gilded Frame', price: 6000, gravel: '#e8d9a0', frame: '#d4a017', b: { value: 0.06 } },
-  { id: 'obsidian', n: 'Obsidian Deluxe', price: 20000, gravel: '#0d0d12', frame: '#7b2cbf', b: { value: 0.05, growth: 0.05, mod: 0.05 } },
+  { id: 'gold', n: 'Gilded Frame', price: 9000, gravel: '#e8d9a0', frame: '#d4a017', b: { value: 0.06 } },
+  { id: 'jade', n: 'Jade Garden', price: 3500, gravel: '#9ac8a8', frame: '#2f7a5a', b: { growth: 0.05, value: 0.02 } },
+  { id: 'obsidian', n: 'Obsidian Deluxe', price: 30000, gravel: '#0d0d12', frame: '#7b2cbf', b: { value: 0.05, growth: 0.05, mod: 0.05 } },
+  { id: 'crystal', n: 'Crystal Palace', price: 90000, gravel: '#cfe8f4', frame: '#6ab8e8', b: { value: 0.08, growth: 0.06, mod: 0.05 } },
+  { id: 'royal', n: 'Royal Court', price: 300000, gravel: '#3a1f5c', frame: '#e0b030', b: { value: 0.10, mod: 0.10, tier: 0.05 } },
+  { id: 'celestial', n: 'Celestial Dome', price: 1000000, gravel: '#14183a', frame: '#9ad0ff', b: { value: 0.12, growth: 0.10, mod: 0.10, inherit: 0.08 } },
 ];
 const SKIN = {};
 SKINS.forEach(s => (SKIN[s.id] = s));
 
 /* Store upgrades */
 const STORE_UPGRADES = [
-  { id: 'cases', n: 'Display Cases', icon: '🗄️', max: 9, cost: l => Math.round(100 * Math.pow(2.2, l)), desc: '+1 fish on display (more fish for customers to want)' },
-  { id: 'ads', n: 'Advertising', icon: '📣', max: 8, cost: l => Math.round(200 * Math.pow(2.3, l)), desc: 'Customers arrive 30% more often per level' },
-  { id: 'sign', n: 'Shop Sign & Decor', icon: '🪧', max: 8, cost: l => Math.round(300 * Math.pow(2.4, l)), desc: 'Customers offer +6% more per level' },
-  { id: 'seats', n: 'Comfy Seating', icon: '🛋️', max: 5, cost: l => Math.round(150 * Math.pow(2.3, l)), desc: '+10s customer patience per level' },
-  { id: 'counter', n: 'Bigger Counter', icon: '🧾', max: 4, cost: l => Math.round(400 * Math.pow(2.6, l)), desc: '+1 customer can queue per level' },
-  { id: 'cashier', n: 'Hire Cashier', icon: '🧑‍💼', max: 3, cost: l => [1500, 8000, 40000][l], desc: 'Auto-accepts offers of 95% / 85% / 75% of fish value or better' },
-  { id: 'collector', n: "Collector's Club", icon: '🎩', max: 5, cost: l => Math.round(1000 * Math.pow(2.5, l)), desc: 'More collectors who pay big for modified fish' },
+  { id: 'cases', n: 'Display Cases', icon: '🗄️', max: 9, cost: l => Math.round(250 * Math.pow(2.4, l)), desc: '+1 fish on display (more fish for customers to want)' },
+  { id: 'ads', n: 'Advertising', icon: '📣', max: 12, cost: l => Math.round(300 * Math.pow(2.2, l)), desc: 'Customers arrive 22% more often per level' },
+  { id: 'sign', n: 'Shop Sign & Decor', icon: '🪧', max: 10, cost: l => Math.round(400 * Math.pow(2.3, l)), desc: 'Customers offer +6% more per level' },
+  { id: 'seats', n: 'Comfy Seating', icon: '🛋️', max: 8, cost: l => Math.round(250 * Math.pow(2.2, l)), desc: '+10s customer patience per level' },
+  { id: 'counter', n: 'Bigger Counter', icon: '🧾', max: 6, cost: l => Math.round(600 * Math.pow(2.7, l)), desc: '+1 customer can be in the shop at once per level' },
+  { id: 'cashier', n: 'Hire Cashier', icon: '🧑‍💼', max: 3, cost: l => [3000, 20000, 120000][l], desc: 'Auto-accepts offers of 95% / 85% / 75% of fish value or better' },
+  { id: 'collector', n: "Collector's Club", icon: '🎩', max: 8, cost: l => Math.round(1500 * Math.pow(2.4, l)), desc: 'More collectors who pay big for modified fish' },
+  { id: 'vip', n: 'VIP Lounge', icon: '🥂', max: 5, cost: l => Math.round(5000 * Math.pow(3, l)), desc: 'Wealthy VIP guests drop by (more often per level) and pay 2.5-4x for rare fish' },
+  { id: 'quick', n: 'Express Checkout', icon: '⚡', max: 5, cost: l => Math.round(1200 * Math.pow(2.5, l)), desc: 'Customers finish browsing 12% faster per level' },
+  { id: 'auction', n: 'Auction House', icon: '🔨', max: 5, cost: l => Math.round(4000 * Math.pow(3, l)), desc: 'Fish market pays +4% more of a fish\'s value per level' },
 ];
 const BREED_UPGRADES = [
-  { id: 'clutch', n: 'Breeding Nest', icon: '🪺', max: 3, cost: l => Math.round(800 * Math.pow(3, l)), desc: '+1 egg per breeding' },
-  { id: 'cooldown', n: 'Breeding Aid', icon: '⏳', max: 4, cost: l => Math.round(500 * Math.pow(2.8, l)), desc: 'Breeding cooldown -15% per level' },
-  { id: 'match', n: 'Matchmaker', icon: '💘', max: 4, cost: l => Math.round(1200 * Math.pow(2.8, l)), desc: '+10% modifier inheritance chance per level' },
-  { id: 'lineage', n: 'Lineage Records', icon: '📜', max: 4, cost: l => Math.round(2000 * Math.pow(3, l)), desc: '+25% chance of a higher-tier offspring per level' },
+  { id: 'clutch', n: 'Breeding Nest', icon: '🪺', max: 5, cost: l => Math.round(1500 * Math.pow(3, l)), desc: '+1 egg per breeding' },
+  { id: 'cooldown', n: 'Breeding Aid', icon: '⏳', max: 6, cost: l => Math.round(800 * Math.pow(2.7, l)), desc: 'Breeding cooldown -15% per level' },
+  { id: 'match', n: 'Matchmaker', icon: '💘', max: 6, cost: l => Math.round(2000 * Math.pow(2.7, l)), desc: '+8% chance that each parent modifier is inherited, per level' },
+  { id: 'lineage', n: 'Lineage Records', icon: '📜', max: 6, cost: l => Math.round(3000 * Math.pow(2.9, l)), desc: '+25% chance of a higher-tier offspring per level' },
+  { id: 'mutation', n: 'Gene Splicer', icon: '🧫', max: 6, cost: l => Math.round(2500 * Math.pow(2.8, l)), desc: '+1.5% chance of one brand-new modifier on offspring, per level' },
+  { id: 'warmer', n: 'Egg Warmer', icon: '🔥', max: 4, cost: l => Math.round(1800 * Math.pow(2.6, l)), desc: 'Fish hatch already 15% grown, per level' },
 ];
+/* Research lab: permanent global upgrades */
+const LAB = [
+  { id: 'nutrition', n: 'Nutrition Science', icon: '🥗', max: 10, cost: l => Math.round(3000 * Math.pow(1.95, l)), desc: '+5% growth speed in every tank, per level' },
+  { id: 'genetics', n: 'Genetics Lab', icon: '🔬', max: 10, cost: l => Math.round(4000 * Math.pow(2, l)), desc: '+8% modifier chance everywhere, per level' },
+  { id: 'market', n: 'Market Research', icon: '📈', max: 10, cost: l => Math.round(5000 * Math.pow(2.05, l)), desc: '+3% value on every fish, per level' },
+  { id: 'wholesale', n: 'Egg Wholesaler', icon: '📦', max: 10, cost: l => Math.round(3500 * Math.pow(2, l)), desc: 'Eggs cost 3% less, per level' },
+  { id: 'chemistry', n: 'Water Chemistry', icon: '⚗️', max: 8, cost: l => Math.round(2500 * Math.pow(2.1, l)), desc: 'Water quality drops 7% slower, per level' },
+  { id: 'bloodline', n: 'Genealogy Institute', icon: '🧬', max: 10, cost: l => Math.round(6000 * Math.pow(2, l)), desc: '+3% chance that each parent modifier is inherited, per level' },
+  { id: 'evolution', n: 'Evolution Research', icon: '🦎', max: 8, cost: l => Math.round(8000 * Math.pow(2.2, l)), desc: '+2% chance of a higher-tier offspring, per level' },
+  { id: 'nightshift', n: 'Night Shift', icon: '🌙', max: 8, cost: l => Math.round(2000 * Math.pow(2.2, l)), desc: 'Fish keep growing 1 more hour while you are away, per level' },
+  { id: 'broker', n: 'Contract Broker', icon: '🤝', max: 5, cost: l => Math.round(3000 * Math.pow(2.4, l)), desc: 'Special orders pay 10% more and arrive faster, per level' },
+  { id: 'automation', n: 'Automation Hub', icon: '🤖', max: 6, cost: l => Math.round(7000 * Math.pow(2.3, l)), desc: 'Staff work 8% faster and cost 5% less, per level' },
+  { id: 'sponge', n: 'Pro Sponge', icon: '🧽', max: 5, cost: l => Math.round(500 * Math.pow(2.3, l)), desc: 'A bigger sponge that cleans more water per smudge, per level' },
+];
+const LAB_BY_ID = {}; LAB.forEach(u => (LAB_BY_ID[u.id] = u));
 const BREED_COOLDOWN = 90;
-const BASE_INHERIT = 0.30;
+const BASE_INHERIT = 0.45;   // chance that each parent modifier is passed on
+const BASE_NEWMOD = 0.08;    // chance of one brand-new modifier on top
 const BASE_TIERUP = 0.07;
 const QUICK_SELL = 0.5;

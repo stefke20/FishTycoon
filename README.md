@@ -30,3 +30,17 @@ Progress auto-saves to local storage (and fish keep growing while you're away, u
 - **Seasonal events** – six real-date events (Valentine's, St. Patrick's, Spring, Summer, Halloween, Winter), each with its own tank, event species and modifiers (e.g. Pot of Gold, Lucky Charms). Selling event fish earns event tokens, spent on event skins, backgrounds and decor. Preview any event from the Events tab.
 - **Hero fish** – expensive, unsellable companions (cleaner wrasse, nurse shark, sage koi, octopus, turtle, jellyfish, dragon eel) that roam a tank without using capacity and grant bonuses (e.g. nurse shark speeds baby growth).
 - **Camera** – wheel zoom, drag to pan, double-click reset, rotate and tilt buttons, and a photo button.
+
+## Latest changes
+- **No more resets** – scenes survive page refreshes, so fish keep swimming smoothly and customers keep walking.
+- **Living store** – customers enter, wander between your display tanks, and only walk to the counter (with an offer bubble above their heads) when they want to buy. They leave when their patience runs out.
+- **Mystery babies** – every baby looks the same ("Hatched a Common Baby"); species and modifiers are revealed when it grows up.
+- **Drag & drop hatching** – drag an egg from the tray onto an aquarium (or onto a tank card in the hall) to hatch it. Works for event tanks too.
+- **Dirty glass & sponge** – smudges appear below 85% water quality (more at 75/50/25%, algae below 10%). Drag the sponge over the glass to clean it. Dirty water lowers the value of the fish in that tank.
+- **Tank sidebar** – every aquarium lists its fish; click one to select it in the tank, then sell, breed or move it. The inventory can be filtered by aquarium.
+- **Staff roster** – see everyone you have hired and pause them while money is tight.
+- **Breeding** – each parent modifier is inherited independently (none, one or several) plus a small chance of one brand-new modifier.
+- **Economy** – steeper egg prices (breed instead!), pricier tanks and hall slots, and many more upgrades: a Research lab (11 permanent upgrades), new tank, store and breeding upgrades, new food, skins, mutagens and facilities.
+- **Events** – eggs cost event tokens and event fish sell for tokens only. Each event gives welcome tokens and now has 7 rewards (skin, background, decoration, trophy, mutagen kit, egg crate and a permanent charm).
+- **Home** – an isometric living room with a huge aquarium showing your 20 most valuable fish ever. Boop fish, lure them with the mouse and sprinkle food.
+- **End-game** – build *The Great Sanctuary* (Stats page) in five stages to become an Ocean Legend.

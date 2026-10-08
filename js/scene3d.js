@@ -74,7 +74,7 @@ function wallArt(bg, w, h, salt) {
 
 
 /* ===== WebGL / three.js service ===== */
-const TANK_DIM3 = { starter: [144, 108, 96], medium: [180, 135, 108], large: [225, 165, 123], huge: [285, 210, 138], reef_s: [180, 135, 108], reef_m: [225, 165, 123], reef_l: [285, 210, 138], reef_g: [345, 240, 153] };
+const TANK_DIM3 = { starter: [144, 108, 96], medium: [180, 135, 108], large: [225, 165, 123], huge: [285, 210, 138], reef_s: [180, 135, 108], reef_m: [225, 165, 123], reef_l: [285, 210, 138], reef_g: [345, 240, 153], mega: [375, 255, 150], reef_x: [420, 285, 165] };
 EVENTS.forEach(e => (TANK_DIM3['ev_' + e.id] = [210, 156, 114]));
 const DECOR_POS = [[0.22, 0.26], [0.72, 0.2], [0.26, 0.74], [0.74, 0.7]];
 const FLOOR_Y = 3;
@@ -353,7 +353,7 @@ class ZoomPan {
     cv.addEventListener('wheel', e => { e.preventDefault(); const r = cv.getBoundingClientRect(); this.zoomAt(Math.exp(-e.deltaY * 0.0016), (e.clientX - r.left) / r.width * 2 - 1, -((e.clientY - r.top) / r.height * 2 - 1)); }, { passive: false });
     cv.addEventListener('dblclick', () => this.reset());
     let drag = null;
-    cv.addEventListener('mousedown', e => { if (e.button !== 0) return; drag = { x: e.clientX, y: e.clientY, px: this.v.px, py: this.v.py }; this.moved = false; });
+    cv.addEventListener('mousedown', e => { if (e.button !== 0 || this.noPan) return; drag = { x: e.clientX, y: e.clientY, px: this.v.px, py: this.v.py }; this.moved = false; });
     window.addEventListener('mousemove', e => { if (!drag || !cv.isConnected) return; const dx = e.clientX - drag.x, dy = e.clientY - drag.y; if (Math.abs(dx) + Math.abs(dy) > 5) this.moved = true; if (!this.moved) return; const r = cv.getBoundingClientRect(), b = this.b, z = this.v.zoom; this.v.px = drag.px - dx / r.width * 2 * b.hw / z; this.v.py = drag.py + dy / r.height * 2 * b.hh / z; this.apply(); cv.style.cursor = 'grabbing'; });
     window.addEventListener('mouseup', () => { drag = null; setTimeout(() => (this.moved = false), 0); });
   }
@@ -363,20 +363,22 @@ class ZoomPan {
 class TankScene3D {
   constructor(canvas, tank, mini, onFish, onHero) {
     this.onHero = onHero; this.cv = canvas; this.ctx = canvas.getContext('2d'); this.tank = tank; this.mini = mini; this.onFish = onFish;
-    this.scene = new THREE.Scene(); addLights(this.scene);
+    this.scene = new THREE.Scene(); addLights(this.scene); this.root = this.makeRoot();
     this.cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 1, 1600);
-    this.fish = new Map(); this.decor = []; this.bubbles = []; this.t = Math.random() * 10; this.acc = 0; this.key = ''; this.dkey = '';
+    this.fish = new Map(); this.blobs = []; this.sparks = []; this.decor = []; this.bubbles = []; this.t = Math.random() * 10; this.acc = 0; this.key = ''; this.dkey = '';
     const wrap = canvas.parentElement, cssW = mini ? 360 : Math.max(480, Math.min(1180, (wrap ? wrap.clientWidth : 900) - 20));
     const dpr = mini ? 1 : Math.min(2, window.devicePixelRatio || 1), cssH = mini ? 250 : Math.round(Math.min(820, cssW * 0.72));
     canvas.width = Math.round(cssW * dpr); canvas.height = Math.round(cssH * dpr);
     canvas.style.width = mini ? '100%' : cssW + 'px'; canvas.style.height = mini ? 'auto' : cssH + 'px';
     this.ray = new THREE.Raycaster(); this.mouse = new THREE.Vector2();
     if (!mini && onFish) {
-      canvas.addEventListener('click', e => { if (this.zp && this.zp.moved) return; const f = this.pick(e); if (f && f.fishId) onFish(f.fishId); else if (f && f.heroId && this.onHero) this.onHero(f.heroId); });
+      canvas.addEventListener('click', e => { if (this.zp && this.zp.moved) return; const f = this.pick(e); if (f && f.fishId) this.onFish(f.fishId); else if (f && f.heroId && this.onHero) this.onHero(f.heroId); });
       let last = 0; canvas.addEventListener('mousemove', e => { const n = performance.now(); if (n - last < 60) return; last = n; const f = this.pick(e); canvas.style.cursor = f ? 'pointer' : 'grab'; canvas.title = f ? (f.fishId && getFish(f.fishId) ? getFish(f.fishId).name + ' · ' + fishName(getFish(f.fishId)) : f.heroId ? HERO[(S.heroes.find(h => h.id === f.heroId) || {}).kind].n : '') : ''; });
     }
     this.rebuildStatic();
   }
+  makeRoot() { return this.scene; }
+  fishList() { return fishIn(this.tank.id); }
   pick(e) {
     const r = this.cv.getBoundingClientRect(); this.mouse.set((e.clientX - r.left) / r.width * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
     this.ray.setFromCamera(this.mouse, this.cam);
@@ -384,18 +386,18 @@ class TankScene3D {
     return hit ? hit.object.userData : null;
   }
   rebuildStatic() {
-    if (this.stat) this.scene.remove(this.stat.grp);
-    this.stat = buildTankGroup(this.tank, this.mini); this.scene.add(this.stat.grp);
+    if (this.stat) this.root.remove(this.stat.grp);
+    this.stat = buildTankGroup(this.tank, this.mini); this.root.add(this.stat.grp);
     ({ W: this.W, D: this.D, WH: this.WH, WTR: this.WTR } = this.stat);
     const box3 = new THREE.Box3(new THREE.Vector3(-6, -14, -6), new THREE.Vector3(this.W + 6, this.WH + 5, this.D + 6));
     this.box3 = box3;
     if (!this.mini && !this.zp) { this.zp = new ZoomPan(this, 'tank' + this.tank.id); this.zp.bind(this.cv); this.yawCur = this.zp.v.yaw * Math.PI / 2; this.tiltCur = this.zp.v.tilt; }
     this.refit();
     this.key = this.tank.type + '|' + this.tank.bg + '|' + this.tank.skin;
-    this.fish.forEach(f => { this.scene.remove(f.group); }); this.fish.clear(); this.dkey = '';
+    this.fish.forEach(f => { this.root.remove(f.group); }); this.fish.clear(); this.dkey = '';
   }
   camDir() { const a = Math.PI / 4 + (this.yawCur || 0), h = Math.SQRT2; return new THREE.Vector3(h * Math.cos(a), this.tiltCur || 0.78, h * Math.sin(a)).normalize(); }
-  refit() { const dir = this.camDir(); fitOrtho(this.cam, this.box3, this.cv.width / this.cv.height, dir, this.mini ? 0.03 : 0.025); this.stat.orient(dir); if (this.zp) this.zp.capture(); }
+  refit() { const dir = this.camDir(); fitOrtho(this.cam, this.camBox || this.box3, this.cv.width / this.cv.height, dir, this.mini ? 0.03 : 0.025); this.stat.orient(dir); if (this.zp) this.zp.capture(); }
   stepCamera(dt) {
     if (!this.zp) return; const v = this.zp.v, ty = v.yaw * Math.PI / 2;
     if (Math.abs(ty - this.yawCur) > 0.002 || Math.abs(v.tilt - this.tiltCur) > 0.002) { const k = 1 - Math.exp(-dt * 7); this.yawCur += (ty - this.yawCur) * k; this.tiltCur += (v.tilt - this.tiltCur) * k; this.refit(); }
@@ -406,11 +408,11 @@ class TankScene3D {
   }
   syncHero() {
     const h = S.heroes.find(x => x.tank === this.tank.id);
-    if (!h) { if (this.hero) { this.scene.remove(this.hero.group); this.hero.mat.dispose(); this.hero = null; } return; }
+    if (!h) { if (this.hero) { this.root.remove(this.hero.group); this.hero.mat.dispose(); this.hero = null; } return; }
     if (this.hero && this.hero.id === h.id) return;
-    if (this.hero) { this.scene.remove(this.hero.group); this.hero.mat.dispose(); }
+    if (this.hero) { this.root.remove(this.hero.group); this.hero.mat.dispose(); }
     const model = heroModel(h.kind), mat = fishMaterial(model, []), mesh = new THREE.Mesh(model.geo, mat), group = new THREE.Group();
-    mesh.userData.heroId = h.id; group.add(mesh); this.scene.add(group);
+    mesh.userData.heroId = h.id; group.add(mesh); this.root.add(group);
     const st = { x: this.W * 0.5, z: this.D * 0.5, y: this.WTR * 0.5, yaw: 0, pitch: 0, vx: 0, vy: 0, vz: 0, tx: 0, ty: 0, tz: 0, ph: 0, spd: model.L * 0.28, wait: 0, burst: 1 };
     st.tx = st.x; st.ty = st.y; st.tz = st.z; this.retarget(st, model.L);
     this.hero = { id: h.id, group, mesh, mat, model, st, f: { g: 1 }, kind: h.kind };
@@ -418,7 +420,7 @@ class TankScene3D {
   syncDecor() {
     const k = this.tank.slots.join(',');
     if (k === this.dkey) return; this.dkey = k;
-    this.decor.forEach(d => this.scene.remove(d)); this.decor = [];
+    this.decor.forEach(d => this.root.remove(d)); this.decor = [];
     this.tank.slots.forEach((id, i) => {
       if (!id) return;
       const mod = decorModel(id), [fx, fz] = DECOR_POS[i], grp = new THREE.Group();
@@ -426,22 +428,27 @@ class TankScene3D {
       const m = new THREE.Mesh(mod.geo, mat); m.userData.mat = sway ? mat : null; grp.add(m);
       if (mod.glow) { const gm = new THREE.Mesh(mod.glow, glowMat()); grp.add(gm); }
       const ds = 1.35; grp.scale.setScalar(ds); grp.position.set(this.W * fx, FLOOR_Y - mod.minY * ds + (id === 'bubbles' ? 0 : -0.5), this.D * fz); grp.rotation.y = (i % 2 ? -0.5 : 0.35) + (id === 'ship' ? 0.3 : 0); grp.userData.id = id; grp.userData.sway = m;
-      this.scene.add(grp); this.decor.push(grp);
+      this.root.add(grp); this.decor.push(grp);
     });
   }
   syncFish() {
-    const fs = fishIn(this.tank.id), ids = new Set(fs.map(f => f.id));
-    for (const [id, o] of this.fish) if (!ids.has(id)) { if (o.fx) o.fx.dispose(o.group); this.scene.remove(o.group); o.mat.dispose(); this.fish.delete(id); }
+    const fs = this.fishList(), ids = new Set(fs.map(f => f.id));
+    for (const [id, o] of this.fish) if (!ids.has(id)) { if (o.fx) o.fx.dispose(o.group); this.root.remove(o.group); o.mat.dispose(); this.fish.delete(id); }
     for (const f of fs) {
-      let o = this.fish.get(f.id), sig = f.sp + '|' + f.mods.join(',');
-      if (o && o.sig !== sig) { if (o.fx) o.fx.dispose(o.group); this.scene.remove(o.group); o.mat.dispose(); this.fish.delete(f.id); o = null; }
+      const baby = f.g < 1, spId = baby ? '_baby' : f.sp, mods = baby ? [] : f.mods;
+      let o = this.fish.get(f.id), sig = spId + '|' + mods.join(',');
+      if (o && o.sig !== sig) { // a baby just grew up: reveal the real fish with a puff of bubbles
+        if (o.baby && !baby) for (let i = 0; i < 16; i++) this.bubbles.push({ x: o.st.x + (Math.random() - 0.5) * 14, y: o.st.y + (Math.random() - 0.5) * 8, z: o.st.z + (Math.random() - 0.5) * 14, vy: 14 + Math.random() * 14 });
+        if (o.fx) o.fx.dispose(o.group); this.root.remove(o.group); o.mat.dispose(); this.fish.delete(f.id); var prev = o.st; o = null;
+      }
       if (!o) {
-        const sp = SPECIES[f.sp], model = fishModel(f.sp, f.mods, modelLength(sp, sp.t)), mat = fishMaterial(model, f.mods), mesh = new THREE.Mesh(model.geo, mat), group = new THREE.Group();
-        mesh.userData.fishId = f.id; group.add(mesh); this.scene.add(group); const fx = f.mods.some(m => FX_DEF[m]) ? new FishFX(group, f.mods, model.L, this.mini) : null;
+        const sp = SPECIES[spId], model = fishModel(spId, mods, modelLength(sp, sp.t)), mat = fishMaterial(model, mods), mesh = new THREE.Mesh(model.geo, mat), group = new THREE.Group();
+        mesh.userData.fishId = f.id; group.add(mesh); this.root.add(group); const fx = mods.some(m => FX_DEF[m]) ? new FishFX(group, mods, model.L, this.mini) : null;
         const hs = hash(f.id + this.tank.id);
-        const st = { x: 12 + (hs % 1000) / 1000 * (this.W - 24), z: 12 + ((hs >>> 10) % 1000) / 1000 * (this.D - 24), y: 14 + ((hs >>> 5) % 1000) / 1000 * (this.WTR - 40), yaw: (hs % 628) / 100, pitch: 0, vx: 0, vy: 0, vz: 0, tx: 0, ty: 0, tz: 0, ph: (hs % 100) / 7, spd: model.L * (0.42 + (hs % 40) / 100), wait: 0, burst: 1 };
-        st.tx = st.x; st.ty = st.y; st.tz = st.z; this.retarget(st, model.L);
-        o = { group, mesh, mat, model, st, sig, fx }; this.fish.set(f.id, o);
+        const st = prev || { x: 12 + (hs % 1000) / 1000 * (this.W - 24), z: 12 + ((hs >>> 10) % 1000) / 1000 * (this.D - 24), y: 14 + ((hs >>> 5) % 1000) / 1000 * (this.WTR - 40), yaw: (hs % 628) / 100, pitch: 0, vx: 0, vy: 0, vz: 0, tx: 0, ty: 0, tz: 0, ph: (hs % 100) / 7, wait: 0, burst: 1 };
+        st.spd = model.L * (0.42 + (hs % 40) / 100); prev = null;
+        if (!st.tx && !st.ty) { st.tx = st.x; st.ty = st.y; st.tz = st.z; this.retarget(st, model.L); }
+        o = { group, mesh, mat, model, st, sig, fx, baby }; this.fish.set(f.id, o);
       }
       o.f = f;
     }
@@ -477,7 +484,7 @@ class TankScene3D {
       if (sp > L * 0.08) { const want = Math.atan2(-s.vz, s.vx); let dyaw = want - s.yaw; dyaw = Math.atan2(Math.sin(dyaw), Math.cos(dyaw)); s.yaw += dyaw * (1 - Math.exp(-dt * 3.2)); }
       const wantP = Math.atan2(s.vy, Math.max(1, sp)) * 0.8; s.pitch += (wantP - s.pitch) * (1 - Math.exp(-dt * 4));
       s.ph += dt * (3.2 + (sp + Math.abs(s.vy)) / L * 5.5);
-      const gr = o.f.g >= 1 ? 1 : o.f.g, sc = 0.5 + 0.5 * Math.min(1, gr);
+      const sc = o.baby ? 0.5 + 0.5 * Math.min(1, o.f.g) : 1;
       o.group.position.set(s.x, s.y + Math.sin(s.ph * 0.5) * 0.4, s.z); o.group.rotation.y = s.yaw; o.group.rotation.x = Math.sin(s.ph * 0.5) * 0.03;
       o.mesh.rotation.z = s.pitch; o.group.scale.setScalar(sc);
       o.mat.userData.u.uPhase.value = s.ph; o.mat.userData.u.uTime.value = this.t; if (o.fx) o.fx.update(dt, L, this.fxScale);
@@ -494,7 +501,7 @@ class TankScene3D {
     for (const d of this.decor) { if (d.userData.sway && d.userData.sway.userData.mat) d.userData.sway.userData.mat.userData.u.uTime.value = this.t; if (d.userData.id === 'bubbles' && Math.random() < dt * 9) this.bubbles.push({ x: d.position.x + 16 + (Math.random() - 0.5) * 3, y: d.position.y + 11, z: d.position.z + 6 + (Math.random() - 0.5) * 3, vy: 14 + Math.random() * 10 }); }
     if (Math.random() < dt * (this.mini ? 1.5 : 4)) this.bubbles.push({ x: 8 + Math.random() * (this.W - 16), y: FLOOR_Y + 2, z: 8 + Math.random() * (this.D - 16), vy: 9 + Math.random() * 8 });
     this.bubbles = this.bubbles.filter(b => (b.y += b.vy * dt) < this.WTR - 1);
-    if (!this.bub) { this.bub = new THREE.InstancedMesh(new THREE.BoxGeometry(1.5, 1.5, 1.5), new THREE.MeshBasicMaterial({ color: 0xe8f8ff, transparent: true, opacity: 0.75 }), 80); this.bub.frustumCulled = false; this.bub.renderOrder = 3; this.scene.add(this.bub); this.dummy = new THREE.Object3D(); }
+    if (!this.bub) { this.bub = new THREE.InstancedMesh(new THREE.BoxGeometry(1.5, 1.5, 1.5), new THREE.MeshBasicMaterial({ color: 0xe8f8ff, transparent: true, opacity: 0.75 }), 80); this.bub.frustumCulled = false; this.bub.renderOrder = 3; this.root.add(this.bub); this.dummy = new THREE.Object3D(); }
     this.bub.count = Math.min(80, this.bubbles.length);
     for (let i = 0; i < this.bub.count; i++) { const b = this.bubbles[i]; this.dummy.position.set(b.x + Math.sin(this.t * 3 + i) * 0.8, b.y, b.z); this.dummy.updateMatrix(); this.bub.setMatrixAt(i, this.dummy.matrix); }
     this.bub.instanceMatrix.needsUpdate = true;
@@ -503,16 +510,66 @@ class TankScene3D {
     GL.size(this.cv.width, this.cv.height);
     GL.r.render(this.scene, this.cam);
     this.ctx.clearRect(0, 0, this.cv.width, this.cv.height); this.ctx.drawImage(GL.r.domElement, 0, 0);
+    this.syncDirt(); this.drawDirt(dt); this.drawSel();
   }
+  /* ---- dirty glass: smudges mirror the water quality, wipe them with the sponge ---- */
+  syncDirt() {
+    if (this.tank.id === 'home') return;
+    const q = wqOf(this.tank), want = dirtCount(q);
+    if (q >= 97) { if (this.blobs.length) this.blobs = []; return; }
+    while (this.blobs.length + 1 <= want + 1e-6 && this.blobs.length < 90) {
+      const algae = q < 10;
+      this.blobs.push({ s: Math.random() < 0.5 ? 0 : 1, u: 0.05 + Math.random() * 0.9, v: 0.06 + Math.random() * 0.9, r: (algae ? 0.085 : 0.045) + Math.random() * (algae ? 0.05 : 0.045), hp: 1, ang: Math.random() * 3, algae, px: 0, py: 0, pr: 1 });
+    }
+  }
+  drawDirt(dt) {
+    const ctx = this.ctx, cv = this.cv;
+    if (this.blobs.length) {
+      const dir = this.camDir(), nx = dir.x > 0 ? this.W : 0, nz = dir.z > 0 ? this.D : 0, ppu = cv.width / (this.cam.right - this.cam.left), y0 = FLOOR_Y + 6, y1 = this.WTR - 6, v3 = new THREE.Vector3(), unit = Math.min(this.W, this.D);
+      for (const b of this.blobs) {
+        const y = y0 + b.v * (y1 - y0); if (b.s === 0) v3.set(nx, y, b.u * this.D); else v3.set(b.u * this.W, y, nz);
+        v3.project(this.cam); b.px = (v3.x + 1) / 2 * cv.width; b.py = (1 - v3.y) / 2 * cv.height; b.pr = Math.max(3, b.r * unit * ppu);
+        const col = b.algae ? '38,120,52' : '128,116,72', a = b.hp * (b.algae ? 0.8 : 0.6);
+        ctx.save(); ctx.translate(b.px, b.py); ctx.rotate(b.ang); ctx.scale(1.35, 0.8);
+        const g = ctx.createRadialGradient(0, 0, 0, 0, 0, b.pr); g.addColorStop(0, `rgba(${col},${a})`); g.addColorStop(0.55, `rgba(${col},${a * 0.55})`); g.addColorStop(1, `rgba(${col},0)`);
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, b.pr, 0, 6.3); ctx.fill(); ctx.restore();
+      }
+    }
+    if (this.sparks.length) { this.sparks = this.sparks.filter(p => (p.t += dt) < 0.7); this.sparks.forEach(p => { ctx.globalAlpha = 1 - p.t / 0.7; ctx.fillStyle = '#e8fbff'; ctx.beginPath(); ctx.arc(p.x + p.vx * p.t, p.y + p.vy * p.t, p.r, 0, 6.3); ctx.fill(); }); ctx.globalAlpha = 1; }
+  }
+  /* wipe at a client position; returns how many smudges were removed */
+  scrub(cx, cy, moved) {
+    if (!this.blobs.length) return 0;
+    const r = this.cv.getBoundingClientRect(), k = this.cv.width / r.width, x = (cx - r.left) * k, y = (cy - r.top) * (this.cv.height / r.height), rad = (30 + 8 * lab('sponge')) * k;
+    for (const b of this.blobs) if (Math.hypot(b.px - x, b.py - y) < b.pr * 0.9 + rad) { b.hp -= Math.max(0.1, moved * k / (b.pr * 1.4 + 1)); for (let i = 0; i < 2; i++) this.sparks.push({ x: b.px + (Math.random() - 0.5) * b.pr, y: b.py + (Math.random() - 0.5) * b.pr, vx: (Math.random() - 0.5) * 30, vy: -20 - Math.random() * 30, r: 1.5 + Math.random() * 2.5, t: 0 }); }
+    const before = this.blobs.length; this.blobs = this.blobs.filter(b => b.hp > 0);
+    const n = before - this.blobs.length; if (n) wipedSmudge(this.tank.id, this.blobs.length);
+    return n;
+  }
+  drawSel() {
+    if (this.mini || !UI.selFish) return; const o = this.fish.get(UI.selFish); if (!o) return;
+    const ctx = this.ctx, cv = this.cv, v = o.group.position.clone().project(this.cam), x = (v.x + 1) / 2 * cv.width, y = (1 - v.y) / 2 * cv.height, ppu = cv.width / (this.cam.right - this.cam.left), r = Math.max(22, o.model.L * ppu * 0.62) * (1 + 0.06 * Math.sin(this.t * 6)), k = cv.height / 700;
+    ctx.save(); ctx.strokeStyle = '#ffe27a'; ctx.lineWidth = 2.5 * k; ctx.shadowColor = '#ffcf40'; ctx.shadowBlur = 10 * k; ctx.setLineDash([7 * k, 5 * k]); ctx.lineDashOffset = -this.t * 30; ctx.beginPath(); ctx.ellipse(x, y, r, r * 0.72, 0, 0, 6.3); ctx.stroke(); ctx.setLineDash([]);
+    const ay = y - r * 0.72 - (10 + 4 * Math.sin(this.t * 5)) * k; ctx.fillStyle = '#ffe27a'; ctx.beginPath(); ctx.moveTo(x - 8 * k, ay - 12 * k); ctx.lineTo(x + 8 * k, ay - 12 * k); ctx.lineTo(x, ay); ctx.closePath(); ctx.fill(); ctx.restore();
+  }
+  refresh(t, onFish, onHero) { this.tank = t; this.onFish = onFish; this.onHero = onHero; }
   dispose() { this.fish.forEach(o => o.mat.dispose()); }
 }
 
 const Scenes = {
-  list: [], running: false, last: 0, n: 0,
-  bind(onFish, onHero) {
-    this.list.forEach(s => s.dispose());
-    this.list = [...document.querySelectorAll('canvas.tankscene')].map(cv => { const t = getTank(cv.dataset.tank); return t ? new TankScene3D(cv, t, cv.dataset.mini === '1', onFish, onHero) : null; }).filter(Boolean);
-    document.querySelectorAll('canvas.storescene').forEach(cv => { if (typeof StoreScene !== 'undefined') this.list.push(new StoreScene(cv, onFish, () => { UI.modal = { type: 'storeAdd' }; render(); })); });
+  list: [], cache: new Map(), running: false, last: 0, n: 0,
+  /* scenes survive re-renders of the page: a scene is re-attached to the new canvas instead of being rebuilt, so nothing resets */
+  bind(onFish, onHero, onStoreFish) {
+    const old = new Map(); this.list.forEach(sc => old.set(sc.skey, sc)); this.cache.forEach((sc, k) => { if (!old.has(k)) old.set(k, sc); }); this.cache.clear();
+    const next = [], claim = (key, cv, refresh, make) => { let sc = old.get(key); if (sc) { old.delete(key); cv.replaceWith(sc.cv); refresh(sc); } else sc = make(); sc.skey = key; next.push(sc); return sc; };
+    document.querySelectorAll('canvas.tankscene').forEach(cv => {
+      const t = getTank(cv.dataset.tank); if (!t) return; const mini = cv.dataset.mini === '1';
+      claim('tank:' + t.id + ':' + (mini ? 1 : 0), cv, sc => sc.refresh(t, onFish, onHero), () => new TankScene3D(cv, t, mini, onFish, onHero));
+    });
+    document.querySelectorAll('canvas.storescene').forEach(cv => { if (typeof StoreScene === 'undefined') return; const onSlot = () => { UI.modal = { type: 'storeAdd' }; render(); }; claim('store', cv, sc => { sc.onFish = onStoreFish; sc.onSlot = onSlot; }, () => new StoreScene(cv, onStoreFish, onSlot)); });
+    document.querySelectorAll('canvas.homescene').forEach(cv => { if (typeof HomeScene === 'undefined') return; claim('home', cv, sc => {}, () => new HomeScene(cv)); });
+    old.forEach((sc, k) => { if (k === 'store' || k === 'home') this.cache.set(k, sc); else sc.dispose(); });
+    this.list = next;
     if (!this.running) { this.running = true; requestAnimationFrame(t => Scenes.loop(t)); }
   },
   loop(now) {

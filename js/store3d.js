@@ -11,7 +11,42 @@ const SLOTS_POS = (() => { // display tank positions: [x, z, rotated]
   [[96, 84], [142, 84], [96, 124], [142, 124], [119, 150]].forEach(p => a.push([p[0], p[1], 0])); // island
   return a;
 })();
-const QUEUE_X = 214, QUEUE_Z0 = 104, DOOR = [216, -16];
+const QUEUE_X = 214, QUEUE_Z0 = 104, DOOR = [216, -16], DOOR_IN = [216, 14];
+/* places where customers stop to admire the display tanks: [x, z, tank to look at] */
+const BROWSE_SPOTS = [[40, 64], [84, 64], [128, 64], [172, 64], [58, 82], [58, 126], [58, 170], [66, 104], [168, 104], [70, 150], [168, 150], [119, 178], [104, 190 - 6], [150, 176], [30, 190 - 8]];
+
+/* ---- walk grid so customers wander around the furniture instead of through it ---- */
+const NAV = (() => {
+  const cs = 4, nx = Math.ceil(SHOP.W / cs), nz = Math.ceil(SHOP.D / cs), blocked = new Uint8Array(nx * nz);
+  const rect = (x0, z0, x1, z1, m) => { for (let ix = Math.floor((x0 - m) / cs); ix <= Math.floor((x1 + m) / cs); ix++) for (let iz = Math.floor((z0 - m) / cs); iz <= Math.floor((z1 + m) / cs); iz++) if (ix >= 0 && iz >= 0 && ix < nx && iz < nz) blocked[iz * nx + ix] = 1; };
+  SLOTS_POS.forEach(([x, z, rot]) => { const w = rot ? 28 : 40, d = rot ? 40 : 28; rect(x - w / 2, z - d / 2, x + w / 2, z + d / 2, 5); });
+  rect(184, 96, 199, 179, 5); rect(1, 8, 13, 52, 4); rect(4, 176, 16, 188, 3); rect(226, 8, 238, 20, 3); rect(220, 178, 232, 188, 3);
+  return { cs, nx, nz, blocked };
+})();
+function navPath(sx, sz, gx, gz) {
+  const { cs, nx, nz, blocked } = NAV, cell = (x, z) => [Math.max(0, Math.min(nx - 1, Math.floor(x / cs))), Math.max(0, Math.min(nz - 1, Math.floor(z / cs)))];
+  const free = ([ix, iz]) => { if (!blocked[iz * nx + ix]) return [ix, iz]; for (let r = 1; r < 12; r++) for (let dx = -r; dx <= r; dx++) for (let dz = -r; dz <= r; dz++) { const a = ix + dx, b = iz + dz; if (a >= 0 && b >= 0 && a < nx && b < nz && !blocked[b * nx + a]) return [a, b]; } return [ix, iz]; };
+  const S0 = free(cell(sx, sz)), G0 = free(cell(gx, gz)), id = c => c[1] * nx + c[0];
+  const g = new Map([[id(S0), 0]]), from = new Map(), open = [[0, S0]], done = new Set();
+  const h = c => Math.hypot(c[0] - G0[0], c[1] - G0[1]);
+  while (open.length) {
+    open.sort((a, b) => a[0] - b[0]); const [, c] = open.shift(), ci = id(c); if (done.has(ci)) continue; done.add(ci);
+    if (c[0] === G0[0] && c[1] === G0[1]) break;
+    for (let dx = -1; dx <= 1; dx++) for (let dz = -1; dz <= 1; dz++) {
+      if (!dx && !dz) continue; const a = c[0] + dx, b = c[1] + dz; if (a < 0 || b < 0 || a >= nx || b >= nz || blocked[b * nx + a]) continue;
+      if (dx && dz && (blocked[c[1] * nx + a] || blocked[b * nx + c[0]])) continue;
+      const ni = b * nx + a, ng = g.get(ci) + Math.hypot(dx, dz); if (g.has(ni) && g.get(ni) <= ng) continue; g.set(ni, ng); from.set(ni, ci); open.push([ng + h([a, b]), [a, b]]);
+    }
+  }
+  const out = []; let cur = id(G0); if (!from.has(cur) && cur !== id(S0)) return [[gx, gz]];
+  while (cur !== id(S0)) { out.push([(cur % nx + 0.5) * cs, (Math.floor(cur / nx) + 0.5) * cs]); cur = from.get(cur); }
+  out.reverse();
+  // line-of-sight smoothing
+  const clear = (a, b) => { const n = Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / 2); for (let i = 1; i < n; i++) { const x = a[0] + (b[0] - a[0]) * i / n, z = a[1] + (b[1] - a[1]) * i / n, c = cell(x, z); if (blocked[c[1] * nx + c[0]]) return false; } return true; };
+  const sm = []; let anchor = [sx, sz], i = 0;
+  while (i < out.length) { let j = out.length - 1; while (j > i && !clear(anchor, out[j])) j--; sm.push(out[j]); anchor = out[j]; i = j + 1; }
+  sm.push([gx, gz]); return sm;
+}
 
 const _shopGeo = {};
 function shopGeo(name, build) { if (_shopGeo[name]) return _shopGeo[name]; const g = new VGrid(0.05); build(g); return (_shopGeo[name] = g.geometry()); }
@@ -123,6 +158,7 @@ class Person {
     this.g.position.set(pos[0], 0.5, pos[1]); this.yaw = Math.PI; this.g.rotation.y = this.yaw; this.ph = Math.random() * 6; this.path = []; this.speed = 30; this.out = false; this.moving = false;
   }
   go(pts) { this.path = pts.slice(); }
+  navTo(x, z, pre) { this.path = (pre || []).concat(navPath(this.g.position.x, this.g.position.z, x, z)); }
   update(dt) {
     let moving = false;
     if (this.path.length) {
@@ -228,20 +264,39 @@ class StoreScene {
     }
     this.fishObjs.forEach(o => { o.f = getFish(o.f.id) || o.f; });
   }
-  syncPeople() {
+  syncPeople(dt) {
     const live = new Set(S.customers.map(c => c.id));
-    S.customers.forEach((c, k) => {
+    const ready = S.customers.filter(c => c.ready);
+    S.customers.forEach(c => {
       let p = this.people.get(c.id);
-      if (!p) { const app = personApp(c.id); if (c.type === 'collector') { app.hat = 'top'; } else if (c.type === 'enthusiast') app.hat = 'glasses'; p = new Person(app, DOOR); p.speed = 26 + (hash(c.id) % 8); p.c = c; p.g.rotation.y = -Math.PI / 2; p.yaw = -Math.PI / 2; this.scene.add(p.g); this.people.set(c.id, p); }
-      p.c = c; p.qk = k; const tgt = [QUEUE_X, QUEUE_Z0 + k * 15];
-      if (!p.tgt || p.tgt[0] !== tgt[0] || p.tgt[1] !== tgt[1]) { p.tgt = tgt; p.go(p.g.position.z < 30 ? [[216, 34], tgt] : [tgt]); p.face = Math.PI; }
+      if (!p) {
+        const app = personApp(c.id); if (c.type === 'collector') app.hat = 'top'; else if (c.type === 'enthusiast') app.hat = 'glasses'; else if (c.type === 'vip') app.hat = 'top';
+        const late = c.age > 2, st = late ? pick(BROWSE_SPOTS) : DOOR;
+        p = new Person(app, st); p.speed = 24 + (hash(c.id) % 8); p.c = c; p.state = 'browse'; p.wait = rnd(0.5, 2); p.spot = null;
+        if (!late) { p.g.rotation.y = -Math.PI / 2; p.yaw = -Math.PI / 2; p.navTo(DOOR_IN[0], DOOR_IN[1]); p.entering = true; }
+        this.scene.add(p.g); this.people.set(c.id, p);
+      }
+      p.c = c;
+      if (c.ready) {
+        const k = ready.indexOf(c), tgt = [QUEUE_X, QUEUE_Z0 + k * 15];
+        if (p.state !== 'queue' || p.tgt[0] !== tgt[0] || p.tgt[1] !== tgt[1]) { p.state = 'queue'; p.tgt = tgt; p.navTo(tgt[0], tgt[1]); p.face = Math.PI; }
+      } else if (p.state === 'browse') {
+        if (p.path.length) return;
+        p.entering = false;
+        if (p.wait > 0) { p.wait -= dt; return; }
+        // pick a new display tank to admire
+        let sp, tries = 0; do { sp = pick(BROWSE_SPOTS); tries++; } while (sp === p.spot && tries < 5);
+        p.spot = sp; p.navTo(sp[0], sp[1]); p.wait = rnd(2.5, 6);
+        let best = null, bd = 1e9; this.tanks.forEach(tk => { const d = Math.hypot(tk.pos[0] - sp[0], tk.pos[1] - sp[1]); if (d < bd) { bd = d; best = tk; } });
+        p.face = best ? Math.atan2(-(best.pos[1] - sp[1]), best.pos[0] - sp[0]) : Math.PI;
+      }
     });
-    for (const [id, p] of this.people) if (!live.has(id) && !p.out) { p.out = true; p.c = null; p.go([[216, Math.max(34, p.g.position.z)], [216, 34], DOOR]); p.face = null; }
+    for (const [id, p] of this.people) if (!live.has(id) && !p.out) { p.out = true; p.c = null; p.face = null; p.navTo(DOOR_IN[0], DOOR_IN[1], []); p.path.push(DOOR); }
   }
   frameDt(dtReal) {
     if (!GL.init()) return;
     const dt = Math.min(0.05, dtReal); this.t += dt;
-    this.syncTanks(); this.syncFish(); this.syncPeople();
+    this.syncTanks(); this.syncFish(); this.syncPeople(dt);
     this.posters.forEach((m, i) => (m.visible = i < 1 + Math.min(5, S.storeUp.sign)));
     this.stools.forEach((m, i) => (m.visible = i < S.storeUp.seats)); this.cashier.g.visible = S.storeUp.cashier > 0; this.cashier.update(dt);
     this.sign.material.opacity = 1; this.sign.material.color.setScalar(0.88 + 0.12 * Math.sin(this.t * 3));
@@ -266,7 +321,21 @@ class StoreScene {
     const k = this.cv.height / 700; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     const tag = (txt, x, y, col, sub) => { ctx.font = `600 ${Math.round(13 * k)}px "Segoe UI", system-ui, sans-serif`; const w = ctx.measureText(txt).width + 14 * k, h = 20 * k; ctx.fillStyle = 'rgba(8,20,34,0.82)'; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x - w / 2, y - h / 2, w, h, 6 * k) : ctx.rect(x - w / 2, y - h / 2, w, h); ctx.fill(); ctx.strokeStyle = col; ctx.lineWidth = 1.5 * k; ctx.stroke(); ctx.fillStyle = col; ctx.fillText(txt, x, y + 0.5); if (sub != null) { ctx.fillStyle = 'rgba(8,20,34,.9)'; ctx.fillRect(x - w / 2 + 3 * k, y + h / 2 + 2 * k, w - 6 * k, 3 * k); ctx.fillStyle = sub > 0.3 ? '#5fe08f' : '#ff6b73'; ctx.fillRect(x - w / 2 + 3 * k, y + h / 2 + 2 * k, (w - 6 * k) * Math.max(0, sub), 3 * k); } };
     this.tanks.forEach((tk, i) => { const id = this.slotFish[i], f = id && getFish(id); const p = this.proj(tk.pos[0], 52, tk.pos[1]); if (f) tag(fmt(fishValue(f)), p[0], p[1], '#ffbf3c'); else { ctx.font = `600 ${Math.round(12 * k)}px system-ui`; ctx.fillStyle = 'rgba(180,210,235,.75)'; ctx.fillText('+ add fish', p[0], p[1]); } });
-    this.people.forEach(p => { if (!p.c || p.out) return; const c = p.c, f = getFish(c.fishId); if (!f) return; const pp = this.proj(p.g.position.x, 44, p.g.position.z), r = c.offer / fishValue(f); tag((c.type === 'collector' ? '★ ' : '') + fmt(c.offer), pp[0], pp[1], r >= 1 ? '#5fe08f' : r < 0.8 ? '#ff8a8a' : '#e8f2fb', c.pat / c.patMax); });
+    const bubble = (txt, x, y, col, sub, tail) => {
+      ctx.font = `700 ${Math.round(14 * k)}px "Segoe UI", system-ui, sans-serif`; const w = Math.max(30 * k, ctx.measureText(txt).width + 18 * k), h = (sub != null ? 30 : 22) * k, bx = x - w / 2, by = y - h - 9 * k, r = 9 * k;
+      ctx.fillStyle = 'rgba(255,255,255,0.96)'; ctx.strokeStyle = col; ctx.lineWidth = 2 * k; ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(bx, by, w, h, r); else ctx.rect(bx, by, w, h); ctx.moveTo(x - 6 * k, by + h - 0.5); ctx.lineTo(x, by + h + 9 * k); ctx.lineTo(x + 6 * k, by + h - 0.5); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,0.96)'; ctx.fillRect(x - 5 * k, by + h - 2.5 * k, 10 * k, 4 * k);
+      ctx.fillStyle = '#1b2a3c'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(txt, x, by + (sub != null ? 11 : 11.5) * k);
+      if (sub != null) { ctx.fillStyle = 'rgba(30,50,70,.18)'; ctx.fillRect(bx + 6 * k, by + h - 9 * k, w - 12 * k, 4 * k); ctx.fillStyle = sub > 0.3 ? '#2fb46a' : '#e0505a'; ctx.fillRect(bx + 6 * k, by + h - 9 * k, (w - 12 * k) * Math.max(0, sub), 4 * k); }
+    };
+    this.people.forEach(p => {
+      if (!p.c || p.out) return; const c = p.c, f = getFish(c.fishId); if (!f) return;
+      const pp = this.proj(p.g.position.x, 40, p.g.position.z);
+      if (!c.ready) { if (!p.moving) bubble('…', pp[0], pp[1], '#9fb3c8'); return; }
+      const r = c.offer / fishValue(f);
+      bubble((c.type === 'collector' ? '★ ' : c.type === 'vip' ? '👑 ' : '') + fmt(c.offer), pp[0], pp[1], r >= 1 ? '#2fb46a' : r < 0.8 ? '#e0505a' : '#5a7a9a', c.pat / c.patMax);
+    });
     this.floats = this.floats.filter(f => (f.t += dt) < 1.6); this.floats.forEach(f => { const p = this.proj(192, 44 + f.t * 24, 120); ctx.globalAlpha = Math.max(0, 1 - f.t / 1.6); ctx.font = `700 ${Math.round(20 * k)}px system-ui`; ctx.fillStyle = '#ffd36a'; ctx.fillText(f.txt, p[0], p[1]); ctx.globalAlpha = 1; });
   }
   pickTank(e) {

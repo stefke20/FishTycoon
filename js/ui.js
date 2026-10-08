@@ -14,7 +14,7 @@ const Sfx = {
     } catch (e) {}
   },
 };
-const UI = { tab: 'store', qty: 1, sort: 'value', onlyMods: false, tankId: null, shopCat: 'eggs', upTank: null, sel: [], modal: null, lastBreed: null, boost: null };
+const UI = { tab: 'store', qty: 1, sort: 'value', onlyMods: false, tankId: null, shopCat: 'eggs', upTank: null, sel: [], modal: null, lastBreed: null, boost: null, selFish: null, filterTank: 'all', homeTip: null };
 const $ = s => document.querySelector(s);
 const pct = x => { const v = x * 100; return (v < 10 && v > 0 ? v.toFixed(1) : Math.round(v)) + '%'; };
 let mouseDown = false;
@@ -23,6 +23,11 @@ const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;',
 const tierBadge = t => `<span class="tier" style="background:${TIER_COLORS[t]}">${TIER_NAMES[t]}</span>`;
 const modChips = mods => mods.map(m => `<span class="chip m${MODS[m].t}" title="${esc(MODS[m].d)} · ${MOD_TIER_NAMES[MODS[m].t]} · x${MODS[m].m} value">${MODS[m].icon} ${MODS[m].n}</span>`).join('');
 const btn = (label, act, data, cls, dis) => `<button class="btn ${cls || ''} ${dis ? 'off' : ''}" data-act="${act}" ${Object.entries(data || {}).map(([k, v]) => `data-${k}="${esc(v)}"`).join(' ')} ${dis ? 'aria-disabled="true"' : ''}>${label}</button>`;
+/* fish pictures & labels hide species and modifiers while a fish is still a baby */
+const fishPic = (f, px) => (f.g >= 1 ? fishSVG(f.sp, f.mods, px) : fishSVG('_baby', [], px));
+const fishChips = f => (f.g >= 1 ? modChips(f.mods) : '');
+const isEv = f => !!SPECIES[f.sp].ev;
+const worthText = f => (f.g < 1 ? '' : isEv(f) ? `🎟 ${tokenReward(f)} tokens` : fmt(fishValue(f)));
 const mult = n => (Math.round(n * 100) / 100) + 'x';
 const ico = (e, s) => `<span class="eico" style="${s ? `width:${s * 1.5}px;height:${s * 1.5}px;font-size:${s}px` : ''}">${e}</span>`;
 const pill = (l, v) => `<span class="pill">${l ? l + ' ' : ''}<b>${v}</b></span>`;
@@ -36,6 +41,7 @@ const SVG = {
   book: '<path d="M4 4h12a3 3 0 013 3v13H7a3 3 0 01-3-3V4zM4 17a3 3 0 013-3h12"/>',
   ev: '<path d="M12 3l2.6 5.6 6 .7-4.5 4.1 1.2 6L12 16.5 6.7 19.4l1.2-6L3.4 9.3l6-.7L12 3z"/>',
   stats: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
+  home: '<path d="M3 11l9-8 9 8M5 10v10h5v-6h4v6h5V10"/>',
   menu: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/>',
 };
 const pageHead = (title, sub, actions) => `<div class="page-head"><div><h1>${title}</h1>${sub ? `<div class="sub">${sub}</div>` : ''}</div>${actions ? `<div class="actions">${actions}</div>` : ''}</div>`;
@@ -50,19 +56,22 @@ const sceneHTML = (t, mini) => `<canvas class="tankscene ${mini ? 'mini' : ''}" 
 
 const SORTS = { value: 'Value', tier: 'Tier', mods: 'Modifiers', name: 'Name', growth: 'Growth' };
 function sortFish(list) {
-  const f = list.slice(); if (UI.onlyMods) { const m = f.filter(x => x.mods.length); f.length = 0; f.push(...m); }
-  if (UI.onlyFav) { const m = f.filter(x => x.fav); f.length = 0; f.push(...m); }
-  const key = { value: x => -fishValue(x), tier: x => -SPECIES[x.sp].t * 1000 - fishValue(x) / 1e6, mods: x => -x.mods.length * 1e6 - fishValue(x), name: x => 0, growth: x => -x.g }[UI.sort];
+  let f = list.slice();
+  if (UI.onlyMods) f = f.filter(x => x.g >= 1 && x.mods.length);
+  if (UI.onlyFav) f = f.filter(x => x.fav);
+  if (UI.filterTank !== 'all') f = f.filter(x => x.loc === UI.filterTank);
+  const val = x => (x.g >= 1 ? fishValue(x) : -1), key = { value: x => -val(x), tier: x => -(x.g >= 1 ? SPECIES[x.sp].t : 0) * 1e9 - val(x), mods: x => -(x.g >= 1 ? x.mods.length : 0) * 1e12 - val(x), name: x => 0, growth: x => -x.g }[UI.sort];
   return f.sort((a, b) => UI.sort === 'name' ? fishName(a).localeCompare(fishName(b)) : key(a) - key(b));
 }
-const sortBar = () => `<div class="row" style="margin-bottom:12px"><span class="dim small">Sort</span><div class="seg" style="margin:0">${Object.entries(SORTS).map(([k, l]) => `<button class="${UI.sort === k ? 'on' : ''}" data-act="sortBy" data-x="${k}">${l}</button>`).join('')}</div><button class="boost-chip ${UI.onlyMods ? 'on' : ''}" data-act="onlyMods">Modified only</button><button class="boost-chip ${UI.onlyFav ? 'on' : ''}" data-act="onlyFav">★ Favourites</button></div>`;
-const zoomCtl = tank => `<div class="zoomctl">${tank ? '<button data-act="cam" data-x="rotL" title="Rotate left">↺</button><button data-act="cam" data-x="rotR" title="Rotate right">↻</button><button data-act="cam" data-x="tilt" title="Change camera angle">⇅</button><button data-act="cam" data-x="photo" title="Save a picture">📷</button>' : ''}<button data-act="zoom" data-x="in" title="Zoom in (+)">＋</button><button data-act="zoom" data-x="out" title="Zoom out (−)">－</button><button data-act="zoom" data-x="reset" title="Reset view (0)">⟲</button></div><div class="zoomhint">Scroll to zoom · drag to pan · double-click to reset${tank ? ' · ↺ ↻ rotate' : ''}</div>`;
+const tankFilter = () => `<select data-change="filterTank" title="Show only the fish in one aquarium"><option value="all">All aquariums</option><option value="store" ${UI.filterTank === 'store' ? 'selected' : ''}>Store display</option>${S.tanks.map(t => `<option value="${t.id}" ${UI.filterTank === t.id ? 'selected' : ''}>${esc(t.name)}</option>`).join('')}</select>`;
+const sortBar = () => { if (UI.filterTank !== 'all' && UI.filterTank !== 'store' && !getTank(UI.filterTank)) UI.filterTank = 'all'; return `<div class="row" style="margin-bottom:12px"><span class="dim small">Aquarium</span>${tankFilter()}<span class="dim small">Sort</span><div class="seg" style="margin:0">${Object.entries(SORTS).map(([k, l]) => `<button class="${UI.sort === k ? 'on' : ''}" data-act="sortBy" data-x="${k}">${l}</button>`).join('')}</div><button class="boost-chip ${UI.onlyMods ? 'on' : ''}" data-act="onlyMods">Modified only</button><button class="boost-chip ${UI.onlyFav ? 'on' : ''}" data-act="onlyFav">★ Favourites</button></div>`; };
+const zoomCtl = (tank, home) => `<div class="zoomctl">${tank ? '<button data-act="cam" data-x="rotL" title="Rotate left">↺</button><button data-act="cam" data-x="rotR" title="Rotate right">↻</button><button data-act="cam" data-x="tilt" title="Change camera angle">⇅</button><button data-act="cam" data-x="photo" title="Save a picture">📷</button>' : ''}<button data-act="zoom" data-x="in" title="Zoom in (+)">＋</button><button data-act="zoom" data-x="out" title="Zoom out (−)">－</button><button data-act="zoom" data-x="reset" title="Reset view (0)">⟲</button></div><div class="zoomhint">${home ? 'Scroll to zoom' : 'Scroll to zoom · drag to pan · double-click to reset'}${tank ? ' · ↺ ↻ rotate' : ''}</div>`;
 
 /* ---------- chrome ---------- */
 function renderHeader() {
-  const tabs = [['store', 'Store'], ['hall', 'Aquariums'], ['breed', 'Breeding'], ['shop', 'Shop'], ['inv', 'Inventory'], ['book', 'Collection'], ['ev', 'Events'], ['stats', 'Stats'], ['menu', 'Menu']];
+  const tabs = [['store', 'Store'], ['home', 'Home'], ['hall', 'Aquariums'], ['breed', 'Breeding'], ['shop', 'Shop'], ['inv', 'Inventory'], ['book', 'Collection'], ['ev', 'Events'], ['stats', 'Stats'], ['menu', 'Menu']];
   $('#tabs').innerHTML = tabs.map(([id, l]) => {
-    const n = id === 'store' ? S.customers.length + S.contracts.length : id === 'inv' ? S.eggs.length : id === 'ev' ? activeEvents().length : 0;
+    const n = id === 'store' ? S.customers.filter(c => c.ready).length + S.contracts.length : id === 'inv' ? S.eggs.length : id === 'ev' ? activeEvents().length : 0;
     return `<button class="${UI.tab === id ? 'on' : ''}" data-act="tab" data-x="${id}"><svg viewBox="0 0 24 24">${SVG[id]}</svg><span>${l}</span>${n ? `<span class="badge">${n}</span>` : ''}</button>`;
   }).join('');
   if (!$('#logoimg').firstChild) $('#logoimg').innerHTML = `<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#2ad4c0" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${SVG.hall}</svg>`;
@@ -81,32 +90,40 @@ function viewStore() {
   h += `<div class="scenewrap" style="position:relative"><canvas class="storescene"></canvas>${zoomCtl()}</div>`;
   h += `<div class="stats" style="margin-top:16px">${pill('Sales', S.sales)}${pill('Total earned', fmt(S.earned))}${pill('Best sale', fmt(S.bestValue || 0))}${pill('Next customer', '~' + Math.round(arrivalInterval()) + 's')}${pill('Display cases', fs.length + '/' + cap)}</div>`;
   h += `<div style="margin-top:6px">${recordCard(false)}</div>`;
-  h += `<div class="two"><div><h3>Customers · ${S.customers.length}</h3>`;
+  const ready = S.customers.filter(c => c.ready), browsing = S.customers.length - ready.length;
+  h += `<div class="two"><div><h3>Customers at the counter · ${ready.length}${browsing ? ` <span class="dim small" style="font-weight:400">(+${browsing} still browsing)</span>` : ''}</h3>`;
   if (!fs.length) h += `<div class="empty">Your cases are empty — put fully grown fish on display.</div>`;
-  else if (!S.customers.length) h += `<div class="empty">Waiting for customers… Advertising brings more.</div>`;
-  for (const c of S.customers) {
+  else if (!ready.length) h += `<div class="empty">${browsing ? 'Customers are browsing your tanks — they will come to the counter when they want to buy.' : 'Waiting for customers… Advertising brings more.'}</div>`;
+  for (const c of ready) {
     const f = getFish(c.fishId); if (!f) continue;
     const v = fishValue(f), r = c.offer / v, cols = ['#7ec8ff', '#ffb870', '#9be8b0', '#d6a8ff', '#ffa8c8'];
-    const desc = { browser: 'Just browsing', enthusiast: `Really wants a ${SPECIES[f.sp].n}`, bargain: 'Hunting for a bargain', collector: 'Collector — loves modified fish' }[c.type];
+    const desc = { vip: 'VIP guest — pays a premium', browser: 'Just browsing', enthusiast: `Really wants a ${SPECIES[f.sp].n}`, bargain: 'Hunting for a bargain', collector: 'Collector — loves modified fish' }[c.type];
     h += `<div class="card cust"><div class="av" style="background:${cols[hash(c.id) % 5]}">${c.name[0]}</div>
       <div class="grow"><b>${c.name}</b> <span class="dim">· ${desc}</span><div class="small dim">wants ${esc(f.name)} · ${esc(fishName(f))}</div><div class="bar pat" style="margin-top:7px;max-width:200px"><i data-pat="${c.id}" style="width:${Math.max(0, c.pat / c.patMax * 100)}%"></i></div></div>
       <div style="text-align:right"><div class="offer ${r >= 1 ? 'good' : r < 0.8 ? 'badc' : ''}">${fmt(c.offer)}</div><div class="small dim">${Math.round(r * 100)}% of ${fmt(v)}</div></div>
       <div class="row" style="gap:6px;flex-wrap:nowrap">${btn('Accept', 'accept', { x: c.id }, 'pri')}${btn('✕', 'decline', { x: c.id }, 'sm bad')}</div></div>`;
   }
   h += `</div><div><h3>Display cases</h3><div class="casegrid">`;
-  for (const f of fs) h += `<div class="casecard"><div data-act="openFish" data-x="${f.id}" style="cursor:pointer">${fishSVG(f.sp, f.mods, 70)}</div><div class="grow" style="min-width:0"><div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${f.fav ? '<span class="gold">★</span> ' : ''}${esc(f.name)}</div><div class="small dim" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(fishName(f))}</div><div class="gold small">${fmt(fishValue(f))}</div></div>${btn('Take back', 'unstore', { x: f.id }, 'sm ghost')}</div>`;
+  for (const f of fs) h += `<div class="casecard"><div data-act="openFish" data-x="${f.id}" style="cursor:pointer">${fishPic(f, 70)}</div><div class="grow" style="min-width:0"><div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${f.fav ? '<span class="gold">★</span> ' : ''}${esc(f.name)}</div><div class="small dim" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(fishName(f))}</div><div class="gold small">${fmt(fishValue(f))}</div></div>${btn('Take back', 'unstore', { x: f.id }, 'sm ghost')}</div>`;
   for (let i = fs.length; i < cap; i++) h += `<div class="casecard emptyc" data-act="storeAdd">＋ Add a fish</div>`;
   return h + `</div>${contractsPanel()}</div></div>`;
 }
 
 /* ---------- HALL ---------- */
+/* eggs you can drag onto an aquarium (in the hall, or in a tank page) */
+function eggTray(t) {
+  if (!S.eggs.length) return `<div class="eggtray empty-tray"><span class="dim small">No eggs — buy some in the shop, or breed your fish.</span></div>`;
+  const list = t ? S.eggs.filter(e => !canHatchIn(e, t)) : S.eggs;
+  const chips = list.slice(0, 40).map(e => `<div class="eggchip" data-drag="egg" data-id="${e.id}" title="${esc(eggTitle(e))} — drag onto ${t ? 'the aquarium' : 'a tank'} to hatch it">${eggArt(e, 46)}<span class="tl" style="color:${TIER_COLORS[e.tier]}">${TIER_NAMES[e.tier]}</span></div>`).join('');
+  return `<div class="eggtray"><div class="row" style="margin-bottom:6px"><b>Eggs</b><span class="dim small">${t ? list.length + ' can hatch here' : S.eggs.length + ' in your inventory'}</span><span class="grow"></span></div>${list.length ? `<div class="eggchips">${chips}</div><div class="dim small" style="margin-top:6px">Drag an egg onto ${t ? 'the aquarium' : 'a tank below'} and let go to hatch it.</div>` : `<div class="dim small">None of your eggs fit this tank (check water type and rating).</div>`}${list.length ? `<div style="margin-top:8px">${boostPicker()}</div>` : ''}</div>`;
+}
 function viewHall() {
-  const sc = hallSlotCost();
-  let h = pageHead('Aquarium Hall', 'Every tank you own. Open one to feed, decorate and hatch eggs.', (S.unlocks.feedAll ? btn(`Feed all · ${fmt(feedAllCost())}`, 'feedAll', {}, '', feedAllCost() === 0) : btn('🔒 Feed all', 'goMgmt', {}, 'ghost')) + (sc != null ? btn(`Expand hall · ${fmt(sc)}`, 'buySlot', {}, 'pri', S.money < sc) : ''));
-  h += `<div class="stats">${pill('Tanks', regularTanks().length + '/' + S.hallSlots)}${pill('Fish', S.fish.length)}${pill('Heroes', S.heroes.length)}</div><div class="grid halls">`;
+  const sc = hallSlotCost(), dirty = S.tanks.filter(t => wqOf(t) < 97 && fishIn(t.id).length).length;
+  let h = pageHead('Aquarium Hall', 'Every tank you own. Open one to feed, decorate and clean it — or drag an egg from the tray onto a tank to hatch it.', (S.unlocks.feedAll ? btn(`Feed all · ${fmt(feedAllCost())}`, 'feedAll', {}, '', feedAllCost() === 0) : btn('🔒 Feed all', 'goMgmt', {}, 'ghost')) + (S.unlocks.cleanAll ? btn(`Clean all · ${fmt(cleanAllCost())}`, 'cleanAll', {}, '', !dirty) : btn('🔒 Clean all', 'goMgmt', {}, 'ghost')) + (sc != null ? btn(`Expand hall · ${fmt(sc)}`, 'buySlot', {}, 'pri', S.money < sc) : ''));
+  h += `<div class="stats">${pill('Tanks', regularTanks().length + '/' + S.hallSlots)}${pill('Fish', S.fish.length)}${pill('Heroes', S.heroes.length)}${pill('Eggs', S.eggs.length)}</div>${eggTray(null)}<div class="grid halls" style="margin-top:14px">`;
   for (const t of S.tanks) {
     const tt = tankType(t), fs = fishIn(t.id), grow = fs.filter(f => !isAdult(f)).length;
-    h += `<div class="card click" data-act="openTank" data-x="${t.id}"><div class="scenewrap">${sceneHTML(t, true)}</div>
+    h += `<div class="card click" data-act="openTank" data-x="${t.id}" data-droptank="${t.id}"><div class="scenewrap">${sceneHTML(t, true)}</div>
       <div class="row" style="margin-top:12px"><b class="grow">${esc(t.name)}</b>${waterTag(tt.w)}</div>
       <div class="small dim" style="margin-top:2px">${fs.length}/${tt.cap} fish · ${grow} growing · rating ${rating(t)}${heroIn(t.id) ? ' · ★ ' + HERO[heroIn(t.id).kind].n : ''}</div><div class="row" style="margin-top:8px;gap:8px"><span class="small dim">Water</span><div class="grow">${wqBar(t)}</div><span class="small" style="color:${wqColor(wqOf(t))}">${wqLabel(wqOf(t))}</span></div></div>`;
   }
@@ -114,31 +131,49 @@ function viewHall() {
   return h + '</div>';
 }
 
+/* ---- the selected fish: actions shared by the tank sidebar and the fish dialog ---- */
+function fishActions(f) {
+  const adult = isAdult(f); let h = `<div class="row" style="margin-top:12px;gap:8px">`;
+  if (adult) {
+    h += (f.loc === 'store' ? btn('Back to a tank', 'fishPickTank', { x: f.id }) : (isEv(f) ? '' : btn('Put in store', 'toStore', { x: f.id }, 'pri')) + btn('Move tank', 'fishPickTank', { x: f.id }));
+    h += btn('Breed', 'breedWith', { x: f.id }) + btn(f.fav ? '★ Protected' : isEv(f) ? `Sell · 🎟 ${tokenReward(f)}` : `Sell · ${fmt(fishValue(f) * quickSell())}`, 'sellMarket', { x: f.id }, 'bad', f.fav);
+  } else h += btn('Move tank', 'fishPickTank', { x: f.id });
+  return h + `</div><div class="row" style="margin-top:8px;gap:8px">${btn(f.fav ? '★ Favourited' : '☆ Favourite', 'toggleFav', { x: f.id }, f.fav ? 'sm gold-btn' : 'sm')}${btn('Rename', 'renameFish', { x: f.id }, 'sm')}${btn('Family tree', 'openTree', { x: f.id }, 'sm')}</div>`;
+}
+function selPanel(t) {
+  const f = getFish(UI.selFish);
+  if (!f || f.loc !== t.id) { UI.selFish = null; return `<div class="selpanel dim small">Click a fish in the aquarium or in the list to select it. Then you can sell, breed or move it.</div>`; }
+  const sp = SPECIES[f.sp], adult = isAdult(f);
+  return `<div class="selpanel"><div class="row" style="align-items:flex-start;gap:12px"><div style="width:120px;flex:none">${fishPic(f, 120)}</div><div class="grow" style="min-width:0">${fishTitle(f)}<div style="margin:4px 0">${adult ? tierBadge(sp.t) + ' ' + genChip(f) : '<span class="chip m1">Baby</span>'}</div><div>${fishChips(f)}</div>${adult ? `<div class="gold" style="font-weight:700;margin-top:4px">${worthText(f)}</div>` : `<div class="bar" style="margin-top:6px"><i data-gbar="${f.id}" style="width:${Math.round(f.g * 100)}%"></i></div><div class="small dim" style="margin-top:3px">Growing: <span data-gtext="${f.id}">${Math.round(f.g * 100)}</span>% — what it is gets revealed when fully grown</div>`}</div></div>${fishActions(f)}<div class="row" style="margin-top:8px">${btn('Details', 'openFish', { x: f.id }, 'sm ghost')}${btn('Deselect', 'selFish', { x: f.id }, 'sm ghost')}</div></div>`;
+}
+function tankFishRow(f) {
+  const adult = isAdult(f);
+  return `<div class="tfrow ${UI.selFish === f.id ? 'sel' : ''}" data-act="selFish" data-x="${f.id}"><div class="tfpic">${fishPic(f, 56)}</div><div class="grow" style="min-width:0"><div class="tfname">${f.fav ? '<span class="gold">★</span> ' : ''}${esc(f.name)}</div><div class="small dim tfsub">${adult ? esc(fishName(f)) : `Baby · <span data-gtext="${f.id}">${Math.round(f.g * 100)}</span>%`}</div></div><div class="gold small" style="white-space:nowrap">${adult ? worthText(f) : ''}</div></div>`;
+}
 function viewTank() {
   const t = getTank(UI.tankId);
   if (!t) { UI.tankId = null; return viewHall(); }
-  const tt = tankType(t), fs = fishIn(t.id), b = tankBonus(t), fed = t.fedUntil > S.time, growing = fs.filter(f => !isAdult(f)).length;
+  const tt = tankType(t), fs = fishIn(t.id), b = tankBonus(t), fed = t.fedUntil > S.time, growing = fs.filter(f => !isAdult(f)).length, q = wqOf(t), vm = wqValueMult(q);
   let h = pageHead(esc(t.name), `${tt.n} · ${tt.cap} fish capacity`, `${btn('← All tanks', 'backHall', {}, 'ghost')}${btn('Rename', 'rename', { x: t.id })}`);
-  h += `<div class="stats">${waterTag(tt.w)}${pill('Fish', fs.length + '/' + tt.cap)}${pill('Water rating', rating(t) + ' (tier ≤ ' + rating(t) + ')')}${pill('Water quality', `<span data-wqtext="${t.id}" style="color:${wqColor(wqOf(t))}">${wqLabel(wqOf(t))} ${Math.round(wqOf(t))}%</span>`)}${pill('Growth', mult(1 + b.growth))}${pill('Value', '+' + Math.round(b.value * 100) + '%')}${pill('Mutation', '+' + Math.round(b.mod * 100) + '%')}${pill('Tier-up', '+' + Math.round(b.tier * 100) + '%')}${pill('Inheritance', '+' + Math.round(b.inherit * 100) + '%')}</div>`;
-  h += `<div class="scenewrap" style="position:relative">${sceneHTML(t, false)}${zoomCtl(true)}</div>`;
+  h += `<div class="stats">${waterTag(tt.w)}${pill('Fish', fs.length + '/' + tt.cap)}${pill('Water rating', rating(t) + ' (tier ≤ ' + rating(t) + ')')}${pill('Water quality', `<span data-wqtext="${t.id}" style="color:${wqColor(q)}">${wqLabel(q)} ${Math.round(q)}%</span>`)}${vm < 1 ? pill('Dirty water', `<span class="badc">−${Math.round((1 - vm) * 100)}% value</span>`) : ''}${pill('Growth', mult(1 + b.growth))}${pill('Value', '+' + Math.round(b.value * 100) + '%')}${pill('Mutation', '+' + Math.round(b.mod * 100) + '%')}${pill('Tier-up', '+' + Math.round(b.tier * 100) + '%')}${pill('Inheritance', '+' + Math.round(b.inherit * 100) + '%')}</div>`;
+  h += `<div class="tankwrap"><div class="tankmain"><div class="scenewrap" data-droptank="${t.id}" style="position:relative">${sceneHTML(t, false)}${zoomCtl(true)}</div>`;
   h += `<div class="row" style="margin-top:16px">${btn(`Feed · ${fmt(growing * FEED_COST_PER_FISH)} · ×${foodMult()} growth`, 'feed', { x: t.id }, 'pri', !growing)}
     <span class="dim small" data-fed="${t.id}">${fed ? 'Well fed — ' + Math.ceil(t.fedUntil - S.time) + 's left' : 'Hungry — feeding speeds up growth'}</span><span class="grow"></span>
-    ${btn(`Clean water · ${fmt(cleanCost(t))}`, 'cleanTank', { x: t.id }, '', wqOf(t) > 97)}${btn('Hatch an egg', 'hatchHere', { x: t.id })}${btn('Tank upgrades', 'goUpgrades', { x: t.id })}</div>${wqOf(t) < 40 ? `<div class="warn">⚠ The water is ${wqLabel(wqOf(t)).toLowerCase()} — fish grow slower and are worth less. Clean it, or upgrade the filter and aerator.</div>` : ''}`;
+    ${btn(`Change water · ${fmt(cleanCost(t))}`, 'cleanTank', { x: t.id }, '', q > 97)}${btn('Hatch an egg', 'hatchHere', { x: t.id })}${btn('Tank upgrades', 'goUpgrades', { x: t.id })}</div>${q < 75 ? `<div class="warn">⚠ The glass is getting dirty (${wqLabel(q).toLowerCase()}) — fish grow slower and are worth ${Math.round((1 - vm) * 100)}% less. Wipe the smudges with the sponge, change the water, or upgrade the filter, UV sterilizer and aerator.</div>` : ''}`;
   h += `<h3>Decorations</h3><div class="slots"><div class="slot ${t.bg ? 'full' : ''}" data-act="slotPick" data-x="${t.id}" data-y="bg">${t.bg ? decorPic(DECOR_BY_ID[t.bg], 52) : '<span style="font-size:22px">＋</span>'}${t.bg ? DECOR_BY_ID[t.bg].n : 'Background'}</div>`;
   t.slots.forEach((id, i) => { const d = id && DECOR_BY_ID[id]; h += `<div class="slot ${d ? 'full' : ''}" data-act="slotPick" data-x="${t.id}" data-y="${i}">${d ? decorPic(d, 56) : '<span style="font-size:22px">＋</span>'}${d ? d.n : 'Empty'}</div>`; });
   h += `</div><div class="row" style="margin-top:12px"><span class="dim small">Skin</span><select data-change="skin" data-x="${t.id}">${SKINS.filter(s => S.skins[s.id]).map(s => `<option value="${s.id}" ${t.skin === s.id ? 'selected' : ''}>${s.n}</option>`).join('')}</select></div>`;
-  h += heroPanel(t);
-  h += `<h3>Fish</h3><div class="list">`;
-  if (!fs.length) h += `<div class="dim" style="padding:16px">No fish yet.</div>`;
-  for (const f of fs) h += fishRow(f);
-  return h + '</div>';
+  h += heroPanel(t) + `</div>`;
+  const list = fs.slice().sort((a, c) => (isAdult(a) - isAdult(c)) || fishValue(c) - fishValue(a));
+  h += `<aside class="tankside">${eggTray(t)}<div class="spongebox"><div class="spongetool" data-drag="sponge" title="Drag the sponge over the glass">🧽</div><div class="grow"><b>Sponge</b><div class="small dim">Drag it over the smudges on the glass to wipe them away${lab('sponge') ? ` (Pro Sponge ${lab('sponge')})` : ''}.</div><div class="wq" style="margin-top:6px"><div class="bar"><i data-wq="${t.id}" style="width:${Math.round(q)}%;background:${wqColor(q)}"></i></div></div></div></div><h3 style="margin:14px 0 8px">Fish in this tank · ${fs.length}</h3>${selPanel(t)}<div class="tflist">${list.length ? list.map(tankFishRow).join('') : '<div class="dim" style="padding:14px">No fish yet — drag an egg onto the aquarium.</div>'}</div></aside></div>`;
+  return h;
 }
 function fishRow(f) {
-  const sp = SPECIES[f.sp];
-  return `<div class="fishrow" data-act="openFish" data-x="${f.id}"><div class="pic">${fishSVG(f.sp, f.mods, 78)}</div>
-    <div class="grow">${fishTitle(f)} ${tierBadge(sp.t)} ${genChip(f)}<div>${modChips(f.mods)}</div>
-    ${isAdult(f) ? '<span class="good small">Fully grown</span>' : `<div class="bar"><i data-gbar="${f.id}" style="width:${Math.round(f.g * 100)}%"></i></div>`}</div>
-    <div class="gold" style="font-weight:600">${fmt(previewValue(f))}</div></div>`;
+  const sp = SPECIES[f.sp], adult = isAdult(f), sellable = adult && !f.fav && UI.tab === 'inv';
+  return `<div class="fishrow" data-act="openFish" data-x="${f.id}"><div class="pic">${fishPic(f, 78)}</div>
+    <div class="grow">${fishTitle(f)} ${adult ? tierBadge(sp.t) + ' ' + genChip(f) : ''}<div>${fishChips(f)}</div><div class="small dim">${f.loc === 'store' ? 'In store' : esc((getTank(f.loc) || { name: '?' }).name)}</div>
+    ${adult ? '<span class="good small">Fully grown</span>' : `<div class="bar"><i data-gbar="${f.id}" style="width:${Math.round(f.g * 100)}%"></i></div>`}</div>
+    <div class="gold" style="font-weight:600">${adult ? worthText(f) : '<span class="dim small">???</span>'}</div>${sellable ? btn(isEv(f) ? 'Sell' : `Sell ${fmt(fishValue(f) * quickSell())}`, 'sellRow', { x: f.id }, 'sm bad') : ''}</div>`;
 }
 
 /* ---------- mutagen picker ---------- */
@@ -153,19 +188,19 @@ function viewBreed() {
   UI.sel = UI.sel.filter(id => getFish(id) && isAdult(getFish(id)));
   const a = getFish(UI.sel[0]), b = getFish(UI.sel[1]);
   const water = a ? SPECIES[a.sp].w : null;
-  let h = pageHead('Breeding', 'Pair two fully grown fish of the same water type. Offspring can be a higher tier and inherit — and stack — modifiers. Each modifier can only be applied once.');
+  let h = pageHead('Breeding', 'Pair two fully grown fish of the same water type. Every modifier the parents carry can be passed on (none, one or several), with a small extra chance of a brand-new one — so they stack generation after generation. Each modifier can only be applied once.', S.unlocks.autoPair ? btn('Suggest a pair', 'suggestPair', {}, 'pri') : btn('🔒 Suggest a pair', 'goMgmt', {}, 'ghost'));
   const slot = (f, label) => `<div class="card parent ${f ? '' : 'flat'}" ${f ? '' : 'style="border-style:dashed"'}>${f ? `${fishSVG(f.sp, f.mods, 190)}<div><b>${esc(fishName(f))}</b> ${tierBadge(SPECIES[f.sp].t)}</div><div>${modChips(f.mods)}</div>${btn('Remove', 'breedSel', { x: f.id }, 'sm ghost')}` : `<span class="dim">${label}<br><span class="small">select a fish below</span></span>`}</div>`;
   h += `<div class="parents">${slot(a, 'Parent A')}<div style="align-self:center;font-size:30px;color:var(--accent)">♥</div>${slot(b, 'Parent B')}</div>`;
   if (a && b) {
     const why = breedCheck(a, b), o = breedOdds(a, b);
     h += `<div class="card"><div class="row"><b>Offspring odds</b><span class="dim small">${o.eggs} egg${o.eggs > 1 ? 's' : ''} per breeding</span></div><div class="stats" style="margin:10px 0">`;
-    h += o.species.map(s => pill(SPECIES[s.sp].n, pct(s.p))).join('') + pill('Higher tier', pct(o.tierUp)) + `</div>`;
+    h += o.species.map(s => pill(SPECIES[s.sp].n, pct(s.p))).join('') + pill('Higher tier', pct(o.tierUp)) + pill('Each parent modifier passed on', pct(o.inh)) + pill('Chance of a new modifier', pct(o.fresh)) + `</div>`;
     const ml = Object.entries(o.mods).filter(([id, p]) => p >= 0.02).sort((x, y) => y[1] - x[1]);
     h += `<div class="dim small" style="margin-bottom:4px">Modifier chances</div><div>${ml.map(([id, p]) => `<span class="chip m${MODS[id].t}">${MODS[id].icon} ${MODS[id].n} ${pct(p)}</span>`).join('') || '<span class="dim small">none likely</span>'}</div>`;
     h += `<div class="row" style="margin-top:14px">${boostPicker()}<span class="grow"></span>${why ? `<span class="badc small">${why}</span>` : ''}${btn('Breed', 'breedGo', {}, 'pri', !!why)}</div></div>`;
   }
   if (UI.lastBreed) {
-    h += `<div class="card" style="margin-top:14px;border-color:rgba(255,194,74,.5)"><b>Last breeding produced</b>${UI.lastBreed.map(m => `<div class="row" style="margin-top:8px">${eggArt({ ...EGG_TYPE[SPECIES[m.sp].w + SPECIES[m.sp].t + '_mix'], bred: true }, 36)} ${m.up ? '<b class="gold">▲ Higher tier</b>' : ''} <b>${SPECIES[m.sp].n}</b> ${tierBadge(SPECIES[m.sp].t)} ${modChips(m.mods)}</div>`).join('')}<div class="small dim" style="margin-top:8px">Eggs are in your inventory — hatch them in a tank with enough water rating.</div></div>`;
+    h += `<div class="card" style="margin-top:14px;border-color:rgba(255,194,74,.5)"><b>Last breeding produced</b>${UI.lastBreed.map(m => `<div class="row" style="margin-top:8px">${eggArt({ ...EGG_TYPE[SPECIES[m.sp].w + SPECIES[m.sp].t + '_mix'], bred: true }, 36)} ${m.up ? '<b class="gold">▲ Higher tier</b>' : ''} <b>${SPECIES[m.sp].n}</b> ${tierBadge(SPECIES[m.sp].t)} ${modChips(m.mods)}${m.fresh ? ` <span class="good small">✨ new: ${MODS[m.fresh].n}</span>` : ''}</div>`).join('')}<div class="small dim" style="margin-top:8px">Eggs are in your inventory — hatch them in a tank with enough water rating.</div></div>`;
   }
   h += `<h3>Adult fish</h3>${sortBar()}`;
   if (!adults.length) h += `<div class="empty">No fully grown fish yet.</div>`;
@@ -187,7 +222,7 @@ function item(icon, name, desc, price, label, act, data, opts) {
 }
 function avgValue(ids) { return ids.reduce((a, id) => a + SPECIES[id].value, 0) / ids.length; }
 function viewShop() {
-  const cats = [['eggs', 'Eggs'], ['consumables', 'Mutagens'], ['tanks', 'Tanks'], ['upgrades', 'Tank Upgrades'], ['decor', 'Decorations'], ['food', 'Food'], ['skins', 'Skins'], ['store', 'Store'], ['breeding', 'Breeding'], ['mgmt', 'Management'], ['heroes', 'Hero Fish']];
+  const cats = [['eggs', 'Eggs'], ['consumables', 'Mutagens'], ['tanks', 'Tanks'], ['upgrades', 'Tank Upgrades'], ['decor', 'Decorations'], ['food', 'Food'], ['skins', 'Skins'], ['store', 'Store'], ['breeding', 'Breeding'], ['lab', 'Research'], ['mgmt', 'Management'], ['heroes', 'Hero Fish']];
   let h = pageHead('Shop', 'Eggs, tanks, decorations and upgrades.') + `<div class="seg">${cats.map(([id, l]) => `<button class="${UI.shopCat === id ? 'on' : ''}" data-act="shopCat" data-x="${id}">${l}</button>`).join('')}</div>`;
   const lv = level();
   switch (UI.shopCat) {
@@ -246,6 +281,11 @@ function viewShop() {
       for (const u of STORE_UPGRADES) { const l = S.storeUp[u.id]; h += item(ico(u.icon, 28), `${u.n} <span class="dim small">Lv ${l}/${u.max}</span>`, u.desc, l >= u.max ? null : u.cost(l), 'Upgrade', 'sup', { x: u.id }, { maxed: l >= u.max }); }
       break;
     }
+    case 'lab': {
+      h += `<p class="lead">The research lab funds permanent upgrades that apply to <b>every</b> tank and fish you own.</p>`;
+      for (const u of LAB) { const l = lab(u.id); h += item(ico(u.icon, 28), `${u.n} <span class="dim small">Lv ${l}/${u.max}</span>`, u.desc, l >= u.max ? null : u.cost(l), 'Research', 'buyLab', { x: u.id }, { maxed: l >= u.max }); }
+      break;
+    }
     case 'mgmt': h += viewMgmt(); break;
     case 'heroes': h += viewHeroes(); break;
     case 'breeding': {
@@ -268,7 +308,10 @@ function viewInv() {
   const owned = DECOR.filter(d => S.decorInv[d.id] > 0);
   if (!owned.length) h += `<div class="empty">No spare decorations. Buy some, then place them from a tank's page.</div>`;
   h += `<div class="grid sm">${owned.map(d => `<div class="card row">${decorPic(d, 64)}<div><b>${d.n}</b> ×${S.decorInv[d.id]}<div class="small dim">${bonusText(d.b)}</div></div></div>`).join('')}</div>`;
-  h += `<h3>All fish · ${S.fish.length}</h3>${sortBar()}<div class="list">${sortFish(S.fish).map(f => fishRow(f)).join('') || '<div class="dim" style="padding:16px">None</div>'}</div>`;
+  const shown = sortFish(S.fish), sellIds = shown.filter(f => isAdult(f) && !f.fav);
+  h += `<h3>All fish · ${shown.length}${shown.length !== S.fish.length ? ' of ' + S.fish.length : ''}</h3>${sortBar()}`;
+  h += `<div class="row" style="margin-bottom:12px">${S.unlocks.bulkSell ? btn(`Sell all shown · ${sellIds.length} fish`, 'sellAll', {}, 'bad sm', !sellIds.length) : btn('🔒 Sell all shown', 'goMgmt', {}, 'sm ghost')}<span class="dim small">${S.unlocks.bulkSell ? 'Favourites and growing fish are never sold. Use the filters above first!' : 'Unlock the Market Broker in Shop → Management to sell everything you are looking at.'} Or click Sell on a single row.</span></div>`;
+  h += `<div class="list">${shown.map(f => fishRow(f)).join('') || '<div class="dim" style="padding:16px">None</div>'}</div>`;
   return h;
 }
 
@@ -291,16 +334,13 @@ function modalHTML() {
     case 'fish': {
       const f = getFish(m.id); if (!f) { UI.modal = null; return ''; }
       const sp = SPECIES[f.sp], adult = isAdult(f);
-      h += `<h2>${esc(f.name)} ${f.fav ? '<span class="gold">★</span>' : ''} <span class="dim" style="font-size:15px;font-weight:500">${esc(fishName(f))}</span></h2><div style="display:flex;justify-content:center;padding:6px 0 14px">${fishSVG(f.sp, f.mods, 360)}</div>
-        <div class="stats">${tierBadge(sp.t)}${waterTag(sp.w)}${pill('Base', fmt(sp.value))}${pill('Value', fmt(previewValue(f)))}${pill('Generation', f.gen || 0)}</div>
-        ${f.mods.length ? `<div class="mod-info">${f.mods.map(x => `<div><span class="chip m${MODS[x].t}">${MODS[x].icon} ${MODS[x].n}</span>${MODS[x].d} <b class="gold" style="margin-left:auto">×${MODS[x].m}</b></div>`).join('')}</div>` : '<p class="dim">No modifiers.</p>'}
-        <p>${adult ? '<span class="good">Fully grown</span>' : `Growing: <span data-gtext="${f.id}">${Math.round(f.g * 100)}</span>%`} <span class="dim small"> · ${f.loc === 'store' ? 'In the store' : esc(getTank(f.loc).name)}</span></p>
-        <div class="row" style="margin-top:16px">`;
+      h += `<h2>${esc(f.name)} ${f.fav ? '<span class="gold">★</span>' : ''} <span class="dim" style="font-size:15px;font-weight:500">${esc(fishName(f))}</span></h2><div style="display:flex;justify-content:center;padding:6px 0 14px">${fishPic(f, 360)}</div>`;
       if (adult) {
-        h += f.loc === 'store' ? btn('Back to a tank', 'fishPickTank', { x: f.id }) : btn('Put in store', 'toStore', { x: f.id }, 'pri') + btn('Move tank', 'fishPickTank', { x: f.id });
-        h += btn('Breed', 'breedWith', { x: f.id }) + btn(f.fav ? '★ Protected' : `Sell to market · ${fmt(fishValue(f) * QUICK_SELL)}`, 'sellMarket', { x: f.id }, 'bad', f.fav);
-      } else h += btn('Move tank', 'fishPickTank', { x: f.id });
-      h += `</div><div class="row" style="margin-top:10px">${btn(f.fav ? '★ Favourited' : '☆ Favourite', 'toggleFav', { x: f.id }, f.fav ? 'sm gold-btn' : 'sm')}${btn('Rename', 'renameFish', { x: f.id }, 'sm')}${btn('Family tree', 'openTree', { x: f.id }, 'sm')}</div>`; break;
+        h += `<div class="stats">${tierBadge(sp.t)}${waterTag(sp.w)}${pill('Base', fmt(sp.value))}${pill(isEv(f) ? 'Worth' : 'Value', isEv(f) ? '🎟 ' + tokenReward(f) + ' tokens' : fmt(fishValue(f)))}${pill('Generation', f.gen || 0)}</div>
+        ${f.mods.length ? `<div class="mod-info">${f.mods.map(x => `<div><span class="chip m${MODS[x].t}">${MODS[x].icon} ${MODS[x].n}</span>${MODS[x].d} <b class="gold" style="margin-left:auto">×${MODS[x].m}</b></div>`).join('')}</div>` : '<p class="dim">No modifiers.</p>'}
+        <p><span class="good">Fully grown</span> <span class="dim small"> · ${f.loc === 'store' ? 'In the store' : esc(getTank(f.loc).name)}</span></p>`;
+      } else h += `<div class="stats"><span class="chip m1">${TIER_NAMES[sp.t]} baby</span>${waterTag(sp.w)}${pill('Generation', f.gen || 0)}</div><p>Growing: <span data-gtext="${f.id}">${Math.round(f.g * 100)}</span>% <span class="dim small"> · ${esc(getTank(f.loc).name)}</span></p><div class="bar"><i data-gbar="${f.id}" style="width:${Math.round(f.g * 100)}%"></i></div><p class="dim small">All babies look alike. Its species and any modifiers are revealed when it is fully grown.</p>`;
+      h += fishActions(f); break;
     }
     case 'tree': h += treeModal(m.id); break;
     case 'hero': h += heroModal(m.id); break;
@@ -325,7 +365,7 @@ function modalHTML() {
       h += eggs.length ? eggs.map(e => `<div class="item"><div class="ic" style="width:60px">${eggArt(e, 48)}</div><div class="grow"><b>${eggTitle(e)}</b> ${tierBadge(e.tier)}</div>${btn('Hatch', 'hatch', { x: e.id, y: t.id }, 'pri sm')}</div>`).join('') : '<p class="dim">No suitable eggs (check water type, rating and free space).</p>'; break;
     }
     case 'storeAdd': {
-      const list = S.fish.filter(f => isAdult(f) && f.loc !== 'store');
+      const list = S.fish.filter(f => isAdult(f) && f.loc !== 'store' && !isEv(f));
       h += `<h2>Put a fish on display</h2>` + (list.length ? list.map(f => `<div class="item"><div style="width:84px">${fishSVG(f.sp, f.mods, 80)}</div><div class="grow"><b>${esc(fishName(f))}</b><div>${modChips(f.mods)}</div></div><span class="gold">${fmt(fishValue(f))}</span>${btn('Display', 'toStore', { x: f.id }, 'pri sm')}</div>`).join('') : '<p class="dim">You have no fully grown fish outside the store yet. Feed your growing fish!</p>'); break;
     }
     case 'slot': {
@@ -338,12 +378,12 @@ function modalHTML() {
     }
     case 'help': {
       h += `<h2>How to play</h2>
-      <p><b>1.</b> Open <b>Inventory</b> and hatch your two starter eggs. Baby fish must <b>grow</b> — press <b>Feed</b> in the tank to speed it up.</p>
-      <p><b>2.</b> Put fully grown fish on display in your <b>Store</b>. Customers make offers — accept good ones, decline lowballs, or hire a cashier.</p>
-      <p><b>3.</b> Spend profits in the <b>Shop</b>: higher-tier eggs, bigger tanks (saltwater later), filters, decorations, food and store upgrades.</p>
-      <p><b>4.</b> Fish need a tank with enough <b>water rating</b> (tank size + filter + aerator) for their tier.</p>
-      <p><b>5.</b> <b>Breed</b> two adults: offspring may be a higher tier and can inherit and stack modifiers (each only once). <b>Mutagens</b> add extra mutation chance.</p>
-      <p><b>6.</b> Sales raise your store level, unlocking rarer eggs, big tanks and saltwater.</p><div class="row" style="margin-top:14px">${btn("Let's go", 'closeModal', {}, 'pri')}</div>`; break;
+      <p><b>1.</b> Open the <b>Aquariums</b> page, open your tank and <b>drag an egg</b> from the tray onto the aquarium to hatch it. Every baby looks the same — what it really is (and any modifiers) is revealed when it has grown up. Press <b>Feed</b> to speed that up.</p>
+      <p><b>2.</b> Put fully grown fish on display in your <b>Store</b>. Customers wander around your tanks and come to the counter with an offer bubble — accept good ones, decline lowballs, or hire a cashier.</p>
+      <p><b>3.</b> Keep the glass clean: smudges appear as the <b>water quality</b> drops, and dirty water makes your fish worth less. Drag the <b>sponge</b> over the glass to wipe it.</p>
+      <p><b>4.</b> Spend profits in the <b>Shop</b>: tanks, filters, decorations, food, store and breeding upgrades, research, staff and hero fish. High-tier eggs cost more than the fish they hatch — <b>breed</b> instead!</p>
+      <p><b>5.</b> <b>Breed</b> two adults: every modifier the parents carry can be passed on (none, one or several) with a small chance of a brand-new one, so modifiers stack over generations.</p>
+      <p><b>6.</b> Your 20 most valuable fish ever live in the big aquarium at <b>Home</b>. The end-game goal is to build <b>The Great Sanctuary</b> (Stats page).</p><div class="row" style="margin-top:14px">${btn("Let's go", 'closeModal', {}, 'pri')}</div>`; break;
     }
     case 'text': { h += `<h2>${esc(m.title)}</h2><textarea id="txt" style="width:100%;height:160px;background:#0a1626;color:#cfe;border:1px solid var(--line2);border-radius:10px;padding:10px;user-select:text" ${m.ro ? 'readonly' : ''}>${esc(m.text || '')}</textarea><div class="row" style="margin-top:10px">${m.ro ? '' : btn('Load', 'doImport', {}, 'pri')}${btn('Close', 'closeModal')}</div>`; break; }
   }
@@ -355,11 +395,11 @@ function render() {
   G.dirty = false;
   const view = $('#view'), st = view.scrollTop;
   renderHeader(); renderStats();
-  view.innerHTML = { store: viewStore, hall: () => (UI.tankId ? viewTank() : viewHall()), breed: viewBreed, shop: viewShop, inv: viewInv, book: viewCollection, ev: viewEvents, stats: viewStats, menu: viewMenu }[UI.tab]();
+  view.innerHTML = { store: viewStore, home: viewHome, hall: () => (UI.tankId ? viewTank() : viewHall()), breed: viewBreed, shop: viewShop, inv: viewInv, book: viewCollection, ev: viewEvents, stats: viewStats, menu: viewMenu }[UI.tab]();
   view.scrollTop = st;
   const mo = $('#modal');
   if (UI.modal) { const keep = mo.firstChild && mo.firstChild.scrollTop; mo.innerHTML = modalHTML(); mo.classList.toggle('hidden', !UI.modal); if (mo.firstChild && keep) mo.firstChild.scrollTop = keep; } else { mo.classList.add('hidden'); mo.innerHTML = ''; }
-  Scenes.bind(id => { UI.modal = { type: 'fish', id }; render(); }, id => { UI.modal = { type: 'hero', id }; render(); });
+  Scenes.bind(id => { UI.selFish = id; render(); }, id => { UI.modal = { type: 'hero', id }; render(); }, id => { UI.modal = { type: 'fish', id }; render(); });
 }
 
 function toast(text, type) {
@@ -373,6 +413,13 @@ const activeBoost = () => (UI.boost && S.items[UI.boost] > 0 ? UI.boost : null);
 /* ---------- actions ---------- */
 const ACT = {
   cam: d => { const sc = Scenes.list.find(x => x.zp && !x.people); if (!sc) return false; const v = sc.zp.v; if (d.x === 'rotL') { v.yaw--; v.px = v.py = 0; } else if (d.x === 'rotR') { v.yaw++; v.px = v.py = 0; } else if (d.x === 'tilt') { const L = [0.45, 0.78, 1.3, 2.4], i = L.findIndex(t => Math.abs(t - v.tilt) < 0.05); v.tilt = L[((i < 0 ? 1 : i) + 1) % L.length]; } else if (d.x === 'photo') { sc.photo(); toast('Picture saved to your downloads', 'good'); } return false; },
+  selFish: d => { UI.selFish = UI.selFish === d.x ? null : d.x; },
+  sellRow: d => { const r = res(sellMarket(d.x)); if (r.ok) { Sfx.play('sale'); toast(r.tokens ? `Sold for ${r.tokens} tokens` : 'Sold for ' + fmt(r.price), 'gold'); } },
+  sellAll: () => { const ids = sortFish(S.fish).filter(f => isAdult(f) && !f.fav).map(f => f.id); if (!ids.length) return false; const val = ids.reduce((a, id) => a + (isEv(getFish(id)) ? 0 : fishValue(getFish(id)) * quickSell()), 0); if (!confirm(`Sell ${ids.length} fish for about ${fmt(val)}? Favourites and growing fish are kept.`)) return false; const r = res(sellMany(ids)); if (r.ok) { Sfx.play('sale'); toast(`Sold ${r.n} fish for ${fmt(r.money)}` + (r.tokens ? ` and ${r.tokens} tokens` : ''), 'gold'); } },
+  cleanAll: () => { const r = res(cleanAll()); if (r.ok) { toast(`Cleaned ${r.n} tank${r.n > 1 ? 's' : ''}`, 'good'); Sfx.play('pop'); } },
+  buyLab: d => { const r = res(buyLab(d.x)); if (r.ok) { toast(LAB_BY_ID[d.x].n + ' researched', 'good'); Sfx.play('buy'); } },
+  pauseStaff: d => res(pauseStaff(d.x)),
+  suggestPair: () => { const p = suggestPair(); if (p) UI.sel = p; else toast('No compatible pair is ready right now', 'bad'); },
   goMgmt: () => { UI.shopCat = 'mgmt'; UI.tab = 'shop'; },
   onlyFav: () => { UI.onlyFav = !UI.onlyFav; },
   toggleFav: d => res(toggleFav(d.x)),
@@ -383,6 +430,7 @@ const ACT = {
   cleanTank: d => { const r = res(cleanTank(d.x)); if (r.ok) { toast('Water changed — crystal clear', 'good'); Sfx.play('pop'); } },
   hire: d => { const r = res(hireStaff(d.x)); if (r.ok) toast(STAFF_BY_ID[d.x].n + ' hired', 'good'); },
   buyUnlock: d => res(buyUnlock(d.x)),
+  buildSanct: () => { const r = res(buildSanct()); if (r.ok) { toast(S.sanct >= SANCT.length ? '🏛️ You completed the Great Sanctuary — Ocean Legend!' : 'Sanctuary stage built!', 'gold'); Sfx.play('level'); } },
   claimBook: d => { const r = res(claimBook(+d.x)); if (r.ok) { toast('Reward claimed', 'gold'); Sfx.play('level'); } },
   bookTab: d => { UI.bookTab = d.x; },
   evClaim: d => { const r = res(claimEventTank(d.x)); if (r.ok) toast('Event tank added to your hall', 'gold'); },
@@ -424,22 +472,13 @@ const ACT = {
   toStore: d => { const r = res(moveFish(d.x, 'store')); if (r.ok) UI.modal = null; },
   unstore: d => { UI.modal = { type: 'pickTank', id: d.x }; },
   storeAdd: () => { UI.modal = { type: 'storeAdd' }; },
-  sellMarket: d => { const r = res(sellMarket(d.x)); if (r.ok) { toast('Sold to the fish market for ' + fmt(r.price), 'gold'); UI.modal = null; } },
+  sellMarket: d => { const r = res(sellMarket(d.x)); if (r.ok) { toast(r.tokens ? `Sold for ${r.tokens} event tokens` : 'Sold to the fish market for ' + fmt(r.price), 'gold'); Sfx.play('sale'); UI.modal = null; UI.selFish = null; } },
   accept: d => { const r = res(acceptCustomer(d.x)); if (r.ok) { toast('Sold for ' + fmt(r.offer), 'gold'); Sfx.play('sale'); } },
   decline: d => res(declineCustomer(d.x)),
   cashier: () => { S.cashierOn = !S.cashierOn; },
   hatchPick: d => { UI.modal = { type: 'hatchTank', id: d.x }; },
   hatchHere: d => { UI.modal = { type: 'hatchEgg', id: d.x }; },
-  hatch: d => {
-    const r = res(hatchEgg(d.x, d.y, activeBoost()));
-    if (r.ok) {
-      const f = G.hatched;
-      toast(`Hatched a ${fishName(f)}!` + (f.mods.length ? ' ✨' : ''), f.mods.length ? 'gold' : 'good');
-      Sfx.play(f.mods.length ? 'good' : 'pop');
-      if (G.boosted) toast('The mutagen caused a mutation!', 'gold');
-      UI.modal = null;
-    }
-  },
+  hatch: d => { const r = hatchWith(d.x, d.y); if (r) UI.modal = null; },
   slotPick: d => { UI.modal = { type: 'slot', id: d.x, slot: d.y === 'bg' ? 'bg' : +d.y }; },
   slotSet: d => { const r = res(placeDecor(d.x, d.y === 'bg' ? 'bg' : +d.y, d.z)); if (r.ok) UI.modal = null; },
   slotClear: d => { res(removeDecor(d.x, d.y === 'bg' ? 'bg' : +d.y)); UI.modal = null; },
@@ -456,13 +495,18 @@ const ACT = {
   reset: () => { if (confirm('Delete all progress and start over?')) { resetGame(); UI.tankId = null; UI.sel = []; UI.tab = 'store'; UI.lastBreed = null; UI.modal = { type: 'help' }; } },
 };
 
+function hatchWith(eggId, tankId) {
+  const r = res(hatchEgg(eggId, tankId, activeBoost()));
+  if (r.ok) { const f = G.hatched; toast(`Hatched a ${fishName(f)}! It will reveal what it is when it has grown up.`, 'good'); Sfx.play('pop'); if (G.boosted) toast('The mutagen was absorbed by the egg…', 'good'); }
+  return r.ok;
+}
 document.addEventListener('mousedown', () => (mouseDown = true));
 document.addEventListener('mouseup', () => (mouseDown = false));
 document.addEventListener('click', e => {
   if (e.target.id === 'modal') { UI.modal = null; render(); return; }
   const el = e.target.closest('[data-act]');
   if (!el) return;
-  if (el.getAttribute('aria-disabled')) { toast('Not enough money', 'bad'); return; }
+  if (el.getAttribute('aria-disabled')) { toast(/[$🎟]/.test(el.textContent) ? 'Not enough money or tokens' : 'Not available right now', 'bad'); return; }
   const fn = ACT[el.dataset.act];
   if (fn) { const r = fn(el.dataset); if (r !== false) render(); }
 });
@@ -470,6 +514,7 @@ document.addEventListener('change', e => {
   const k = e.target.dataset.change; if (!k) return;
   if (k === 'skin') res(applySkin(e.target.dataset.x, e.target.value));
   if (k === 'upTank') UI.upTank = e.target.value;
+  if (k === 'filterTank') UI.filterTank = e.target.value;
   if (k === 'assignHero') res(assignHero(e.target.dataset.x, null)), e.target.value && res(assignHero(e.target.dataset.x, e.target.value));
   if (k === 'assignHeroHere') { const hid = e.target.value; if (hid) res(assignHero(hid, e.target.dataset.x)); else { const h = heroIn(e.target.dataset.x); if (h) res(assignHero(h.id, null)); } }
   if (k === 'evPreview') { S.settings.event = e.target.value; G.dirty = true; }
@@ -478,9 +523,45 @@ document.addEventListener('change', e => {
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && UI.modal) { UI.modal = null; render(); return; }
   if (e.target.matches && e.target.matches('textarea,input,select') || e.ctrlKey || e.metaKey || e.altKey) return;
-  const tabs = ['store', 'hall', 'breed', 'shop', 'inv', 'book', 'ev', 'stats', 'menu'];
+  const tabs = ['store', 'home', 'hall', 'breed', 'shop', 'inv', 'book', 'ev', 'stats', 'menu'];
   if (e.key >= '1' && e.key <= '9') { UI.tab = tabs[+e.key - 1]; if (UI.tab !== 'hall') UI.tankId = null; render(); }
   else if (e.key === '+' || e.key === '=' || e.key === '-' || e.key === '_' || e.key === '0') { const sc = Scenes.list.find(x => x.zp); if (!sc) return; if (e.key === '0') sc.zp.reset(); else sc.zp.zoomAt(e.key === '+' || e.key === '=' ? 1.25 : 0.8, 0, 0); e.preventDefault(); }
+});
+
+/* ---------- drag & drop: eggs onto aquariums, the sponge over the glass ---------- */
+const DRAG = { kind: null, id: null, ghost: null, lastX: 0, lastY: 0, hover: null };
+function dropTarget(x, y) { const el = document.elementFromPoint(x, y); return el ? el.closest('[data-droptank]') : null; }
+function dragMark(el, cls) { document.querySelectorAll('.dropok,.dropbad').forEach(n => n.classList.remove('dropok', 'dropbad')); if (el) el.classList.add(cls); }
+document.addEventListener('mousedown', e => {
+  if (e.button !== 0) return;
+  const el = e.target.closest('[data-drag]'); if (!el) return;
+  e.preventDefault();
+  DRAG.kind = el.dataset.drag; DRAG.id = el.dataset.id; DRAG.lastX = e.clientX; DRAG.lastY = e.clientY;
+  const g = document.createElement('div'); g.className = 'dragghost ' + DRAG.kind; g.innerHTML = DRAG.kind === 'sponge' ? '🧽' : el.firstElementChild.outerHTML;
+  document.body.appendChild(g); DRAG.ghost = g; g.style.left = e.clientX + 'px'; g.style.top = e.clientY + 'px'; document.body.classList.add('dragging');
+});
+document.addEventListener('mousemove', e => {
+  if (!DRAG.ghost) return;
+  DRAG.ghost.style.left = e.clientX + 'px'; DRAG.ghost.style.top = e.clientY + 'px';
+  if (DRAG.kind === 'egg') {
+    const t = dropTarget(e.clientX, e.clientY), tank = t && getTank(t.dataset.droptank), egg = S.eggs.find(x => x.id === DRAG.id);
+    DRAG.hover = tank ? tank.id : null; dragMark(t, tank && egg && !canHatchIn(egg, tank) ? 'dropok' : 'dropbad'); if (!tank) dragMark(null);
+  } else if (DRAG.kind === 'sponge') {
+    const sc = Scenes.list.find(x => !x.mini && x.scrub); if (!sc) return;
+    const r = sc.cv.getBoundingClientRect();
+    if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) { const n = sc.scrub(e.clientX, e.clientY, Math.hypot(e.clientX - DRAG.lastX, e.clientY - DRAG.lastY)); if (n) Sfx.play('pop'); DRAG.ghost.classList.add('wiping'); } else DRAG.ghost.classList.remove('wiping');
+  }
+  DRAG.lastX = e.clientX; DRAG.lastY = e.clientY;
+});
+document.addEventListener('mouseup', e => {
+  if (!DRAG.ghost) return;
+  const kind = DRAG.kind, id = DRAG.id, hover = DRAG.hover;
+  DRAG.ghost.remove(); DRAG.ghost = null; DRAG.kind = null; DRAG.hover = null; document.body.classList.remove('dragging'); dragMark(null);
+  if (kind === 'egg' && hover) {
+    const egg = S.eggs.find(x => x.id === id), tank = getTank(hover), why = egg && tank ? canHatchIn(egg, tank) : 'Missing';
+    if (why) toast(why, 'bad'); else hatchWith(id, hover);
+  }
+  mouseDown = false; G.dirty = true;
 });
 
 /* ---------- live updates ---------- */
@@ -498,6 +579,7 @@ function live() {
 }
 
 /* ---------- boot ---------- */
+G.sfx = k => Sfx.play(k);
 G.msg = (t, ty) => { toast(t, ty); if (/Store level/.test(t)) Sfx.play('level'); };
 G.lowFx = false;
 function boot() {

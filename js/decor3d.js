@@ -217,6 +217,20 @@ DECOR_BUILD.dc_winter = function (g, glow) {
   [[-14, 0, 8, '#e8302a'], [-8, 0, 14, '#4a8ae0'], [12, 0, 10, '#f4d83a']].forEach(([x, y, z, c], i) => { g.box(x, 0, z, x + 7, 6, z + 7, c); g.box(x + 3, 0, z, x + 4, 6, z + 7, '#fff'); g.box(x, 3, z + 3, x + 7, 3, z + 4, '#fff'); });
 };
 
+
+/* event trophies: a golden cup on a wooden base, with a glowing star in the event's colour */
+EVENTS.forEach(ev => {
+  DECOR_BUILD['tr_' + ev.id] = function (g, glow) {
+    const gold = (x, y, z) => shadeC(HX('#e8b83a'), (y % 4 === 0 ? -0.08 : 0.03) + (x < 0 ? -0.06 : 0)), acc = HX(ev.color);
+    g.box(-9, 0, -9, 9, 4, 9, (x, y, z) => shadeC(HX('#6a4228'), (hash(x + ',' + z) % 5 === 0 ? -0.1 : 0.02)));
+    g.box(-7, 5, -7, 7, 6, 7, gold); g.cyl(0, 0, 2.2, 7, 14, gold);
+    g.cyl(0, 0, 4, 15, 16, gold, 4); for (let y = 0; y < 14; y++) g.cyl(0, 0, 4.2 + y * 0.32, 17 + y, 17 + y, gold);
+    g.ell(-9, 25, 0, 2.6, 4, 1, gold); g.ell(9, 25, 0, 2.6, 4, 1, gold);
+    g.box(-1, 21, 5, 1, 27, 5, acc); g.box(-3, 24, 5, 3, 24, 5, acc);
+    glow.ell(0, 36, 0, 3, 3, 3, acc);
+  };
+});
+
 const DECOR_SWAY = { javafern: 1.8, anubias: 0.9, sword: 2.0, wisteria: 2.8, lotus: 0.8, seagrass: 3.2, kelp: 3.2, anemone: 2.2, seafan: 0.8 };
 const _decorGeo = {};
 function decorModel(id) {
