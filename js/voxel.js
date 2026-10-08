@@ -5,6 +5,7 @@ class VGrid {
   constructor(jit) { this.m = new Map(); this.jit = jit == null ? 0.04 : jit; }
   static key(x, y, z) { return ((x + 512) << 20) | ((y + 512) << 10) | (z + 512); }
   set(x, y, z, c) {
+    if (!c) return;
     x = Math.round(x); y = Math.round(y); z = Math.round(z);
     if (typeof c === 'string') c = _hx(c);
     const j = 1 + this.jit * (((hash(x + ',' + y + ',' + z) % 1000) / 500) - 1);

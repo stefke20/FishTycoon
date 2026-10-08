@@ -211,6 +211,7 @@ function buildFish(s, mods, L) {
   if (A.lips) for (let z = -1; z <= 1; z++) { g.set(nose, mouthY + 1, z, [230, 120, 130]); g.set(nose, mouthY - 1, z, [230, 120, 130]); }
   if (A.teeth) { const n = A.teeth === 2 ? 4 : 3; for (let i = 0; i < n; i++) for (const z of [-1, 1]) { g.setRaw(nose - 1 - i * 2, mouthY - 1, z, [250, 250, 245]); if (A.teeth === 2) g.setRaw(nose - 1 - i * 2, mouthY + 1, z, [250, 250, 245]); } }
   if (A.barbels) for (let i = 0; i < A.barbels; i++) { const zz = i % 2 ? 2 : -2; g.line([nose - 1, mouthY - 1, zz], [nose - 1 - L * (0.1 + 0.02 * i), mouthY - L * (0.06 + 0.02 * i), zz * 1.6], shadeC(base, -0.35), 0.5); }
+  if (A.crown) { const cx = Math.round(L * 0.84), cy = Math.round(topAt(0.84) * L) + 1; for (let i = -3; i <= 3; i++) { g.setRaw(cx + i, cy, 0, [255, 200, 40]); g.setRaw(cx + i, cy, 1, [255, 200, 40]); g.setRaw(cx + i, cy, -1, [255, 200, 40]); if (i % 2 === 0) { g.setRaw(cx + i, cy + 1, 0, [255, 226, 90]); g.setRaw(cx + i, cy + 2, 0, [255, 244, 160]); } } g.setRaw(cx, cy + 1, 1, [220, 40, 60]); }
   if (A.lure) { const sx = Math.round(L * 0.86), sy = Math.round(topAt(0.86) * L); for (let i = 0; i <= 14; i++) { const t = i / 14; g.set(sx + (L * 0.16) * t, sy + L * 0.34 * t + Math.sin(t * Math.PI) * 2, 0, [60, 40, 90]); } g.ell(sx + L * 0.16, sy + L * 0.36, 0, 2.5, 2.5, 2.5, c => [255, 235, 150]); }
   if (A.leaf) for (let i = 0; i < 9; i++) { const u0 = 0.12 + i * 0.09, top = i % 2 === 0, yy = Math.round((top ? topAt(u0) : -botAt(u0)) * L) + (top ? 2 : -2), x0 = Math.round(u0 * L), gc = [[120, 170, 40], [150, 190, 60], [200, 160, 40]][i % 3]; g.ell(x0, yy, 0, 3, 2, 1.2, gc); }
   const geo = g.geometry();
@@ -218,3 +219,51 @@ function buildFish(s, mods, L) {
   return { geo, L, len: L * (1 + tlen), glow: mods.map(m => MODS[m].glow).find(Boolean) || null, ray: false };
 }
 
+
+/* ================= hero models ================= */
+const HERO_FISH = {
+  nurse: { id: 'hero_nurse', c: '#a8906c', c2: '#e8dcc0', pt: 'belly', L: 84, glow: null },
+  sagekoi: { id: 'hero_sagekoi', c: '#f4e6c8', c2: '#e8a020', pt: 'patch', L: 66, glow: '#ffd24a' },
+  cleaner: { id: 'hero_cleaner', c: '#4aa0e8', c2: '#12161f', pt: 'hstripes', L: 58, glow: null },
+  dragoneel: { id: 'hero_dragoneel', c: '#2fb08a', c2: '#f0c030', pt: 'stripes', L: 92, glow: '#40ffb0' },
+};
+const _heroCache = {};
+function heroModel(kind) {
+  if (_heroCache[kind]) return _heroCache[kind];
+  let m;
+  if (HERO_FISH[kind]) { const h = HERO_FISH[kind]; m = buildFish({ id: h.id, c: h.c, c2: h.c2, pt: h.pt, t: 5, w: 'fresh', sh: 'slender' }, [], h.L); m.glow = h.glow; m.kind = 0; }
+  else if (kind === 'jelly') m = buildJelly(54);
+  else if (kind === 'octo') m = buildOcto(58);
+  else m = buildTurtle(70);
+  m.hero = kind; return (_heroCache[kind] = m);
+}
+function buildJelly(L) {
+  const g = new VGrid(0.04), R = L * 0.36;
+  g.ell(0, 0, 0, R, R * 0.78, R, (x, y, z, dx, dy, dz) => { const shell = dx * dx + dy * dy + dz * dz > 0.62 && y > -2; return shell ? mixC([185, 150, 255], [255, 190, 235], (dy + 1) * 0.5) : null; });
+  for (const e of [...g.m.values()]) { if (e[4] < -1) g.del(e[3], e[4], e[5]); }
+  for (let a = 0; a < 6.28; a += 0.5) g.set(Math.cos(a) * R * 0.5, R * 0.1, Math.sin(a) * R * 0.5, [255, 230, 255]);
+  g.ell(0, R * 0.25, 0, R * 0.22, R * 0.12, R * 0.22, [255, 170, 230]);
+  const r = rng('jelly');
+  for (let i = 0; i < 12; i++) { const a = i / 12 * 6.28, rr = R * 0.8, len = L * (0.8 + r() * 0.5); for (let k = 0; k <= len; k++) g.set(Math.cos(a) * rr * (1 - k / len * 0.5), -k, Math.sin(a) * rr * (1 - k / len * 0.5), mixC([255, 190, 245], [150, 120, 255], k / len)); }
+  for (let i = 0; i < 4; i++) { const a = i * 1.57 + 0.7, len = L * 0.6; for (let k = 0; k <= len; k++) { const rr = 2.5 * (1 - k / len * 0.6); g.ell(Math.cos(a) * 4, -k, Math.sin(a) * 4, rr, 1, rr, [255, 215, 255]); } }
+  const geo = g.geometry(); return { geo, L, kind: 1, glow: '#d8a0ff', len: L };
+}
+function buildOcto(L) {
+  const g = new VGrid(0.05), R = L * 0.2, body = [210, 74, 62], belly = [240, 150, 130];
+  g.ell(0, R * 1.5, 0, R * 1.05, R * 1.3, R, (x, y, z, dx, dy, dz) => mixC(body, [235, 100, 80], (dy + 1) * 0.3 + (hash(x + ',' + y + ',' + z) % 9 === 0 ? 0.15 : 0)));
+  for (const sg of [-1, 1]) { g.ell(R * 0.55, R * 1.6, sg * R * 0.85, 3, 3.4, 2.4, [250, 240, 200]); g.ell(R * 0.75, R * 1.6, sg * R * 0.95, 1.5, 2.4, 1.2, [10, 10, 14]); }
+  for (let i = 0; i < 8; i++) { const a = i / 8 * 6.28, len = L * 0.72; for (let k = 0; k <= len; k++) { const t = k / len, rad = (4.2 - t * 3.0), rr = R * 0.7 + t * L * 0.5, lift = Math.sin(t * 3.1) * -R * 0.3 - t * R * 0.2 + (t > 0.7 ? (t - 0.7) * R * 2 : 0), ca = a + Math.sin(t * 5 + i) * 0.35; g.ell(Math.cos(ca) * rr, lift + 2, Math.sin(ca) * rr, rad, rad * 0.8, rad, (x, y, z) => (y < lift + 1 && hash(x + ',' + z) % 4 === 0 ? belly : mixC(body, [180, 55, 50], t * 0.5))); } }
+  const geo = g.geometry(); geo.translate(0, 0, 0); return { geo, L, kind: 2, glow: null, len: L };
+}
+function buildTurtle(L) {
+  const g = new VGrid(0.05), green = [86, 138, 74], shell = [112, 92, 52];
+  g.ell(0, 0, 0, L * 0.3, L * 0.17, L * 0.25, (x, y, z, dx, dy, dz) => { const hx = (Math.floor((x + 40) / 6) + Math.floor((z + 40) / 6)) % 2; return dy > 0.15 ? shadeC(mixC(shell, [150, 124, 70], hx ? 0.5 : 0), dy * 0.1 - (hash(x + ',' + z) % 7 === 0 ? 0.1 : 0)) : [226, 208, 150]; });
+  for (const e of [...g.m.values()]) { if (e[4] < -L * 0.1 && hash('t' + e[3] + e[5]) % 2 === 0) { /* keep belly */ } }
+  g.ell(L * 0.37, L * 0.03, 0, L * 0.1, L * 0.08, L * 0.08, green); for (const sg of [-1, 1]) { g.ell(L * 0.42, L * 0.07, sg * L * 0.055, 2.2, 2.4, 1.8, [250, 245, 220]); g.ell(L * 0.44, L * 0.07, sg * L * 0.065, 1.2, 1.6, 1, [10, 10, 14]); }
+  for (const sg of [-1, 1]) {
+    for (let k = 0; k <= L * 0.34; k++) { const t = k / (L * 0.34), w = 7 * Math.sin(Math.min(1, t * 1.1 + 0.1) * 3.0) * (1 - t * 0.5) + 1; g.ell(L * (0.2 - t * 0.12), -L * 0.04 - t * 3, sg * (L * 0.2 + k), w * 0.9, 1.6, 2.2, green); }
+    for (let k = 0; k <= L * 0.16; k++) { const t = k / (L * 0.16); g.ell(-L * (0.2 + t * 0.06), -L * 0.04, sg * (L * 0.14 + k), 3.4 * (1 - t * 0.4), 1.4, 2, green); }
+  }
+  for (let k = 0; k < 10; k++) g.set(-L * 0.3 - k * 0.7, -2, 0, green);
+  const geo = g.geometry(); return { geo, L, kind: 3, glow: null, len: L };
+}

@@ -40,12 +40,42 @@ function wallArt(bg, w, h, salt) {
     for (let i = 0; i < 70; i++) { const hh = hash('star' + i); ctx.fillStyle = hh % 5 === 0 ? '#9ad1ff' : '#ffffff'; ctx.fillRect(hh % w, (hh >> 8) % h, 1, 1); }
     blob(w * 0.7, h * 0.35, 12, '#6a3fb5'); blob(w * 0.68, h * 0.33, 8, '#8f63d6'); ctx.fillStyle = '#c9a8ff'; ctx.fillRect(Math.round(w * 0.64), Math.round(h * 0.28), 3, 2);
   }
+  else if (bg === 'bg_stpat') {
+    ctx.drawImage(bandGradient(w, h, ['#bfe8ff', '#8fd8a0', '#4fb868', '#2f8f48', '#1d6a34']), 0, 0);
+    ['#e8403a', '#f08a2a', '#f4d83a', '#4cc060', '#4a8ae0', '#8a52c8'].forEach((c, i) => { ctx.fillStyle = c; for (let a = 0.05; a < Math.PI - 0.05; a += 0.012) ctx.fillRect(Math.round(w * 0.5 + Math.cos(a) * (w * 0.38 - i * 5)), Math.round(h * 0.78 - Math.sin(a) * (h * 0.7 - i * 5)), 3, 3); });
+    blob(w * 0.12, h * 0.8, 9, '#ffffff'); blob(w * 0.18, h * 0.78, 7, '#ffffff'); blob(w * 0.88, h * 0.8, 9, '#ffffff'); blob(w * 0.82, h * 0.78, 7, '#ffffff');
+    for (let i = 0; i < 18; i++) { const hh = hash('cl' + i); rect(hh % w, h - 8 - (hh >> 8) % 12, 3, 3, '#1d6a34'); rect((hh % w) + 1, h - 11 - (hh >> 8) % 12, 1, 1, '#9be8a0'); }
+  } else if (bg === 'bg_valentine') {
+    ctx.drawImage(bandGradient(w, h, ['#ffd6e4', '#ffaac4', '#f07a9c', '#c8406a', '#7a1f48']), 0, 0);
+    const heart = (cx, cy, r, c) => { ctx.fillStyle = c; for (let y = -r; y <= r; y++) for (let x = -r; x <= r; x++) { const X = x / r, Y = -y / r * 1.1; if (Math.pow(X * X + Y * Y - 1, 3) - X * X * Y * Y * Y <= 0) ctx.fillRect(Math.round(cx + x), Math.round(cy + y), 1, 1); } };
+    for (let i = 0; i < 9; i++) { const hh = hash('hb' + i); heart(hh % w, 12 + (hh >> 8) % (h - 30), 6 + hh % 6, ['#ff7aa0', '#ffd0e0', '#e0305a', '#ffa8c0'][i % 4]); }
+  } else if (bg === 'bg_spring') {
+    ctx.drawImage(bandGradient(w, h, ['#cfeeff', '#a8e0e8', '#8fd0b8', '#6ab890', '#3f8f66']), 0, 0);
+    for (let b = 0; b < 3; b++) { const x = w * (0.1 + b * 0.4); ctx.fillStyle = '#6a4a38'; for (let i = 0; i < h * 0.55; i++) ctx.fillRect(Math.round(x + Math.sin(i * 0.12 + b) * 6), i, 3, 1); for (let i = 0; i < 26; i++) { const hh = hash('bl' + b + i); blob(x + (hh % 50) - 25, 6 + (hh >> 8) % (h * 0.5), 3 + hh % 3, ['#ffb0d0', '#ffd0e4', '#ff8ab8', '#ffe8f0'][i % 4]); } }
+  } else if (bg === 'bg_summer') {
+    ctx.drawImage(bandGradient(w, h, ['#ffe08a', '#ffb060', '#ff8a60', '#4ab0d8', '#2a7ab8']), 0, 0);
+    blob(w * 0.5, h * 0.36, 16, '#fff2b0'); blob(w * 0.5, h * 0.36, 12, '#ffe070');
+    rect(0, h * 0.84, w, h * 0.16, '#f0d890'); for (let i = 0; i < 40; i++) rect(hash('sa' + i) % w, h * 0.86 + hash('sb' + i) % 12, 2, 1, '#d8b86a');
+    [0.15, 0.82].forEach(px => { ctx.fillStyle = '#6a4a2a'; for (let i = 0; i < 40; i++) ctx.fillRect(Math.round(w * px + Math.sin(i * 0.12) * 3), h * 0.84 - i, 3, 1); for (let k = 0; k < 6; k++) for (let i = 0; i < 18; i++) { ctx.fillStyle = '#2f8f48'; ctx.fillRect(Math.round(w * px + Math.cos(k * 1.05) * i * 0.9), Math.round(h * 0.84 - 40 + Math.sin(k * 1.05) * i * 0.4 + i * i * 0.012), 3, 2); } });
+  } else if (bg === 'bg_halloween') {
+    ctx.drawImage(bandGradient(w, h, ['#3a1858', '#2a1245', '#1a0c30', '#0e0620']), 0, 0);
+    blob(w * 0.72, h * 0.3, 15, '#fff0c0'); blob(w * 0.72 + 4, h * 0.3 - 3, 3, '#e8d090'); blob(w * 0.72 - 5, h * 0.3 + 4, 2, '#e8d090');
+    for (let i = 0; i < 40; i++) rect(hash('hs' + i) % w, hash('ht' + i) % (h * 0.6), 1, 1, '#ffffff');
+    [0.12, 0.45, 0.9].forEach((px, k) => { ctx.fillStyle = '#0a0414'; for (let i = 0; i < h * 0.55; i++) ctx.fillRect(Math.round(w * px + Math.sin(i * 0.1 + k) * 3), h - i, 3 + (i < 12 ? 2 : 0), 1); for (let j = 0; j < 5; j++) { const bx = w * px, by = h - h * 0.35 - j * 8; for (let i = 0; i < 16; i++) ctx.fillRect(Math.round(bx + (j % 2 ? i : -i)), Math.round(by - i * 0.5), 2, 1); } });
+    for (let i = 0; i < 4; i++) { const bx = (hash('bt' + i) % w), by = 10 + (hash('bu' + i) % 30); ctx.fillStyle = '#0a0414'; ctx.fillRect(bx - 4, by, 3, 2); ctx.fillRect(bx + 2, by, 3, 2); ctx.fillRect(bx - 1, by - 1, 3, 3); }
+  } else if (bg === 'bg_winter') {
+    ctx.drawImage(bandGradient(w, h, ['#16285a', '#243a78', '#3a5a98', '#8ab0d8', '#e8f0f8']), 0, 0);
+    for (let i = 0; i < 5; i++) { const px = w * (0.08 + i * 0.22); for (let k = 0; k < 4; k++) { ctx.fillStyle = '#12503a'; for (let y = 0; y < 10; y++) ctx.fillRect(Math.round(px - (y + 4) * (1 + k * 0.1)), h * 0.5 + k * 11 + y, Math.round((y + 4) * 2 * (1 + k * 0.1)), 1); ctx.fillStyle = '#f0f8ff'; ctx.fillRect(Math.round(px - 3), h * 0.5 + k * 11, 6, 1); } }
+    rect(0, h * 0.9, w, h * 0.1, '#f0f6ff'); for (let i = 0; i < 70; i++) rect(hash('sn' + i) % w, hash('sm' + i) % h, 1, 1, '#ffffff');
+    rect(w * 0.55, h * 0.56, 22, 14, '#a8632f'); ctx.fillStyle = '#c0303a'; for (let y = 0; y < 8; y++) ctx.fillRect(w * 0.55 - y, h * 0.56 - 8 + y, 22 + y * 2, 1); rect(w * 0.55 + 8, h * 0.56 + 4, 5, 10, '#ffd870');
+  }
   return base;
 }
 
 
 /* ===== WebGL / three.js service ===== */
 const TANK_DIM3 = { starter: [144, 108, 96], medium: [180, 135, 108], large: [225, 165, 123], huge: [285, 210, 138], reef_s: [180, 135, 108], reef_m: [225, 165, 123], reef_l: [285, 210, 138], reef_g: [345, 240, 153] };
+EVENTS.forEach(e => (TANK_DIM3['ev_' + e.id] = [210, 156, 114]));
 const DECOR_POS = [[0.22, 0.26], [0.72, 0.2], [0.26, 0.74], [0.74, 0.7]];
 const FLOOR_Y = 3;
 
@@ -82,7 +112,7 @@ function fitOrtho(cam, box, aspect, dir, margin) {
 }
 
 /* ---- materials with vertex-shader animation ---- */
-const FX_FLAGS = { neon: [3, 0], magma: [3, 1], glitch: [3, 2], diamond: [3, 3], phoenix: [4, 0], robot: [4, 1], ruby: [4, 2], emerald: [4, 2], sapphire: [4, 2], zombie: [4, 3], pearl: [0, 0], golden: [0, 1], fiery: [0, 2], frosty: [0, 3], glowing: [1, 0], electric: [1, 1], toxic: [1, 2], aurora: [1, 3], cosmic: [2, 0], prismatic: [2, 1], shadow: [2, 2], celestial: [2, 3] };
+const FX_FLAGS = { lucky: [4, 2], potgold: [0, 1], lovestruck: [0, 0], cupid: [0, 1], sunkissed: [0, 1], splash: [0, 3], pumpkinlit: [3, 0], festive: [3, 0], neon: [3, 0], magma: [3, 1], glitch: [3, 2], diamond: [3, 3], phoenix: [4, 0], robot: [4, 1], ruby: [4, 2], emerald: [4, 2], sapphire: [4, 2], zombie: [4, 3], pearl: [0, 0], golden: [0, 1], fiery: [0, 2], frosty: [0, 3], glowing: [1, 0], electric: [1, 1], toxic: [1, 2], aurora: [1, 3], cosmic: [2, 0], prismatic: [2, 1], shadow: [2, 2], celestial: [2, 3] };
 const FX_GLSL = `
   vec3 vox = floor(vP - vN * 0.25 + 0.5); float hv = h31(vox);
   if (uF1.x > 0.5) { float sw = sin(vP.x * 0.16 + vP.y * 0.1 + uTime * 1.6); float bnd = smoothstep(0.5, 1.0, sw); vec3 ir = 0.5 + 0.5 * cos(6.2831 * (vec3(0.0, 0.33, 0.67) + vP.x * 0.03 + uTime * 0.3)); diffuseColor.rgb = mix(diffuseColor.rgb, ir, 0.55 * bnd); totalEmissiveRadiance += ir * 0.2 * bnd + vec3(0.02); }
@@ -112,23 +142,29 @@ function fishMaterial(model, mods) {
   const m = new THREE.MeshLambertMaterial({ vertexColors: true });
   const F1 = new THREE.Vector4(0, 0, 0, 0), F2 = new THREE.Vector4(0, 0, 0, 0), F3 = new THREE.Vector4(0, 0, 0, 0), F4 = new THREE.Vector4(0, 0, 0, 0), F5 = new THREE.Vector4(0, 0, 0, 0), arr = [F1, F2, F3, F4, F5], comp = ['x', 'y', 'z', 'w'];
   (mods || []).forEach(md => { const f = FX_FLAGS[md]; if (f) arr[f[0]][comp[f[1]]] = 1; });
-  m.userData.u = { uPhase: { value: 0 }, uAmp: { value: 0.3 }, uLen: { value: model.L }, uTime: { value: 0 }, uF1: { value: F1 }, uF2: { value: F2 }, uF3: { value: F3 }, uF4: { value: F4 }, uF5: { value: F5 } };
+  m.userData.u = { uPhase: { value: 0 }, uAmp: { value: 0.3 }, uLen: { value: model.L }, uKind: { value: model.kind || 0 }, uTime: { value: 0 }, uF1: { value: F1 }, uF2: { value: F2 }, uF3: { value: F3 }, uF4: { value: F4 }, uF5: { value: F5 } };
   m.onBeforeCompile = sh => {
     Object.assign(sh.uniforms, m.userData.u);
-    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nuniform float uPhase;uniform float uAmp;uniform float uLen;uniform float uTime;uniform vec4 uF4;varying vec3 vP;varying vec3 vN;')
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nuniform float uPhase;uniform float uAmp;uniform float uLen;uniform float uKind;uniform float uTime;uniform vec4 uF4;varying vec3 vP;varying vec3 vN;')
       .replace('#include <begin_vertex>', `#include <begin_vertex>
         vP = position; vN = normal;
         { float gr = fract(sin(dot(vec3(floor(position.y * 0.5), floor(uTime * 7.0), 3.0), vec3(12.9898, 78.233, 37.719))) * 43758.5453); if (uF4.z > 0.5 && gr > 0.93) transformed.x += (gr - 0.93) * 70.0; }
+        if (uKind > 2.5) { float fz = abs(transformed.z) - 0.12 * uLen; if (fz > 0.0) transformed.y += sin(uPhase) * fz * 0.45; }
+        else if (uKind > 1.5) { float rr = length(transformed.xz); float ww = smoothstep(0.1 * uLen, 0.6 * uLen, rr); transformed.y += sin(uPhase + rr * 0.18) * ww * uLen * 0.06; transformed.xz *= 1.0 + sin(uPhase * 0.5) * 0.02; }
+        else if (uKind > 0.5) { float bb = smoothstep(-0.15 * uLen, 0.2 * uLen, transformed.y); transformed.xz *= 1.0 + 0.12 * sin(uPhase) * bb; float tl = clamp(-transformed.y / uLen, 0.0, 1.0); transformed.x += sin(uPhase * 0.8 - transformed.y * 0.25) * tl * 3.0; transformed.z += cos(uPhase * 0.7 - transformed.y * 0.22) * tl * 3.0; transformed.y += sin(uPhase) * 0.8 * bb; }
+        else {
         float k = clamp((-0.02 * uLen - transformed.x) / (0.85 * uLen), 0.0, 1.0);
         transformed.z += sin(uPhase + transformed.x * 0.3) * uAmp * k * k * uLen * 0.17;
         float hd = clamp(transformed.x / (0.6 * uLen), 0.0, 1.0);
-        transformed.z -= sin(uPhase) * uAmp * hd * hd * uLen * 0.035;`);
+        transformed.z -= sin(uPhase) * uAmp * hd * hd * uLen * 0.035;
+        }`);
     sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vP;varying vec3 vN;uniform float uTime;uniform vec4 uF1;uniform vec4 uF2;uniform vec4 uF3;uniform vec4 uF4;uniform vec4 uF5;\nfloat h31(vec3 p){ return fract(sin(dot(p, vec3(12.9898, 78.233, 37.719))) * 43758.5453); }')
       .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n' + FX_GLSL);
   };
   m.customProgramCacheKey = () => 'fishfx';
-  if ((mods || []).includes('ghost')) { m.transparent = true; m.opacity = 0.55; m.depthWrite = false; }
-  if (model.glow) m.emissive = new THREE.Color(model.glow).multiplyScalar(0.05);
+  if (model.kind === 1) { m.transparent = true; m.opacity = 0.82; m.depthWrite = false; }
+  if ((mods || []).includes('ghost') || (mods || []).includes('haunted')) { m.transparent = true; m.opacity = 0.55; m.depthWrite = false; }
+  if (model.glow) m.emissive = new THREE.Color(model.glow).multiplyScalar(model.kind === 1 ? 0.35 : 0.06);
   return m;
 }
 function swayMaterial(h, amp, seed) {
@@ -159,6 +195,11 @@ function fxTexture(kind) {
   else if (kind === 'star') { x.translate(32, 32); const g = x.createRadialGradient(0, 0, 0, 0, 0, 12); g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = g; x.fillRect(-32, -32, 64, 64); x.fillStyle = '#fff'; for (let i = 0; i < 4; i++) { x.rotate(Math.PI / 2); x.beginPath(); x.moveTo(-2, 0); x.lineTo(0, -30); x.lineTo(2, 0); x.closePath(); x.fill(); } }
   else if (kind === 'flake') { x.translate(32, 32); x.strokeStyle = '#fff'; x.lineWidth = 3; for (let i = 0; i < 6; i++) { x.rotate(Math.PI / 3); x.beginPath(); x.moveTo(0, 0); x.lineTo(0, -26); x.moveTo(0, -14); x.lineTo(7, -20); x.moveTo(0, -14); x.lineTo(-7, -20); x.stroke(); } }
   else if (kind === 'ring') { x.strokeStyle = '#fff'; x.lineWidth = 5; x.beginPath(); x.arc(32, 32, 22, 0, 7); x.stroke(); x.fillStyle = 'rgba(255,255,255,.25)'; x.fill(); }
+  else if (kind === 'clover') { x.fillStyle = '#fff'; [[24, 24], [40, 24], [24, 40], [40, 40]].forEach(([a, b]) => { x.beginPath(); x.arc(a, b, 9, 0, 7); x.fill(); }); x.fillRect(31, 36, 3, 22); }
+  else if (kind === 'heart') { x.fillStyle = '#fff'; x.beginPath(); x.moveTo(32, 56); x.bezierCurveTo(4, 36, 8, 8, 32, 22); x.bezierCurveTo(56, 8, 60, 36, 32, 56); x.fill(); }
+  else if (kind === 'petal') { x.fillStyle = '#fff'; x.translate(32, 32); x.rotate(0.6); x.beginPath(); x.ellipse(0, 0, 9, 18, 0, 0, 7); x.fill(); }
+  else if (kind === 'coin') { x.fillStyle = '#fff'; x.beginPath(); x.arc(32, 32, 20, 0, 7); x.fill(); x.fillStyle = '#000'; x.globalAlpha = 0.35; x.beginPath(); x.arc(32, 32, 12, 0, 7); x.fill(); }
+  else if (kind === 'drop') { x.fillStyle = '#fff'; x.beginPath(); x.moveTo(32, 6); x.bezierCurveTo(52, 34, 50, 56, 32, 56); x.bezierCurveTo(14, 56, 12, 34, 32, 6); x.fill(); }
   else if (kind === 'square') { x.fillStyle = '#fff'; x.fillRect(16, 16, 32, 32); }
   else if (kind === 'bolt') { x.strokeStyle = '#fff'; x.lineWidth = 5; x.lineJoin = 'miter'; x.beginPath(); x.moveTo(38, 4); x.lineTo(22, 32); x.lineTo(38, 32); x.lineTo(24, 60); x.stroke(); }
   const t = new THREE.CanvasTexture(c); return (_fxTex[kind] = t);
@@ -190,6 +231,18 @@ const FX_DEF = {
   glitch: { tex: 'square', col: [0.2, 1, 0.9], n: 10, size: 9, kind: 'flash', rainbow: true },
   diamond: { tex: 'star', col: [0.9, 0.97, 1], n: 16, size: 15, kind: 'twinkle', rainbow: true },
   phoenix: { tex: 'soft', col: [1, 0.5, 0.1], n: 24, size: 16, kind: 'rise', speed: 0.9, halo: true },
+  lucky: { tex: 'clover', col: [0.4, 1, 0.55], n: 9, size: 14, kind: 'fall', speed: 0.35 },
+  potgold: { tex: 'coin', col: [1, 0.82, 0.25], n: 12, size: 11, kind: 'fall', speed: 0.7 },
+  lovestruck: { tex: 'heart', col: [1, 0.4, 0.6], n: 8, size: 14, kind: 'rise', speed: 0.6 },
+  cupid: { tex: 'star', col: [1, 0.85, 0.85], n: 10, size: 13, kind: 'orbit', halo: true },
+  blossom: { tex: 'petal', col: [1, 0.7, 0.85], n: 12, size: 12, kind: 'fall', speed: 0.5 },
+  dyed: { tex: 'soft', col: [1, 1, 1], n: 10, size: 11, kind: 'twinkle', rainbow: true },
+  sunkissed: { tex: 'star', col: [1, 0.85, 0.4], n: 9, size: 12, kind: 'twinkle' },
+  splash: { tex: 'drop', col: [0.5, 0.82, 1], n: 12, size: 11, kind: 'rise', speed: 0.5 },
+  pumpkinlit: { tex: 'soft', col: [1, 0.5, 0.1], n: 10, size: 10, kind: 'rise', speed: 0.45, halo: true },
+  haunted: { tex: 'soft', col: [0.7, 0.55, 1], n: 12, size: 20, kind: 'orbit' },
+  candycane: { tex: 'star', col: [1, 0.5, 0.55], n: 8, size: 11, kind: 'twinkle' },
+  festive: { tex: 'star', col: [1, 1, 1], n: 12, size: 12, kind: 'twinkle', rainbow: true },
   celestial: { tex: 'star', col: [1, 0.95, 0.7], n: 10, size: 14, kind: 'rise', speed: 0.35, halo: true },
 };
 class FishFX {
@@ -255,8 +308,10 @@ function buildTankGroup(tank, mini) {
   grp.add(new THREE.Mesh(floorGeometry(W, D, skin.gravel), plainMat()));
   // walls with background art
   const tex = (w, h) => { const cv = wallArt(tank.bg, Math.round(w * 2), Math.round(h * 2), salt), t = new THREE.CanvasTexture(cv); t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestFilter; t.encoding = THREE.sRGBEncoding; t.generateMipmaps = false; return t; };
-  const w1 = new THREE.Mesh(new THREE.PlaneGeometry(W, WH), new THREE.MeshBasicMaterial({ map: tex(W, WH) })); w1.position.set(W / 2, WH / 2, 0); grp.add(w1);
-  const w2 = new THREE.Mesh(new THREE.PlaneGeometry(D, WH), new THREE.MeshBasicMaterial({ map: tex(D, WH), color: 0xbfc8d8 })); w2.rotation.y = Math.PI / 2; w2.position.set(0, WH / 2, D / 2); grp.add(w2);
+  const artZ = tex(W, WH), artX = tex(D, WH), mkArt = (map, col) => new THREE.Mesh(new THREE.PlaneGeometry(map === artZ ? W : D, WH), new THREE.MeshBasicMaterial({ map, color: col, side: THREE.DoubleSide }));
+  const wz0 = mkArt(artZ, 0xffffff); wz0.position.set(W / 2, WH / 2, 0); const wzD = mkArt(artZ, 0xffffff); wzD.position.set(W / 2, WH / 2, D);
+  const wx0 = mkArt(artX, 0xbfc8d8); wx0.rotation.y = Math.PI / 2; wx0.position.set(0, WH / 2, D / 2); const wxW = mkArt(artX, 0xbfc8d8); wxW.rotation.y = Math.PI / 2; wxW.position.set(W, WH / 2, D / 2);
+  [wz0, wzD, wx0, wxW].forEach(m => grp.add(m));
   // frame
   const fc = new THREE.Color(skin.frame), hi = fc.clone().multiplyScalar(1.6), lo = fc.clone().multiplyScalar(0.55);
   grp.add(box(W + 8, 8, D + 8, W / 2, -8, D / 2, lo)); grp.add(box(W + 6, 2, D + 6, W / 2, -3.2, D / 2, fc));
@@ -265,8 +320,10 @@ function buildTankGroup(tank, mini) {
   rim(W + 6, 3, W / 2, -1.5); rim(W + 6, 3, W / 2, D + 1.5); rim(3, D + 6, -1.5, D / 2); rim(3, D + 6, W + 1.5, D / 2);
   // glass + water
   const glass = { color: 0xcfeaff, transparent: true, opacity: 0.045, side: THREE.DoubleSide, depthWrite: false };
-  const g1 = new THREE.Mesh(new THREE.PlaneGeometry(W, WH), new THREE.MeshBasicMaterial(glass)); g1.position.set(W / 2, WH / 2, D); g1.renderOrder = 6; grp.add(g1);
-  const g2 = new THREE.Mesh(new THREE.PlaneGeometry(D, WH), new THREE.MeshBasicMaterial(glass)); g2.rotation.y = Math.PI / 2; g2.position.set(W, WH / 2, D / 2); g2.renderOrder = 6; grp.add(g2);
+  const mkGlass = (w, rotY, x, z) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, WH), new THREE.MeshBasicMaterial(glass)); m.rotation.y = rotY; m.position.set(x, WH / 2, z); m.renderOrder = 6; grp.add(m); return m; };
+  const gz0 = mkGlass(W, 0, W / 2, 0), gzD = mkGlass(W, 0, W / 2, D), gx0 = mkGlass(D, Math.PI / 2, 0, D / 2), gxW = mkGlass(D, Math.PI / 2, W, D / 2);
+  out.orient = dir => { const farX0 = dir.x > 0, farZ0 = dir.z > 0; wx0.visible = farX0; gx0.visible = !farX0; wxW.visible = !farX0; gxW.visible = farX0; wz0.visible = farZ0; gz0.visible = !farZ0; wzD.visible = !farZ0; gzD.visible = farZ0; };
+  out.orient(ISO_DIR);
   const wm = new THREE.Mesh(new THREE.BoxGeometry(W, WTR, D), new THREE.MeshBasicMaterial({ color: salt ? 0x2ad0e0 : 0x3aa8e8, transparent: true, opacity: 0.13, depthWrite: false, side: THREE.FrontSide })); wm.position.set(W / 2, WTR / 2, D / 2); wm.renderOrder = 5; grp.add(wm);
   const sf = new THREE.Mesh(new THREE.PlaneGeometry(W, D, mini ? 4 : 28, mini ? 3 : 20), new THREE.MeshBasicMaterial({ color: 0xcdf3ff, transparent: true, opacity: 0.07, depthWrite: false, side: THREE.DoubleSide })); sf.rotation.x = -Math.PI / 2; sf.position.set(W / 2, WTR, D / 2); sf.renderOrder = 7; grp.add(sf); out.surface = sf;
   out.base = sf.geometry.attributes.position.array.slice();
@@ -280,7 +337,7 @@ function buildTankGroup(tank, mini) {
 /* ---- zoom & pan (mouse wheel, drag, double-click) ---- */
 const _views = {};
 class ZoomPan {
-  constructor(scene, key) { this.s = scene; this.v = _views[key] || (_views[key] = { zoom: 1, px: 0, py: 0 }); this.moved = false; }
+  constructor(scene, key) { this.s = scene; this.v = _views[key] || (_views[key] = { zoom: 1, px: 0, py: 0, yaw: 0, tilt: 0.78 }); this.moved = false; }
   capture() { const c = this.s.cam; this.b = { cx: (c.left + c.right) / 2, cy: (c.top + c.bottom) / 2, hw: (c.right - c.left) / 2, hh: (c.top - c.bottom) / 2 }; this.apply(); }
   apply() {
     const v = this.v, b = this.b, c = this.s.cam, hw = b.hw / v.zoom, hh = b.hh / v.zoom, mx = Math.max(0, b.hw - hw) + b.hw * 0.25, my = Math.max(0, b.hh - hh) + b.hh * 0.25;
@@ -304,8 +361,8 @@ class ZoomPan {
 
 /* ---- a tank scene on a 2D canvas ---- */
 class TankScene3D {
-  constructor(canvas, tank, mini, onFish) {
-    this.cv = canvas; this.ctx = canvas.getContext('2d'); this.tank = tank; this.mini = mini; this.onFish = onFish;
+  constructor(canvas, tank, mini, onFish, onHero) {
+    this.onHero = onHero; this.cv = canvas; this.ctx = canvas.getContext('2d'); this.tank = tank; this.mini = mini; this.onFish = onFish;
     this.scene = new THREE.Scene(); addLights(this.scene);
     this.cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 1, 1600);
     this.fish = new Map(); this.decor = []; this.bubbles = []; this.t = Math.random() * 10; this.acc = 0; this.key = ''; this.dkey = '';
@@ -315,26 +372,48 @@ class TankScene3D {
     canvas.style.width = mini ? '100%' : cssW + 'px'; canvas.style.height = mini ? 'auto' : cssH + 'px';
     this.ray = new THREE.Raycaster(); this.mouse = new THREE.Vector2();
     if (!mini && onFish) {
-      canvas.addEventListener('click', e => { if (this.zp && this.zp.moved) return; const f = this.pick(e); if (f) onFish(f); });
-      let last = 0; canvas.addEventListener('mousemove', e => { const n = performance.now(); if (n - last < 60) return; last = n; const f = this.pick(e); canvas.style.cursor = f ? 'pointer' : 'default'; canvas.title = f && getFish(f) ? fishName(getFish(f)) : ''; });
+      canvas.addEventListener('click', e => { if (this.zp && this.zp.moved) return; const f = this.pick(e); if (f && f.fishId) onFish(f.fishId); else if (f && f.heroId && this.onHero) this.onHero(f.heroId); });
+      let last = 0; canvas.addEventListener('mousemove', e => { const n = performance.now(); if (n - last < 60) return; last = n; const f = this.pick(e); canvas.style.cursor = f ? 'pointer' : 'grab'; canvas.title = f ? (f.fishId && getFish(f.fishId) ? getFish(f.fishId).name + ' · ' + fishName(getFish(f.fishId)) : f.heroId ? HERO[(S.heroes.find(h => h.id === f.heroId) || {}).kind].n : '') : ''; });
     }
     this.rebuildStatic();
   }
   pick(e) {
     const r = this.cv.getBoundingClientRect(); this.mouse.set((e.clientX - r.left) / r.width * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
     this.ray.setFromCamera(this.mouse, this.cam);
-    const meshes = [...this.fish.values()].map(f => f.mesh), hit = this.ray.intersectObjects(meshes, false)[0];
-    return hit ? hit.object.userData.fishId : null;
+    const meshes = [...this.fish.values()].map(f => f.mesh).concat(this.hero ? [this.hero.mesh] : []), hit = this.ray.intersectObjects(meshes, false)[0];
+    return hit ? hit.object.userData : null;
   }
   rebuildStatic() {
     if (this.stat) this.scene.remove(this.stat.grp);
     this.stat = buildTankGroup(this.tank, this.mini); this.scene.add(this.stat.grp);
     ({ W: this.W, D: this.D, WH: this.WH, WTR: this.WTR } = this.stat);
     const box3 = new THREE.Box3(new THREE.Vector3(-6, -14, -6), new THREE.Vector3(this.W + 6, this.WH + 5, this.D + 6));
-    fitOrtho(this.cam, box3, this.cv.width / this.cv.height, ISO_DIR, this.mini ? 0.03 : 0.025);
-    if (!this.mini) { if (!this.zp) { this.zp = new ZoomPan(this, 'tank' + this.tank.id); this.zp.bind(this.cv); } this.zp.capture(); }
+    this.box3 = box3;
+    if (!this.mini && !this.zp) { this.zp = new ZoomPan(this, 'tank' + this.tank.id); this.zp.bind(this.cv); this.yawCur = this.zp.v.yaw * Math.PI / 2; this.tiltCur = this.zp.v.tilt; }
+    this.refit();
     this.key = this.tank.type + '|' + this.tank.bg + '|' + this.tank.skin;
     this.fish.forEach(f => { this.scene.remove(f.group); }); this.fish.clear(); this.dkey = '';
+  }
+  camDir() { const a = Math.PI / 4 + (this.yawCur || 0), h = Math.SQRT2; return new THREE.Vector3(h * Math.cos(a), this.tiltCur || 0.78, h * Math.sin(a)).normalize(); }
+  refit() { const dir = this.camDir(); fitOrtho(this.cam, this.box3, this.cv.width / this.cv.height, dir, this.mini ? 0.03 : 0.025); this.stat.orient(dir); if (this.zp) this.zp.capture(); }
+  stepCamera(dt) {
+    if (!this.zp) return; const v = this.zp.v, ty = v.yaw * Math.PI / 2;
+    if (Math.abs(ty - this.yawCur) > 0.002 || Math.abs(v.tilt - this.tiltCur) > 0.002) { const k = 1 - Math.exp(-dt * 7); this.yawCur += (ty - this.yawCur) * k; this.tiltCur += (v.tilt - this.tiltCur) * k; this.refit(); }
+  }
+  photo() {
+    const c = document.createElement('canvas'); c.width = this.cv.width; c.height = this.cv.height; const x = c.getContext('2d'), g = x.createRadialGradient(c.width / 2, c.height * 0.3, 10, c.width / 2, c.height * 0.4, c.width * 0.7); g.addColorStop(0, '#14385a'); g.addColorStop(1, '#08111d'); x.fillStyle = g; x.fillRect(0, 0, c.width, c.height); x.drawImage(this.cv, 0, 0);
+    c.toBlob(b => { const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = this.tank.name.replace(/\W+/g, '-') + '.png'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); });
+  }
+  syncHero() {
+    const h = S.heroes.find(x => x.tank === this.tank.id);
+    if (!h) { if (this.hero) { this.scene.remove(this.hero.group); this.hero.mat.dispose(); this.hero = null; } return; }
+    if (this.hero && this.hero.id === h.id) return;
+    if (this.hero) { this.scene.remove(this.hero.group); this.hero.mat.dispose(); }
+    const model = heroModel(h.kind), mat = fishMaterial(model, []), mesh = new THREE.Mesh(model.geo, mat), group = new THREE.Group();
+    mesh.userData.heroId = h.id; group.add(mesh); this.scene.add(group);
+    const st = { x: this.W * 0.5, z: this.D * 0.5, y: this.WTR * 0.5, yaw: 0, pitch: 0, vx: 0, vy: 0, vz: 0, tx: 0, ty: 0, tz: 0, ph: 0, spd: model.L * 0.28, wait: 0, burst: 1 };
+    st.tx = st.x; st.ty = st.y; st.tz = st.z; this.retarget(st, model.L);
+    this.hero = { id: h.id, group, mesh, mat, model, st, f: { g: 1 }, kind: h.kind };
   }
   syncDecor() {
     const k = this.tank.slots.join(',');
@@ -376,7 +455,7 @@ class TankScene3D {
     s.burst = 0.55 + Math.random() * 0.9; s.wait = Math.random() < 0.15 ? 0.4 + Math.random() * 1.4 : 0;
   }
   step(dt) {
-    const arr = [...this.fish.values()];
+    const arr = [...this.fish.values()].concat(this.hero ? [this.hero] : []);
     for (const o of arr) {
       const s = o.st, L = o.model.L, dx = s.tx - s.x, dy = (s.ty - s.y) * 1.6, dz = s.tz - s.z, d = Math.hypot(dx, dy, dz);
       let vx = 0, vy = 0, vz = 0;
@@ -401,15 +480,16 @@ class TankScene3D {
       const gr = o.f.g >= 1 ? 1 : o.f.g, sc = 0.5 + 0.5 * Math.min(1, gr);
       o.group.position.set(s.x, s.y + Math.sin(s.ph * 0.5) * 0.4, s.z); o.group.rotation.y = s.yaw; o.group.rotation.x = Math.sin(s.ph * 0.5) * 0.03;
       o.mesh.rotation.z = s.pitch; o.group.scale.setScalar(sc);
-      o.mat.userData.u.uPhase.value = s.ph; o.mat.userData.u.uTime.value = this.t; if (o.fx) o.fx.update(dt, L, this.fxScale); o.mat.userData.u.uAmp.value = 0.28 + Math.min(0.7, (sp + Math.abs(s.vy)) / (L * 1.2));
+      o.mat.userData.u.uPhase.value = s.ph; o.mat.userData.u.uTime.value = this.t; if (o.fx) o.fx.update(dt, L, this.fxScale);
+      if (o === this.hero && (o.model.kind === 1 || o.model.kind === 2)) { o.group.rotation.y = s.ph * 0.05; o.mesh.rotation.z = 0; } o.mat.userData.u.uAmp.value = 0.28 + Math.min(0.7, (sp + Math.abs(s.vy)) / (L * 1.2));
     }
   }
   frame(dtReal) {
     if (!GL.init()) { const c = this.ctx; c.fillStyle = '#9fb3c8'; c.font = '16px sans-serif'; c.textAlign = 'center'; c.fillText('WebGL is required to display the aquarium', this.cv.width / 2, this.cv.height / 2); return; }
     if (this.key !== this.tank.type + '|' + this.tank.bg + '|' + this.tank.skin) this.rebuildStatic();
     this.fxScale = this.cv.height / 700;
-    this.syncDecor(); this.syncFish();
-    const dt = Math.min(0.05, dtReal); this.t += dt;
+    this.syncDecor(); this.syncFish(); this.syncHero();
+    const dt = Math.min(0.05, dtReal); this.t += dt; this.stepCamera(dt);
     this.step(dt);
     for (const d of this.decor) { if (d.userData.sway && d.userData.sway.userData.mat) d.userData.sway.userData.mat.userData.u.uTime.value = this.t; if (d.userData.id === 'bubbles' && Math.random() < dt * 9) this.bubbles.push({ x: d.position.x + 16 + (Math.random() - 0.5) * 3, y: d.position.y + 11, z: d.position.z + 6 + (Math.random() - 0.5) * 3, vy: 14 + Math.random() * 10 }); }
     if (Math.random() < dt * (this.mini ? 1.5 : 4)) this.bubbles.push({ x: 8 + Math.random() * (this.W - 16), y: FLOOR_Y + 2, z: 8 + Math.random() * (this.D - 16), vy: 9 + Math.random() * 8 });
@@ -429,9 +509,9 @@ class TankScene3D {
 
 const Scenes = {
   list: [], running: false, last: 0, n: 0,
-  bind(onFish) {
+  bind(onFish, onHero) {
     this.list.forEach(s => s.dispose());
-    this.list = [...document.querySelectorAll('canvas.tankscene')].map(cv => { const t = getTank(cv.dataset.tank); return t ? new TankScene3D(cv, t, cv.dataset.mini === '1', onFish) : null; }).filter(Boolean);
+    this.list = [...document.querySelectorAll('canvas.tankscene')].map(cv => { const t = getTank(cv.dataset.tank); return t ? new TankScene3D(cv, t, cv.dataset.mini === '1', onFish, onHero) : null; }).filter(Boolean);
     document.querySelectorAll('canvas.storescene').forEach(cv => { if (typeof StoreScene !== 'undefined') this.list.push(new StoreScene(cv, onFish, () => { UI.modal = { type: 'storeAdd' }; render(); })); });
     if (!this.running) { this.running = true; requestAnimationFrame(t => Scenes.loop(t)); }
   },
@@ -480,4 +560,9 @@ function tankIcon(typeId, w) {
   const fake = { id: 'icon', type: typeId, bg: null, skin: 'classic', slots: [null, null, null, null] }, s = w * 2;
   const url = renderThumb('t' + typeId + s, s, s, () => buildTankGroup(fake, true).grp, ISO_DIR, 0.04);
   return `<img src="${url}" style="width:${w}px;height:${w}px;object-fit:contain" alt="" draggable="false">`;
+}
+
+function heroThumb(kind, px) {
+  const h = Math.round(px * 0.8), url = renderThumb('hero' + kind + px, px, h, () => { const mdl = heroModel(kind), mat = fishMaterial(mdl, []); mat.userData.u.uTime.value = 2.3; mat.userData.u.uAmp.value = 0.1; const g = new THREE.Group(); g.add(new THREE.Mesh(mdl.geo, mat)); return g; }, FISH_DIR, 0.05);
+  return `<img src="${url}" style="width:${px}px;height:auto" alt="" draggable="false">`;
 }

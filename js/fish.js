@@ -71,8 +71,13 @@ const ARCHS = {
   hammer:    { big: 1.3, r: 4.6, pm: 0.55, ped: 0.25, top: 0.5, tail: T('lunate', 0.34, 0.3), dor: [F('tri', 0.32, 0.58, 0.3, 0.35)], anal: F('tri', 0.12, 0.24, 0.08, 0.4), pelv: { u: 0.48, len: 0.08 }, pect: { u: 0.68, len: 0.28, wide: 1 }, eye: { u: 0.97, r: 0.035 }, hammer: 1 },
   grouper:   { r: 1.85, pm: 0.52, ped: 0.2, top: 0.5, tail: T('round', 0.3, 0.24), dor: [F('spiny', 0.25, 0.8, 0.14, 0.5)], anal: F('sail', 0.2, 0.5, 0.1, 0.5), pelv: { u: 0.6, len: 0.12 }, pect: { u: 0.7, len: 0.17 }, eye: { u: 0.85, r: 0.05 }, bigmouth: 1, scales: 1 },
   oarfish:   { big: 1.5, r: 8, pm: 0.6, ped: 0.45, top: 0.5, tail: T('round', 0.1, 0.07), dor: [F('ribbon', 0.0, 0.95, 0.06, 0.5)], anal: null, pelv: { u: 0.6, len: 0.0 }, pect: { u: 0.8, len: 0.05 }, eye: { u: 0.92, r: 0.03 } },
+  nurseshark:{ r: 4.4, pm: 0.5, ped: 0.25, top: 0.55, tail: T('lunate', 0.4, 0.32), dor: [F('tri', 0.38, 0.56, 0.22, 0.35), F('tri', 0.12, 0.2, 0.08, 0.4)], anal: F('tri', 0.1, 0.2, 0.07, 0.4), pelv: { u: 0.42, len: 0.09 }, pect: { u: 0.66, len: 0.26, wide: 1 }, eye: { u: 0.93, r: 0.025 }, barbels: 2 },
+  sagekoi:   { r: 2.8, pm: 0.52, ped: 0.26, top: 0.5, tail: T('fork', 0.4, 0.26), dor: [F('sail', 0.3, 0.66, 0.16, 0.35)], anal: F('tri', 0.2, 0.34, 0.08, 0.4), pelv: { u: 0.58, len: 0.12 }, pect: { u: 0.72, len: 0.16 }, eye: { u: 0.88, r: 0.04 }, barbels: 2, scales: 2, crown: 1 },
+  herowrasse:{ r: 3, pm: 0.5, ped: 0.22, top: 0.5, tail: T('round', 0.28, 0.2), dor: [F('sail', 0.15, 0.8, 0.14, 0.5)], anal: F('sail', 0.15, 0.55, 0.1, 0.5), pelv: { u: 0.6, len: 0.1 }, pect: { u: 0.72, len: 0.14 }, eye: { u: 0.85, r: 0.045 }, lips: 1, scales: 2 },
+  herodragon:{ r: 5, pm: 0.58, ped: 0.35, top: 0.5, tail: T('flow', 0.42, 0.2), dor: [F('flow', 0.1, 0.85, 0.16, 0.5)], anal: F('sail', 0.08, 0.5, 0.08, 0.5), pelv: { u: 0.55, len: 0.1 }, pect: { u: 0.74, len: 0.16 }, eye: { u: 0.9, r: 0.04 }, barbels: 4, scales: 2 },
 };
 const ARCH_OF = {
+  hero_nurse: 'nurseshark', hero_sagekoi: 'sagekoi', hero_cleaner: 'herowrasse', hero_dragoneel: 'herodragon',
   goldfish: 'goldfish', minnow: 'tetra', comet: 'comet', guppy: 'guppy', platy: 'platy', swordtail: 'swordtail',
   betta: 'betta', neon: 'tetra', rasbora: 'tetra', angelfish: 'angel', molly: 'platy', dwarfgourami: 'gourami',
   discus: 'discus', oscar: 'cichlid', flowerhorn: 'flowerhorn', arowana: 'arowana', snakehead: 'snakehead', piranha: 'piranha',
@@ -85,6 +90,7 @@ const ARCH_OF = {
   seadragon: 'seadragon', anglerfish: 'anglerfish', parrot: 'parrot', royalangel: 'marangel', opah: 'opah',
   danio: 'tetra', mosquitofish: 'platy', cherrybarb: 'round', corydoras: 'catfish', jewel: 'cichlid', pike: 'snakehead', showa: 'koi', pacu: 'piranha', aurorad: 'discus', sturgeon: 'sturgeon', platinum: 'arowana',
   yellowtail: 'round', pajama: 'cardinal', cleaner: 'wrasse', sailfinblenny: 'blenny', powderblue: 'tang', grouper: 'grouper', frenchangel: 'marangel', barracuda: 'barracuda', hammerhead: 'hammer', oarfish: 'oarfish', marlin: 'marlin',
+  ...Object.fromEntries([['shamrock','tetra'],['cloverguppy','guppy'],['leprechaun','betta'],['rainbowtrout','koi'],['goldpot','arowana'],['rosebetta','betta'],['hearttetra','tetra'],['candyheart','guppy'],['cupidangel','angel'],['sweetdiscus','discus'],['bunnygold','goldfish'],['daffodil','guppy'],['eggtetra','tetra'],['blossomkoi','koi'],['pastelDiscus','discus'],['sunnydamsel','round'],['beachpuffer','urchin'],['coconut','platy'],['tropicparrot','parrot'],['pinetrigger','trigger'],['jackpuffer','urchin'],['vampiretetra','tetra'],['witchbetta','betta'],['mummyeel','eel'],['phantomkoi','koi'],['santabetta','betta'],['gingerbread','tetra'],['snowangel','angel'],['reindeer','cichlid'],['frostarowana','arowana']]),
 };
 const archOf = sp => ARCHS[ARCH_OF[sp.id] || sp.sh] || ARCHS.round;
 
@@ -160,6 +166,18 @@ function modTint(m, c, u, v, x, y, fin) {
     case 'glitch': return (Math.floor(y / 2) % 3 === 0) ? mixC(c, [40, 240, 230], 0.55) : (Math.floor(y / 2) % 3 === 1) ? mixC(c, [255, 40, 200], 0.4) : c;
     case 'diamond': { const f = (x + y * 2 + Math.floor(u * 9)) % 4; return f === 0 ? [255, 255, 255] : f === 1 ? [214, 236, 255] : f === 2 ? [190, 214, 245] : [232, 224, 255]; }
     case 'phoenix': return mixC(c, v < 0.3 ? [255, 214, 90] : v < 0.65 ? [255, 120, 20] : [200, 30, 20], 0.82);
+    case 'lucky': return (hash('lk' + x + ',' + y) % 13 === 0) ? [240, 255, 225] : mixC(c, v < 0.5 ? [90, 214, 120] : [40, 160, 80], 0.68);
+    case 'potgold': { const coin = ((x >> 1) + (y >> 1)) % 3 === 0; return coin ? [255, 232, 120] : mixC(c, [235, 170, 20], 0.82); }
+    case 'lovestruck': { const cs = 6, cx = x % cs, cy = y % cs, hp = [[0, 1, 0, 1, 0], [1, 1, 1, 1, 1], [0, 1, 1, 1, 0], [0, 0, 1, 0, 0]]; const cell = hash('lh' + Math.floor(x / cs) + ',' + Math.floor(y / cs)); if (cell % 3 === 0 && cx < 5 && cy < 4 && hp[cy][cx]) return [255, 235, 245]; return mixC(c, [255, 120, 165], 0.64); }
+    case 'cupid': return (((x + y * 2) % 9) === 0) ? [255, 226, 140] : mixC(c, [236, 150, 140], 0.7);
+    case 'blossom': return vnoise(u * 6, v * 5, 'bl') > 0.55 ? mixC(c, [255, 235, 244], 0.7) : (hash('bs' + x + ',' + y) % 11 === 0 ? [235, 120, 170] : mixC(c, [255, 190, 215], 0.66));
+    case 'dyed': { const band = Math.floor(y / 3) % 4; const z = (x + ((y >> 1) % 2) * 3) % 8 < 4; const pal = [[255, 190, 215], [190, 225, 255], [210, 255, 200], [255, 240, 180]]; return mixC(c, pal[(band + (z ? 1 : 0)) % 4], 0.8); }
+    case 'sunkissed': return (hash('sk' + x + ',' + y) % 15 === 0) ? [255, 245, 190] : mixC(c, v < 0.4 ? [250, 200, 100] : [220, 140, 60], 0.65);
+    case 'splash': { const w = Math.sin((u * 12 + v * 3) * 1.1); return (hash('sp' + x + ',' + y) % 8 === 0) ? [245, 252, 255] : mixC(c, w > 0.3 ? [150, 215, 255] : [50, 140, 235], 0.72); }
+    case 'pumpkinlit': { const eye = (Math.abs(u - 0.42) < 0.05 && v > 0.28 && v < 0.42 && (v - 0.28) < (0.05 - Math.abs(u - 0.42)) * 3.2 + 0.05) || (Math.abs(u - 0.58) < 0.05 && v > 0.28 && v < 0.42 && (v - 0.28) < (0.05 - Math.abs(u - 0.58)) * 3.2 + 0.05); const mouth = v > 0.56 && v < 0.7 && u > 0.38 && u < 0.64 && ((Math.floor(u * 40) % 3) < 2 || v > 0.62); return (eye || mouth) ? [255, 238, 110] : mixC(c, ((Math.floor(u * 14) % 2) ? [200, 88, 12] : [176, 70, 8]), 0.9); }
+    case 'haunted': return mixC(c, [178, 168, 215], 0.75);
+    case 'candycane': return (((x * 2 + y + Math.floor(u * 6)) % 10) < 5) ? [235, 40, 52] : [250, 248, 248];
+    case 'festive': { const ly = Math.round(Math.sin(u * 14) * 2.2 + 5); const onLine = Math.abs((y % 12) - ly) < 1 && (x % 3 === 0); return onLine ? [[255, 60, 60], [255, 220, 70], [70, 220, 90], [80, 150, 255]][(x >> 1) % 4] : mixC(c, [20, 40, 30], 0.7); }
     case 'celestial': return mixC(c, v < 0.5 ? [255, 250, 225] : [255, 226, 150], 0.78);
   }
   return c;

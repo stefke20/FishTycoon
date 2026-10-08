@@ -26,13 +26,16 @@ const btn = (label, act, data, cls, dis) => `<button class="btn ${cls || ''} ${d
 const mult = n => (Math.round(n * 100) / 100) + 'x';
 const ico = (e, s) => `<span class="eico" style="${s ? `width:${s * 1.5}px;height:${s * 1.5}px;font-size:${s}px` : ''}">${e}</span>`;
 const pill = (l, v) => `<span class="pill">${l ? l + ' ' : ''}<b>${v}</b></span>`;
-const waterTag = w => `<span class="wt ${w}">${w === 'salt' ? 'Saltwater' : 'Freshwater'}</span>`;
+const waterTag = w => waterTag2(w);
 const SVG = {
   store: '<path d="M3 9l1.6-5h14.8L21 9M3 9h18v2a3 3 0 01-6 0 3 3 0 01-6 0 3 3 0 01-6 0V9zM5 14v6h14v-6"/>',
   hall: '<path d="M2 12c3-5 8-6 12-3l4-3v12l-4-3c-4 3-9 2-12-3z"/><circle cx="8" cy="11" r="1"/>',
   breed: '<path d="M12 21s-8-5.3-8-11a4.5 4.5 0 018-2.8A4.5 4.5 0 0120 10c0 5.7-8 11-8 11z"/>',
   shop: '<path d="M5 8h14l-1 12H6L5 8zM9 8a3 3 0 016 0"/>',
   inv: '<path d="M3 7l9-4 9 4v10l-9 4-9-4V7zM3 7l9 4 9-4M12 11v10"/>',
+  book: '<path d="M4 4h12a3 3 0 013 3v13H7a3 3 0 01-3-3V4zM4 17a3 3 0 013-3h12"/>',
+  ev: '<path d="M12 3l2.6 5.6 6 .7-4.5 4.1 1.2 6L12 16.5 6.7 19.4l1.2-6L3.4 9.3l6-.7L12 3z"/>',
+  stats: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
   menu: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/>',
 };
 const pageHead = (title, sub, actions) => `<div class="page-head"><div><h1>${title}</h1>${sub ? `<div class="sub">${sub}</div>` : ''}</div>${actions ? `<div class="actions">${actions}</div>` : ''}</div>`;
@@ -48,17 +51,18 @@ const sceneHTML = (t, mini) => `<canvas class="tankscene ${mini ? 'mini' : ''}" 
 const SORTS = { value: 'Value', tier: 'Tier', mods: 'Modifiers', name: 'Name', growth: 'Growth' };
 function sortFish(list) {
   const f = list.slice(); if (UI.onlyMods) { const m = f.filter(x => x.mods.length); f.length = 0; f.push(...m); }
+  if (UI.onlyFav) { const m = f.filter(x => x.fav); f.length = 0; f.push(...m); }
   const key = { value: x => -fishValue(x), tier: x => -SPECIES[x.sp].t * 1000 - fishValue(x) / 1e6, mods: x => -x.mods.length * 1e6 - fishValue(x), name: x => 0, growth: x => -x.g }[UI.sort];
   return f.sort((a, b) => UI.sort === 'name' ? fishName(a).localeCompare(fishName(b)) : key(a) - key(b));
 }
-const sortBar = () => `<div class="row" style="margin-bottom:12px"><span class="dim small">Sort</span><div class="seg" style="margin:0">${Object.entries(SORTS).map(([k, l]) => `<button class="${UI.sort === k ? 'on' : ''}" data-act="sortBy" data-x="${k}">${l}</button>`).join('')}</div><button class="boost-chip ${UI.onlyMods ? 'on' : ''}" data-act="onlyMods">Modified only</button></div>`;
-const zoomCtl = () => `<div class="zoomctl"><button data-act="zoom" data-x="in" title="Zoom in (+)">＋</button><button data-act="zoom" data-x="out" title="Zoom out (−)">－</button><button data-act="zoom" data-x="reset" title="Reset view (0)">⟲</button></div><div class="zoomhint">Scroll to zoom · drag to pan · double-click to reset</div>`;
+const sortBar = () => `<div class="row" style="margin-bottom:12px"><span class="dim small">Sort</span><div class="seg" style="margin:0">${Object.entries(SORTS).map(([k, l]) => `<button class="${UI.sort === k ? 'on' : ''}" data-act="sortBy" data-x="${k}">${l}</button>`).join('')}</div><button class="boost-chip ${UI.onlyMods ? 'on' : ''}" data-act="onlyMods">Modified only</button><button class="boost-chip ${UI.onlyFav ? 'on' : ''}" data-act="onlyFav">★ Favourites</button></div>`;
+const zoomCtl = tank => `<div class="zoomctl">${tank ? '<button data-act="cam" data-x="rotL" title="Rotate left">↺</button><button data-act="cam" data-x="rotR" title="Rotate right">↻</button><button data-act="cam" data-x="tilt" title="Change camera angle">⇅</button><button data-act="cam" data-x="photo" title="Save a picture">📷</button>' : ''}<button data-act="zoom" data-x="in" title="Zoom in (+)">＋</button><button data-act="zoom" data-x="out" title="Zoom out (−)">－</button><button data-act="zoom" data-x="reset" title="Reset view (0)">⟲</button></div><div class="zoomhint">Scroll to zoom · drag to pan · double-click to reset${tank ? ' · ↺ ↻ rotate' : ''}</div>`;
 
 /* ---------- chrome ---------- */
 function renderHeader() {
-  const tabs = [['store', 'Store'], ['hall', 'Aquariums'], ['breed', 'Breeding'], ['shop', 'Shop'], ['inv', 'Inventory'], ['menu', 'Menu']];
+  const tabs = [['store', 'Store'], ['hall', 'Aquariums'], ['breed', 'Breeding'], ['shop', 'Shop'], ['inv', 'Inventory'], ['book', 'Collection'], ['ev', 'Events'], ['stats', 'Stats'], ['menu', 'Menu']];
   $('#tabs').innerHTML = tabs.map(([id, l]) => {
-    const n = id === 'store' ? S.customers.length : id === 'inv' ? S.eggs.length : 0;
+    const n = id === 'store' ? S.customers.length + S.contracts.length : id === 'inv' ? S.eggs.length : id === 'ev' ? activeEvents().length : 0;
     return `<button class="${UI.tab === id ? 'on' : ''}" data-act="tab" data-x="${id}"><svg viewBox="0 0 24 24">${SVG[id]}</svg><span>${l}</span>${n ? `<span class="badge">${n}</span>` : ''}</button>`;
   }).join('');
   if (!$('#logoimg').firstChild) $('#logoimg').innerHTML = `<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#2ad4c0" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${SVG.hall}</svg>`;
@@ -76,6 +80,7 @@ function viewStore() {
     `${S.storeUp.cashier ? `<span class="pill">Cashier ${btn(S.cashierOn ? 'ON' : 'OFF', 'cashier', {}, 'sm')} <b>≥ ${Math.round(cashierThreshold() * 100)}%</b></span>` : ''}${storeCap() > fs.length ? btn('Auto-fill cases', 'fillStore') : ''}${btn('Upgrade store', 'goStoreUp', {}, 'pri')}`);
   h += `<div class="scenewrap" style="position:relative"><canvas class="storescene"></canvas>${zoomCtl()}</div>`;
   h += `<div class="stats" style="margin-top:16px">${pill('Sales', S.sales)}${pill('Total earned', fmt(S.earned))}${pill('Best sale', fmt(S.bestValue || 0))}${pill('Next customer', '~' + Math.round(arrivalInterval()) + 's')}${pill('Display cases', fs.length + '/' + cap)}</div>`;
+  h += `<div style="margin-top:6px">${recordCard(false)}</div>`;
   h += `<div class="two"><div><h3>Customers · ${S.customers.length}</h3>`;
   if (!fs.length) h += `<div class="empty">Your cases are empty — put fully grown fish on display.</div>`;
   else if (!S.customers.length) h += `<div class="empty">Waiting for customers… Advertising brings more.</div>`;
@@ -84,28 +89,28 @@ function viewStore() {
     const v = fishValue(f), r = c.offer / v, cols = ['#7ec8ff', '#ffb870', '#9be8b0', '#d6a8ff', '#ffa8c8'];
     const desc = { browser: 'Just browsing', enthusiast: `Really wants a ${SPECIES[f.sp].n}`, bargain: 'Hunting for a bargain', collector: 'Collector — loves modified fish' }[c.type];
     h += `<div class="card cust"><div class="av" style="background:${cols[hash(c.id) % 5]}">${c.name[0]}</div>
-      <div class="grow"><b>${c.name}</b> <span class="dim">· ${desc}</span><div class="small dim">wants ${esc(fishName(f))}</div><div class="bar pat" style="margin-top:7px;max-width:200px"><i data-pat="${c.id}" style="width:${Math.max(0, c.pat / c.patMax * 100)}%"></i></div></div>
+      <div class="grow"><b>${c.name}</b> <span class="dim">· ${desc}</span><div class="small dim">wants ${esc(f.name)} · ${esc(fishName(f))}</div><div class="bar pat" style="margin-top:7px;max-width:200px"><i data-pat="${c.id}" style="width:${Math.max(0, c.pat / c.patMax * 100)}%"></i></div></div>
       <div style="text-align:right"><div class="offer ${r >= 1 ? 'good' : r < 0.8 ? 'badc' : ''}">${fmt(c.offer)}</div><div class="small dim">${Math.round(r * 100)}% of ${fmt(v)}</div></div>
       <div class="row" style="gap:6px;flex-wrap:nowrap">${btn('Accept', 'accept', { x: c.id }, 'pri')}${btn('✕', 'decline', { x: c.id }, 'sm bad')}</div></div>`;
   }
   h += `</div><div><h3>Display cases</h3><div class="casegrid">`;
-  for (const f of fs) h += `<div class="casecard"><div data-act="openFish" data-x="${f.id}" style="cursor:pointer">${fishSVG(f.sp, f.mods, 70)}</div><div class="grow" style="min-width:0"><div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(fishName(f))}</div><div class="gold small">${fmt(fishValue(f))}</div></div>${btn('Take back', 'unstore', { x: f.id }, 'sm ghost')}</div>`;
+  for (const f of fs) h += `<div class="casecard"><div data-act="openFish" data-x="${f.id}" style="cursor:pointer">${fishSVG(f.sp, f.mods, 70)}</div><div class="grow" style="min-width:0"><div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${f.fav ? '<span class="gold">★</span> ' : ''}${esc(f.name)}</div><div class="small dim" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(fishName(f))}</div><div class="gold small">${fmt(fishValue(f))}</div></div>${btn('Take back', 'unstore', { x: f.id }, 'sm ghost')}</div>`;
   for (let i = fs.length; i < cap; i++) h += `<div class="casecard emptyc" data-act="storeAdd">＋ Add a fish</div>`;
-  return h + `</div></div></div>`;
+  return h + `</div>${contractsPanel()}</div></div>`;
 }
 
 /* ---------- HALL ---------- */
 function viewHall() {
   const sc = hallSlotCost();
-  let h = pageHead('Aquarium Hall', 'Every tank you own. Open one to feed, decorate and hatch eggs.', btn(`Feed all · ${fmt(feedAllCost())}`, 'feedAll', {}, '', feedAllCost() === 0) + (sc != null ? btn(`Expand hall · ${fmt(sc)}`, 'buySlot', {}, 'pri', S.money < sc) : ''));
-  h += `<div class="stats">${pill('Tanks', S.tanks.length + '/' + S.hallSlots)}${pill('Fish', S.fish.length)}</div><div class="grid halls">`;
+  let h = pageHead('Aquarium Hall', 'Every tank you own. Open one to feed, decorate and hatch eggs.', (S.unlocks.feedAll ? btn(`Feed all · ${fmt(feedAllCost())}`, 'feedAll', {}, '', feedAllCost() === 0) : btn('🔒 Feed all', 'goMgmt', {}, 'ghost')) + (sc != null ? btn(`Expand hall · ${fmt(sc)}`, 'buySlot', {}, 'pri', S.money < sc) : ''));
+  h += `<div class="stats">${pill('Tanks', regularTanks().length + '/' + S.hallSlots)}${pill('Fish', S.fish.length)}${pill('Heroes', S.heroes.length)}</div><div class="grid halls">`;
   for (const t of S.tanks) {
     const tt = tankType(t), fs = fishIn(t.id), grow = fs.filter(f => !isAdult(f)).length;
     h += `<div class="card click" data-act="openTank" data-x="${t.id}"><div class="scenewrap">${sceneHTML(t, true)}</div>
       <div class="row" style="margin-top:12px"><b class="grow">${esc(t.name)}</b>${waterTag(tt.w)}</div>
-      <div class="small dim" style="margin-top:2px">${fs.length}/${tt.cap} fish · ${grow} growing · ${fs.length - grow} adult · rating ${rating(t)}</div></div>`;
+      <div class="small dim" style="margin-top:2px">${fs.length}/${tt.cap} fish · ${grow} growing · rating ${rating(t)}${heroIn(t.id) ? ' · ★ ' + HERO[heroIn(t.id).kind].n : ''}</div><div class="row" style="margin-top:8px;gap:8px"><span class="small dim">Water</span><div class="grow">${wqBar(t)}</div><span class="small" style="color:${wqColor(wqOf(t))}">${wqLabel(wqOf(t))}</span></div></div>`;
   }
-  for (let i = S.tanks.length; i < S.hallSlots; i++) h += `<div class="empty" style="display:flex;align-items:center;justify-content:center;min-height:200px;cursor:pointer" data-act="goTanks"><div><div style="font-size:26px">＋</div>Empty slot<br><span class="small">Buy a tank in the shop</span></div></div>`;
+  for (let i = regularTanks().length; i < S.hallSlots; i++) h += `<div class="empty" style="display:flex;align-items:center;justify-content:center;min-height:200px;cursor:pointer" data-act="goTanks"><div><div style="font-size:26px">＋</div>Empty slot<br><span class="small">Buy a tank in the shop</span></div></div>`;
   return h + '</div>';
 }
 
@@ -114,14 +119,15 @@ function viewTank() {
   if (!t) { UI.tankId = null; return viewHall(); }
   const tt = tankType(t), fs = fishIn(t.id), b = tankBonus(t), fed = t.fedUntil > S.time, growing = fs.filter(f => !isAdult(f)).length;
   let h = pageHead(esc(t.name), `${tt.n} · ${tt.cap} fish capacity`, `${btn('← All tanks', 'backHall', {}, 'ghost')}${btn('Rename', 'rename', { x: t.id })}`);
-  h += `<div class="stats">${waterTag(tt.w)}${pill('Fish', fs.length + '/' + tt.cap)}${pill('Water rating', rating(t) + ' (tier ≤ ' + rating(t) + ')')}${pill('Growth', mult(1 + b.growth))}${pill('Value', '+' + Math.round(b.value * 100) + '%')}${pill('Mutation', '+' + Math.round(b.mod * 100) + '%')}${pill('Tier-up', '+' + Math.round(b.tier * 100) + '%')}${pill('Inheritance', '+' + Math.round(b.inherit * 100) + '%')}</div>`;
-  h += `<div class="scenewrap" style="position:relative">${sceneHTML(t, false)}${zoomCtl()}</div>`;
+  h += `<div class="stats">${waterTag(tt.w)}${pill('Fish', fs.length + '/' + tt.cap)}${pill('Water rating', rating(t) + ' (tier ≤ ' + rating(t) + ')')}${pill('Water quality', `<span data-wqtext="${t.id}" style="color:${wqColor(wqOf(t))}">${wqLabel(wqOf(t))} ${Math.round(wqOf(t))}%</span>`)}${pill('Growth', mult(1 + b.growth))}${pill('Value', '+' + Math.round(b.value * 100) + '%')}${pill('Mutation', '+' + Math.round(b.mod * 100) + '%')}${pill('Tier-up', '+' + Math.round(b.tier * 100) + '%')}${pill('Inheritance', '+' + Math.round(b.inherit * 100) + '%')}</div>`;
+  h += `<div class="scenewrap" style="position:relative">${sceneHTML(t, false)}${zoomCtl(true)}</div>`;
   h += `<div class="row" style="margin-top:16px">${btn(`Feed · ${fmt(growing * FEED_COST_PER_FISH)} · ×${foodMult()} growth`, 'feed', { x: t.id }, 'pri', !growing)}
     <span class="dim small" data-fed="${t.id}">${fed ? 'Well fed — ' + Math.ceil(t.fedUntil - S.time) + 's left' : 'Hungry — feeding speeds up growth'}</span><span class="grow"></span>
-    ${btn('Hatch an egg', 'hatchHere', { x: t.id })}${btn('Tank upgrades', 'goUpgrades', { x: t.id })}</div>`;
+    ${btn(`Clean water · ${fmt(cleanCost(t))}`, 'cleanTank', { x: t.id }, '', wqOf(t) > 97)}${btn('Hatch an egg', 'hatchHere', { x: t.id })}${btn('Tank upgrades', 'goUpgrades', { x: t.id })}</div>${wqOf(t) < 40 ? `<div class="warn">⚠ The water is ${wqLabel(wqOf(t)).toLowerCase()} — fish grow slower and are worth less. Clean it, or upgrade the filter and aerator.</div>` : ''}`;
   h += `<h3>Decorations</h3><div class="slots"><div class="slot ${t.bg ? 'full' : ''}" data-act="slotPick" data-x="${t.id}" data-y="bg">${t.bg ? decorPic(DECOR_BY_ID[t.bg], 52) : '<span style="font-size:22px">＋</span>'}${t.bg ? DECOR_BY_ID[t.bg].n : 'Background'}</div>`;
   t.slots.forEach((id, i) => { const d = id && DECOR_BY_ID[id]; h += `<div class="slot ${d ? 'full' : ''}" data-act="slotPick" data-x="${t.id}" data-y="${i}">${d ? decorPic(d, 56) : '<span style="font-size:22px">＋</span>'}${d ? d.n : 'Empty'}</div>`; });
   h += `</div><div class="row" style="margin-top:12px"><span class="dim small">Skin</span><select data-change="skin" data-x="${t.id}">${SKINS.filter(s => S.skins[s.id]).map(s => `<option value="${s.id}" ${t.skin === s.id ? 'selected' : ''}>${s.n}</option>`).join('')}</select></div>`;
+  h += heroPanel(t);
   h += `<h3>Fish</h3><div class="list">`;
   if (!fs.length) h += `<div class="dim" style="padding:16px">No fish yet.</div>`;
   for (const f of fs) h += fishRow(f);
@@ -130,7 +136,7 @@ function viewTank() {
 function fishRow(f) {
   const sp = SPECIES[f.sp];
   return `<div class="fishrow" data-act="openFish" data-x="${f.id}"><div class="pic">${fishSVG(f.sp, f.mods, 78)}</div>
-    <div class="grow"><b>${esc(fishName(f))}</b> ${tierBadge(sp.t)}<div>${modChips(f.mods)}</div>
+    <div class="grow">${fishTitle(f)} ${tierBadge(sp.t)} ${genChip(f)}<div>${modChips(f.mods)}</div>
     ${isAdult(f) ? '<span class="good small">Fully grown</span>' : `<div class="bar"><i data-gbar="${f.id}" style="width:${Math.round(f.g * 100)}%"></i></div>`}</div>
     <div class="gold" style="font-weight:600">${fmt(previewValue(f))}</div></div>`;
 }
@@ -181,7 +187,7 @@ function item(icon, name, desc, price, label, act, data, opts) {
 }
 function avgValue(ids) { return ids.reduce((a, id) => a + SPECIES[id].value, 0) / ids.length; }
 function viewShop() {
-  const cats = [['eggs', 'Eggs'], ['consumables', 'Mutagens'], ['tanks', 'Tanks'], ['upgrades', 'Tank Upgrades'], ['decor', 'Decorations'], ['food', 'Food'], ['skins', 'Skins'], ['store', 'Store'], ['breeding', 'Breeding']];
+  const cats = [['eggs', 'Eggs'], ['consumables', 'Mutagens'], ['tanks', 'Tanks'], ['upgrades', 'Tank Upgrades'], ['decor', 'Decorations'], ['food', 'Food'], ['skins', 'Skins'], ['store', 'Store'], ['breeding', 'Breeding'], ['mgmt', 'Management'], ['heroes', 'Hero Fish']];
   let h = pageHead('Shop', 'Eggs, tanks, decorations and upgrades.') + `<div class="seg">${cats.map(([id, l]) => `<button class="${UI.shopCat === id ? 'on' : ''}" data-act="shopCat" data-x="${id}">${l}</button>`).join('')}</div>`;
   const lv = level();
   switch (UI.shopCat) {
@@ -193,7 +199,7 @@ function viewShop() {
         for (let tier = 1; tier <= 5; tier++) {
           const need = water === 'salt' ? SALT_EGG_UNLOCK_LEVEL[tier] : EGG_UNLOCK_LEVEL[tier];
           h += `<div class="tierhead">${tierBadge(tier)}<span class="dim small">water rating ${tier}+${lv < need ? ' · locked until store level ' + need : ''}</span></div><div class="grid sm">`;
-          for (const e of EGG_TYPES.filter(e => e.w === water && e.t === tier)) {
+          for (const e of EGG_TYPES.filter(e => !e.ev && e.w === water && e.t === tier)) {
             const locked = lv < need || (water === 'salt' && !hasSaltTank()), price = eggPrice(e.id) * UI.qty;
             h += `<div class="card egg ${locked ? 'locked' : ''}"><div class="top">${eggArt(e, 56)}<div class="grow"><b>${e.n}</b><div class="small dim">${e.pool.length} species · avg ${fmt(avgValue(e.pool))}</div></div></div>
               <div class="small dim">${e.pool.map(id => SPECIES[id].n).join(', ')}</div>${btn(`Buy${UI.qty > 1 ? ' ×' + UI.qty : ''} · ${fmt(price)}`, locked ? 'noop' : 'buyEgg', { x: e.id }, 'pri', !locked && S.money < price)}</div>`;
@@ -209,8 +215,8 @@ function viewShop() {
       break;
     }
     case 'tanks': {
-      h += `<div class="stats">${pill('Hall slots', S.tanks.length + '/' + S.hallSlots)}${hallSlotCost() != null ? btn(`Buy a slot · ${fmt(hallSlotCost())}`, 'buySlot', {}, 'sm pri', S.money < hallSlotCost()) : ''}<span class="dim small">You keep all your old tanks.</span></div>`;
-      for (const tt of TANK_TYPES) h += item(tankIcon(tt.id, 84), tt.n, `${tt.w === 'salt' ? 'Saltwater' : 'Freshwater'} · holds ${tt.cap} fish · base water rating ${tt.base} (up to ${tt.base + 3} with upgrades)`, tt.price, 'Buy', 'buyTank', { x: tt.id }, { locked: lv < tt.lvl ? 'store level ' + tt.lvl : null });
+      h += `<div class="stats">${pill('Hall slots', regularTanks().length + '/' + S.hallSlots)}${hallSlotCost() != null ? btn(`Buy a slot · ${fmt(hallSlotCost())}`, 'buySlot', {}, 'sm pri', S.money < hallSlotCost()) : ''}<span class="dim small">You keep all your old tanks.</span></div>`;
+      for (const tt of TANK_TYPES.filter(x => !x.ev)) h += item(tankIcon(tt.id, 84), tt.n, `${tt.w === 'salt' ? 'Saltwater' : 'Freshwater'} · holds ${tt.cap} fish · base water rating ${tt.base} (up to ${tt.base + 3} with upgrades)`, tt.price, 'Buy', 'buyTank', { x: tt.id }, { locked: lv < tt.lvl ? 'store level ' + tt.lvl : null });
       break;
     }
     case 'upgrades': {
@@ -223,7 +229,7 @@ function viewShop() {
     case 'decor': {
       for (const [k, label] of [['plant', 'Plants'], ['rock', 'Rocks'], ['acc', 'Accessories'], ['bg', 'Backgrounds']]) {
         h += `<h3>${label}</h3>`;
-        for (const d of DECOR.filter(d => d.k === k)) h += item(decorPic(d, 76), d.n + (d.w === 'both' ? '' : ` <span class="wt ${d.w}" style="margin-left:6px">${d.w === 'salt' ? 'salt only' : 'fresh only'}</span>`), bonusText(d.b), d.price, 'Buy', 'buyDecor', { x: d.id }, { badge: S.decorInv[d.id] ? `<span class="pill">owned <b>${S.decorInv[d.id]}</b></span>` : '' });
+        for (const d of DECOR.filter(d => d.k === k && !d.ev)) h += item(decorPic(d, 76), d.n + (d.w === 'both' ? '' : ` <span class="wt ${d.w}" style="margin-left:6px">${d.w === 'salt' ? 'salt only' : 'fresh only'}</span>`), bonusText(d.b), d.price, 'Buy', 'buyDecor', { x: d.id }, { badge: S.decorInv[d.id] ? `<span class="pill">owned <b>${S.decorInv[d.id]}</b></span>` : '' });
       }
       break;
     }
@@ -233,13 +239,15 @@ function viewShop() {
       break;
     }
     case 'skins': {
-      for (const s of SKINS) h += item(`<span class="eico" style="background:linear-gradient(135deg,${s.frame},${s.gravel})"></span>`, s.n, bonusText(s.b) + " — apply from a tank's page", s.price, 'Buy', 'buySkin', { x: s.id }, { maxed: !!S.skins[s.id] });
+      for (const s of SKINS.filter(x => !x.ev)) h += item(`<span class="eico" style="background:linear-gradient(135deg,${s.frame},${s.gravel})"></span>`, s.n, bonusText(s.b) + " — apply from a tank's page", s.price, 'Buy', 'buySkin', { x: s.id }, { maxed: !!S.skins[s.id] });
       break;
     }
     case 'store': {
       for (const u of STORE_UPGRADES) { const l = S.storeUp[u.id]; h += item(ico(u.icon, 28), `${u.n} <span class="dim small">Lv ${l}/${u.max}</span>`, u.desc, l >= u.max ? null : u.cost(l), 'Upgrade', 'sup', { x: u.id }, { maxed: l >= u.max }); }
       break;
     }
+    case 'mgmt': h += viewMgmt(); break;
+    case 'heroes': h += viewHeroes(); break;
     case 'breeding': {
       for (const u of BREED_UPGRADES) { const l = S.breedUp[u.id]; h += item(ico(u.icon, 28), `${u.n} <span class="dim small">Lv ${l}/${u.max}</span>`, u.desc, l >= u.max ? null : u.cost(l), 'Upgrade', 'bup', { x: u.id }, { maxed: l >= u.max }); }
       break;
@@ -252,7 +260,7 @@ function viewShop() {
 function viewInv() {
   let h = pageHead('Inventory', 'Eggs, mutagens, spare decorations and every fish you own.') + `<h3>Eggs · ${S.eggs.length}</h3>`;
   if (!S.eggs.length) h += `<div class="empty">No eggs. Buy some in the shop or breed your fish.</div>`;
-  h += S.eggs.length ? `<div class="row" style="margin-bottom:10px">${btn('Hatch all', 'hatchAll', {}, 'pri sm')}<span class="dim small">Puts each egg in the lowest-rated tank that fits it.</span></div>` : '';
+  h += S.eggs.length ? `<div class="row" style="margin-bottom:10px">${S.unlocks.hatchAll ? btn('Hatch all', 'hatchAll', {}, 'pri sm') : btn('🔒 Hatch all', 'goMgmt', {}, 'sm ghost')}<span class="dim small">${S.unlocks.hatchAll ? 'Puts each egg in the lowest-rated tank that fits it.' : 'Unlock the Hatchery Console in Shop → Management.'}</span></div>` : '';
   h += `<div class="grid sm">`;
   for (const e of S.eggs) h += `<div class="card row">${eggArt(e, 58)}<div class="grow"><b>${eggTitle(e)}</b><div>${tierBadge(e.tier)} ${waterTag(e.water)}</div></div>${btn('Hatch', 'hatchPick', { x: e.id }, 'pri sm')}</div>`;
   h += `</div><h3>Mutagens</h3><div class="stats">${CONSUMABLES.map(c => `<span class="pill">${c.e} ${c.n} <b>×${S.items[c.id]}</b> <span class="small">+${Math.round(c.boost * 100)}%</span></span>`).join('')}</div>`;
@@ -268,7 +276,7 @@ function viewInv() {
 function viewMenu() {
   return pageHead('Menu', 'Saves happen automatically every 10 seconds. Fish keep growing while you are away (up to 4 hours).') +
     `<div class="row">${btn('Save now', 'save', {}, 'pri')}${btn('How to play', 'help')}${btn('Export save', 'export')}${btn('Import save', 'import')}${btn('Reset game', 'reset', {}, 'bad')}</div>
-  <h3>Settings</h3><div class="row"><button class="boost-chip ${S.settings.sound ? 'on' : ''}" data-act="setting" data-x="sound">Sound effects: ${S.settings.sound ? 'On' : 'Off'}</button><button class="boost-chip ${S.settings.fx ? 'on' : ''}" data-act="setting" data-x="fx">Modifier particle effects: ${S.settings.fx ? 'On' : 'Off'}</button></div><div class="dim small" style="margin-top:8px">Shortcuts: 1–6 switch pages · + / − zoom the tank or store · 0 resets the view · Esc closes dialogs</div><h3>Statistics</h3><div class="stats">${pill('Fish owned', S.fish.length)}${pill('Times bred', S.bredCount)}${pill('Total earned', fmt(S.earned))}${pill('Play time', Math.round(S.time / 60) + ' min')}</div>
+  <h3>Settings</h3><div class="row"><button class="boost-chip ${S.settings.sound ? 'on' : ''}" data-act="setting" data-x="sound">Sound effects: ${S.settings.sound ? 'On' : 'Off'}</button><button class="boost-chip ${S.settings.fx ? 'on' : ''}" data-act="setting" data-x="fx">Modifier particle effects: ${S.settings.fx ? 'On' : 'Off'}</button></div><div class="row" style="margin-top:12px"><span class="dim small">Seasonal events</span><select data-change="evPreview"><option value="auto" ${S.settings.event === 'auto' ? 'selected' : ''}>Real calendar dates</option><option value="all" ${S.settings.event === 'all' ? 'selected' : ''}>Preview: all events active</option>${EVENTS.map(e => `<option value="${e.id}" ${S.settings.event === e.id ? 'selected' : ''}>Preview: ${e.n}</option>`).join('')}</select></div><div class="dim small" style="margin-top:8px">Shortcuts: 1–9 switch pages · + / − zoom the tank or store · 0 resets the view · Esc closes dialogs</div><h3>Statistics</h3><div class="stats">${pill('Fish owned', S.fish.length)}${pill('Times bred', S.bredCount)}${pill('Total earned', fmt(S.earned))}${pill('Play time', Math.round(S.time / 60) + ' min')}</div>
   <h3>Modifiers</h3><div class="card">${MODS_LIST.map(m => `<div class="row" style="padding:5px 0"><span class="chip m${m.t}" style="min-width:128px">${m.icon} ${m.n}</span><span class="dim small grow">${m.d}</span><span class="gold small">×${m.m}</span></div>`).join('')}</div>`;
 }
 
@@ -283,17 +291,20 @@ function modalHTML() {
     case 'fish': {
       const f = getFish(m.id); if (!f) { UI.modal = null; return ''; }
       const sp = SPECIES[f.sp], adult = isAdult(f);
-      h += `<h2>${esc(fishName(f))}</h2><div style="display:flex;justify-content:center;padding:6px 0 14px">${fishSVG(f.sp, f.mods, 360)}</div>
-        <div class="stats">${tierBadge(sp.t)}${waterTag(sp.w)}${pill('Base', fmt(sp.value))}${pill('Value', fmt(previewValue(f)))}</div>
+      h += `<h2>${esc(f.name)} ${f.fav ? '<span class="gold">★</span>' : ''} <span class="dim" style="font-size:15px;font-weight:500">${esc(fishName(f))}</span></h2><div style="display:flex;justify-content:center;padding:6px 0 14px">${fishSVG(f.sp, f.mods, 360)}</div>
+        <div class="stats">${tierBadge(sp.t)}${waterTag(sp.w)}${pill('Base', fmt(sp.value))}${pill('Value', fmt(previewValue(f)))}${pill('Generation', f.gen || 0)}</div>
         ${f.mods.length ? `<div class="mod-info">${f.mods.map(x => `<div><span class="chip m${MODS[x].t}">${MODS[x].icon} ${MODS[x].n}</span>${MODS[x].d} <b class="gold" style="margin-left:auto">×${MODS[x].m}</b></div>`).join('')}</div>` : '<p class="dim">No modifiers.</p>'}
         <p>${adult ? '<span class="good">Fully grown</span>' : `Growing: <span data-gtext="${f.id}">${Math.round(f.g * 100)}</span>%`} <span class="dim small"> · ${f.loc === 'store' ? 'In the store' : esc(getTank(f.loc).name)}</span></p>
         <div class="row" style="margin-top:16px">`;
       if (adult) {
         h += f.loc === 'store' ? btn('Back to a tank', 'fishPickTank', { x: f.id }) : btn('Put in store', 'toStore', { x: f.id }, 'pri') + btn('Move tank', 'fishPickTank', { x: f.id });
-        h += btn('Breed', 'breedWith', { x: f.id }) + btn(`Sell to market · ${fmt(fishValue(f) * QUICK_SELL)}`, 'sellMarket', { x: f.id }, 'bad');
+        h += btn('Breed', 'breedWith', { x: f.id }) + btn(f.fav ? '★ Protected' : `Sell to market · ${fmt(fishValue(f) * QUICK_SELL)}`, 'sellMarket', { x: f.id }, 'bad', f.fav);
       } else h += btn('Move tank', 'fishPickTank', { x: f.id });
-      h += `</div>`; break;
+      h += `</div><div class="row" style="margin-top:10px">${btn(f.fav ? '★ Favourited' : '☆ Favourite', 'toggleFav', { x: f.id }, f.fav ? 'sm gold-btn' : 'sm')}${btn('Rename', 'renameFish', { x: f.id }, 'sm')}${btn('Family tree', 'openTree', { x: f.id }, 'sm')}</div>`; break;
     }
+    case 'tree': h += treeModal(m.id); break;
+    case 'hero': h += heroModal(m.id); break;
+    case 'contract': h += contractModal(m.id); break;
     case 'pickTank': {
       const f = getFish(m.id), sp = SPECIES[f.sp];
       h += `<h2>Move ${esc(fishName(f))}</h2>` + S.tanks.map(t => {
@@ -344,11 +355,11 @@ function render() {
   G.dirty = false;
   const view = $('#view'), st = view.scrollTop;
   renderHeader(); renderStats();
-  view.innerHTML = { store: viewStore, hall: () => (UI.tankId ? viewTank() : viewHall()), breed: viewBreed, shop: viewShop, inv: viewInv, menu: viewMenu }[UI.tab]();
+  view.innerHTML = { store: viewStore, hall: () => (UI.tankId ? viewTank() : viewHall()), breed: viewBreed, shop: viewShop, inv: viewInv, book: viewCollection, ev: viewEvents, stats: viewStats, menu: viewMenu }[UI.tab]();
   view.scrollTop = st;
   const mo = $('#modal');
   if (UI.modal) { const keep = mo.firstChild && mo.firstChild.scrollTop; mo.innerHTML = modalHTML(); mo.classList.toggle('hidden', !UI.modal); if (mo.firstChild && keep) mo.firstChild.scrollTop = keep; } else { mo.classList.add('hidden'); mo.innerHTML = ''; }
-  Scenes.bind(id => { UI.modal = { type: 'fish', id }; render(); });
+  Scenes.bind(id => { UI.modal = { type: 'fish', id }; render(); }, id => { UI.modal = { type: 'hero', id }; render(); });
 }
 
 function toast(text, type) {
@@ -361,6 +372,23 @@ const activeBoost = () => (UI.boost && S.items[UI.boost] > 0 ? UI.boost : null);
 
 /* ---------- actions ---------- */
 const ACT = {
+  cam: d => { const sc = Scenes.list.find(x => x.zp && !x.people); if (!sc) return false; const v = sc.zp.v; if (d.x === 'rotL') { v.yaw--; v.px = v.py = 0; } else if (d.x === 'rotR') { v.yaw++; v.px = v.py = 0; } else if (d.x === 'tilt') { const L = [0.45, 0.78, 1.3, 2.4], i = L.findIndex(t => Math.abs(t - v.tilt) < 0.05); v.tilt = L[((i < 0 ? 1 : i) + 1) % L.length]; } else if (d.x === 'photo') { sc.photo(); toast('Picture saved to your downloads', 'good'); } return false; },
+  goMgmt: () => { UI.shopCat = 'mgmt'; UI.tab = 'shop'; },
+  onlyFav: () => { UI.onlyFav = !UI.onlyFav; },
+  toggleFav: d => res(toggleFav(d.x)),
+  renameFish: d => { const f = getFish(d.x); const n = prompt('Name this fish', f.name); if (n && n.trim()) res(renameFish(d.x, n)); },
+  openTree: d => { UI.modal = { type: 'tree', id: d.x }; },
+  buyHero: d => { const r = res(buyHero(d.x)); if (r.ok) { toast(HERO[d.x].n + ' joined your aquarium!', 'gold'); Sfx.play('level'); } },
+  unassignHero: d => { res(assignHero(d.x, null)); UI.modal = null; },
+  cleanTank: d => { const r = res(cleanTank(d.x)); if (r.ok) { toast('Water changed — crystal clear', 'good'); Sfx.play('pop'); } },
+  hire: d => { const r = res(hireStaff(d.x)); if (r.ok) toast(STAFF_BY_ID[d.x].n + ' hired', 'good'); },
+  buyUnlock: d => res(buyUnlock(d.x)),
+  claimBook: d => { const r = res(claimBook(+d.x)); if (r.ok) { toast('Reward claimed', 'gold'); Sfx.play('level'); } },
+  bookTab: d => { UI.bookTab = d.x; },
+  evClaim: d => { const r = res(claimEventTank(d.x)); if (r.ok) toast('Event tank added to your hall', 'gold'); },
+  evBuy: d => { const r = res(buyEventItem(d.x, d.y)); if (r.ok) { toast('Purchased with event tokens', 'gold'); Sfx.play('buy'); } },
+  openContract: d => { UI.modal = { type: 'contract', id: d.x }; },
+  deliver: d => { const r = res(fulfillContract(d.x, d.y)); if (r.ok) { toast('Special order delivered: +' + fmt(r.reward), 'gold'); Sfx.play('sale'); UI.modal = null; } },
   zoom: d => { const sc = Scenes.list.find(x => x.zp); if (!sc) return false; if (d.x === 'reset') sc.zp.reset(); else sc.zp.zoomAt(d.x === 'in' ? 1.3 : 1 / 1.3, 0, 0); return false; },
   feedAll: () => { const r = feedAll(); res(r); if (r.ok) toast(`Fed ${r.n} tank${r.n > 1 ? 's' : ''}`, 'good'); },
   fillStore: () => { const r = fillStore(); res(r); if (r.ok) { toast(`Put ${r.n} fish on display`, 'good'); Sfx.play('pop'); } },
@@ -442,13 +470,16 @@ document.addEventListener('change', e => {
   const k = e.target.dataset.change; if (!k) return;
   if (k === 'skin') res(applySkin(e.target.dataset.x, e.target.value));
   if (k === 'upTank') UI.upTank = e.target.value;
+  if (k === 'assignHero') res(assignHero(e.target.dataset.x, null)), e.target.value && res(assignHero(e.target.dataset.x, e.target.value));
+  if (k === 'assignHeroHere') { const hid = e.target.value; if (hid) res(assignHero(hid, e.target.dataset.x)); else { const h = heroIn(e.target.dataset.x); if (h) res(assignHero(h.id, null)); } }
+  if (k === 'evPreview') { S.settings.event = e.target.value; G.dirty = true; }
   render();
 });
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && UI.modal) { UI.modal = null; render(); return; }
   if (e.target.matches && e.target.matches('textarea,input,select') || e.ctrlKey || e.metaKey || e.altKey) return;
-  const tabs = ['store', 'hall', 'breed', 'shop', 'inv', 'menu'];
-  if (e.key >= '1' && e.key <= '6') { UI.tab = tabs[+e.key - 1]; if (UI.tab !== 'hall') UI.tankId = null; render(); }
+  const tabs = ['store', 'hall', 'breed', 'shop', 'inv', 'book', 'ev', 'stats', 'menu'];
+  if (e.key >= '1' && e.key <= '9') { UI.tab = tabs[+e.key - 1]; if (UI.tab !== 'hall') UI.tankId = null; render(); }
   else if (e.key === '+' || e.key === '=' || e.key === '-' || e.key === '_' || e.key === '0') { const sc = Scenes.list.find(x => x.zp); if (!sc) return; if (e.key === '0') sc.zp.reset(); else sc.zp.zoomAt(e.key === '+' || e.key === '=' ? 1.25 : 0.8, 0, 0); e.preventDefault(); }
 });
 
@@ -460,6 +491,9 @@ function live() {
   document.querySelectorAll('[data-gtext]').forEach(el => { const f = getFish(el.dataset.gtext); if (f) el.textContent = Math.round(f.g * 100); });
   document.querySelectorAll('[data-pat]').forEach(el => { const c = S.customers.find(x => x.id === el.dataset.pat); if (c) el.style.width = Math.max(0, c.pat / c.patMax * 100) + '%'; });
   document.querySelectorAll('[data-cd]').forEach(el => { const f = getFish(el.dataset.cd); if (!f) return; const cd = f.ready - S.time; el.textContent = cd > 0 ? 'Resting ' + Math.ceil(cd) + 's' : 'Ready'; el.className = 'small ' + (cd > 0 ? 'badc' : 'good'); });
+  document.querySelectorAll('[data-ctl]').forEach(el => { const c = S.contracts.find(x => x.id === el.dataset.ctl); if (c) el.textContent = mmss(c.left); });
+  document.querySelectorAll('[data-wq]').forEach(el => { const t = getTank(el.dataset.wq); if (t) { el.style.width = Math.round(wqOf(t)) + '%'; el.style.background = wqColor(wqOf(t)); } });
+  document.querySelectorAll('[data-wqtext]').forEach(el => { const t = getTank(el.dataset.wqtext); if (t) { el.textContent = wqLabel(wqOf(t)) + ' ' + Math.round(wqOf(t)) + '%'; el.style.color = wqColor(wqOf(t)); } });
   document.querySelectorAll('[data-fed]').forEach(el => { const t = getTank(el.dataset.fed); if (t) el.textContent = t.fedUntil > S.time ? 'Well fed — ' + Math.ceil(t.fedUntil - S.time) + 's left' : 'Hungry — feeding speeds up growth'; });
 }
 

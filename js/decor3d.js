@@ -167,6 +167,56 @@ DECOR_BUILD.neon = function (g, glow) {
   for (let a = 0; a < 6.3; a += 0.18) glow.set(Math.cos(a) * 7 - 2, 24 + Math.sin(a) * 4, 2, B);
   glow.line([5, 24, 2], [11, 28, 2], B, 0.5); glow.line([5, 24, 2], [11, 20, 2], B, 0.5); glow.line([11, 28, 2], [11, 20, 2], B, 0.5); glow.set(-6, 25, 2, P);
 };
+
+/* ---- event decorations ---- */
+DECOR_BUILD.dc_stpat = function (g, glow) {
+  g.ell(0, 9, 0, 12, 9, 12, (x, y, z, dx, dy, dz) => shadeC(HX('#262a30'), dy * 0.12 + (hash(x + ',' + y + ',' + z) % 9 === 0 ? 0.1 : 0)));
+  for (let x = -12; x <= 12; x++) for (let z = -12; z <= 12; z++) if (x * x + z * z <= 100 && x * x + z * z >= 64) for (let y = 15; y <= 17; y++) g.set(x, y, z, HX('#3a3f48'));
+  g.cyl(-7, 3, 2.2, 0, 5, '#262a30'); g.cyl(7, -3, 2.2, 0, 5, '#262a30');
+  for (let i = 0; i < 90; i++) { const r = rng('gp' + i), a = r() * 6.28, d = r() * 9, h = 15 + (1 - d / 9) * 6 + r() * 2; glow.ell(Math.cos(a) * d, h, Math.sin(a) * d, 1.8, 1.2, 1.8, i % 3 ? HX('#ffd23f') : HX('#ffe98a')); }
+  const bands = ['#e8403a', '#f08a2a', '#f4d83a', '#4cc060', '#4a8ae0', '#8a52c8']; bands.forEach((c, i) => { for (let a = 0.12; a < Math.PI - 0.12; a += 0.03) glow.set(-16 + Math.cos(a) * (24 - i * 1.6) * 0.9 + 4, 12 + Math.sin(a) * (24 - i * 1.6), -14, HX(c)); });
+  for (let k = 0; k < 3; k++) g.ell(15 + k * 2, 2, 8 - k * 3, 3, 1.1, 3, HX('#3fb860'));
+};
+DECOR_BUILD.dc_valentine = function (g, glow) {
+  for (let a = 0.05; a < Math.PI - 0.05; a += 0.02) { const x = Math.cos(a) * 20, y = Math.sin(a) * 28; g.ell(x, y, 0, 2.6, 2.6, 2.6, HX('#3a8f4a')); }
+  const r = rng('ra'); for (let i = 0; i < 18; i++) { const a = 0.15 + i * 0.16, x = Math.cos(a) * 20, y = Math.sin(a) * 28; g.ell(x, y + 2, 2.4, 3.3, 3.3, 2.2, (px, py, pz, dx, dy) => shadeC(i % 3 ? HX('#e02a5a') : HX('#ff7aa0'), dy * 0.15)); }
+  g.box(-22, 0, -3, -18, 4, 3, '#6a4a30'); g.box(18, 0, -3, 22, 4, 3, '#6a4a30');
+  const S = 4; for (let x = -S - 2; x <= S + 2; x++) for (let y = -S - 2; y <= S + 2; y++) { const X = x / S, Y = y / S; if (Math.pow(X * X + Y * Y - 1, 3) - X * X * Y * Y * Y <= 0) glow.set(x, y + 34, 0, HX('#ff4f8b')); }
+};
+DECOR_BUILD.dc_spring = function (g) {
+  g.cyl(0, 0, 13, 0, 3, (x, y, z) => shadeC(HX('#b8864a'), (x + z + y) % 4 === 0 ? -0.15 : 0.05), 11);
+  for (let y = 3; y <= 11; y++) g.cyl(0, 0, 13 + (y - 3) * 0.6, y, y, (x, yy, z) => shadeC(HX('#c8975a'), ((Math.round(x / 2) + Math.round(z / 2) + y) % 2) ? -0.16 : 0.06));
+  const cols = ['#ff9ac8', '#9ad8ff', '#a8f0a0', '#fff08a', '#d8a8ff'], r = rng('eb');
+  for (let i = 0; i < 7; i++) { const a = i * 0.9, d = 4 + r() * 7; g.ell(Math.cos(a) * d, 14, Math.sin(a) * d, 4, 5, 4, (x, y, z, dx, dy) => shadeC(HX(cols[i % 5]), dy * 0.12 + ((Math.floor(y / 2)) % 2 ? 0.1 : -0.04))); }
+  for (let t = 0; t <= 1; t += 0.03) g.ell(Math.cos(Math.PI * t) * 13, 11 + Math.sin(Math.PI * t) * 14, 0, 1.4, 1.4, 1.4, HX('#a8793c'));
+  for (let i = 0; i < 12; i++) blade(g, [Math.cos(i * 0.5) * 8, 11, Math.sin(i * 0.5) * 8], i, 1.0, 9, 1, 0.3, t => mixC(HX('#5bbf4a'), HX('#a8f080'), t));
+  for (let i = 0; i < 4; i++) { const a = i * 1.7; g.ell(Math.cos(a) * 9, 22, Math.sin(a) * 9, 2.6, 2.6, 2.6, HX(['#ff7aa8', '#ffd84a', '#fff', '#c090ff'][i])); g.line([Math.cos(a) * 9, 11, Math.sin(a) * 9], [Math.cos(a) * 9, 21, Math.sin(a) * 9], '#4a9a3a', 0.5); }
+};
+DECOR_BUILD.dc_summer = function (g) {
+  const sand = (x, y, z) => shadeC(HX('#f0d890'), (hash(x + ',' + y + ',' + z) % 6 === 0 ? -0.1 : 0.03));
+  g.ell(0, 0, 0, 24, 5, 18, sand);
+  [[-10, 0, 8, 6, 4], [5, 0, 4, 7, 4], [-2, 0, -7, 5, 3]].forEach(([x, y, z, r, h], i) => { g.cyl(x, z, r, 3, 3 + h * 2.4, sand); for (let k = 0; k < 6; k++) g.box(x - r + k * (r * 2 / 6), 3 + h * 2.4, z - 1, x - r + k * (r * 2 / 6) + 1, 3 + h * 2.4 + 1, z + 1, sand); g.cyl(x, z, r * 0.35, 3, 3 + h * 2.4 - 3, '#b89860'); });
+  g.cyl(12, -6, 0.8, 2, 40, '#7a5a3a');
+  for (let y = 0; y < 8; y++) { const r = 16 - y * 1.9; for (let a = 0; a < 6.28; a += 0.12) { const cx = 12 + Math.cos(a) * r, cz = -6 + Math.sin(a) * r, seg = Math.floor(a / 0.52) % 2; g.set(cx, 36 + y, cz, seg ? HX('#f0f0f0') : HX('#e84040')); } }
+  g.ell(12, 44, -6, 1.6, 1.6, 1.6, '#e8d040'); g.set(-14, 11, 6, HX('#ff6a8a')); g.line([-14, 4, 8], [-14, 16, 8], '#6a4a2a', 0.8); g.box(-14, 12, 8, -9, 15, 8, '#e84040');
+};
+DECOR_BUILD.dc_halloween = function (g, glow) {
+  const R = 15;
+  g.ell(0, R * 0.85, 0, R, R * 0.85, R, (x, y, z, dx, dy, dz) => { const rib = Math.abs(Math.sin(Math.atan2(z, x) * 4.5)) > 0.8; return shadeC(HX('#e8761a'), (rib ? -0.2 : 0.04) + dy * 0.1); });
+  g.cyl(0, 0, 2.4, R * 1.5, R * 1.5 + 5, '#5a7a2a'); g.line([2, R * 1.5 + 4, 0], [6, R * 1.5 + 8, 0], '#5a7a2a', 2);
+  for (const e of [...g.m.values()]) { const x = e[3], y = e[4], z = e[5]; if (z > 9) { const ex = (Math.abs(x + 6) < 3.2 && y > 15 && y < 21 && (y - 15) < (3.2 - Math.abs(x + 6)) * 1.6 + 1.5) || (Math.abs(x - 6) < 3.2 && y > 15 && y < 21 && (y - 15) < (3.2 - Math.abs(x - 6)) * 1.6 + 1.5); const mo = y > 7 && y < 13 && Math.abs(x) < 10 && ((Math.floor(x / 3) % 2 === 0) || y < 10); if (ex || mo) { g.del(x, y, z); glow.set(x, y, 8, HX('#ffd24a')); } } }
+  glow.ell(0, 12, 0, 6, 6, 6, HX('#ff9a1e'));
+};
+DECOR_BUILD.dc_winter = function (g, glow) {
+  g.cyl(0, 0, 2.4, 0, 6, '#6a4a2a');
+  for (let k = 0; k < 4; k++) { const y0 = 5 + k * 9, r0 = 17 - k * 3.6; for (let y = 0; y < 11; y++) g.cyl(0, 0, r0 * (1 - y / 11), y0 + y, y0 + y, (x, yy, z) => shadeC(HX('#1f7a3a'), (hash(x + ',' + yy + ',' + z) % 5 === 0 ? 0.1 : -0.04) + (y > 8 ? 0.15 : 0))); }
+  const cols = ['#e8302a', '#f4d83a', '#4a8ae0', '#fff', '#e870c0'], r = rng('xt');
+  for (let i = 0; i < 26; i++) { const k = Math.floor(r() * 4), y = 8 + k * 9 + r() * 7, rad = (17 - k * 3.6) * (1 - (y - (5 + k * 9)) / 11) * 0.9, a = r() * 6.28; glow.ell(Math.cos(a) * rad, y, Math.sin(a) * rad, 1.4, 1.4, 1.4, HX(cols[i % 5])); }
+  for (let a = 0; a < 6.28; a += 0.1) { glow.set(Math.cos(a) * 3, 44 + Math.sin(a * 5) * 1.5, Math.sin(a) * 3, HX('#ffe070')); }
+  glow.ell(0, 43, 0, 3, 3, 1.2, HX('#ffe070'));
+  [[-14, 0, 8, '#e8302a'], [-8, 0, 14, '#4a8ae0'], [12, 0, 10, '#f4d83a']].forEach(([x, y, z, c], i) => { g.box(x, 0, z, x + 7, 6, z + 7, c); g.box(x + 3, 0, z, x + 4, 6, z + 7, '#fff'); g.box(x, 3, z + 3, x + 7, 3, z + 4, '#fff'); });
+};
+
 const DECOR_SWAY = { javafern: 1.8, anubias: 0.9, sword: 2.0, wisteria: 2.8, lotus: 0.8, seagrass: 3.2, kelp: 3.2, anemone: 2.2, seafan: 0.8 };
 const _decorGeo = {};
 function decorModel(id) {
