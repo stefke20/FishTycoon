@@ -484,7 +484,7 @@ class TankScene3D {
       if (sp > L * 0.08) { const want = Math.atan2(-s.vz, s.vx); let dyaw = want - s.yaw; dyaw = Math.atan2(Math.sin(dyaw), Math.cos(dyaw)); s.yaw += dyaw * (1 - Math.exp(-dt * 3.2)); }
       const wantP = Math.atan2(s.vy, Math.max(1, sp)) * 0.8; s.pitch += (wantP - s.pitch) * (1 - Math.exp(-dt * 4));
       s.ph += dt * (3.2 + (sp + Math.abs(s.vy)) / L * 5.5);
-      const sc = o.baby ? 0.5 + 0.5 * Math.min(1, o.f.g) : 1;
+      const sc = (o.baby ? 0.5 + 0.5 * Math.min(1, o.f.g) : 1) * (o.f.big || 1);
       o.group.position.set(s.x, s.y + Math.sin(s.ph * 0.5) * 0.4, s.z); o.group.rotation.y = s.yaw; o.group.rotation.x = Math.sin(s.ph * 0.5) * 0.03;
       o.mesh.rotation.z = s.pitch; o.group.scale.setScalar(sc);
       o.mat.userData.u.uPhase.value = s.ph; o.mat.userData.u.uTime.value = this.t; if (o.fx) o.fx.update(dt, L, this.fxScale);
@@ -562,15 +562,17 @@ const Scenes = {
   bind(onFish, onHero, onStoreFish) {
     const old = new Map(); this.list.forEach(sc => old.set(sc.skey, sc)); this.cache.forEach((sc, k) => { if (!old.has(k)) old.set(k, sc); }); this.cache.clear();
     const next = [], claim = (key, cv, refresh, make) => { let sc = old.get(key); if (sc) { old.delete(key); cv.replaceWith(sc.cv); refresh(sc); } else sc = make(); sc.skey = key; next.push(sc); return sc; };
-    document.querySelectorAll('canvas.tankscene').forEach(cv => {
+    document.querySelectorAll('canvas.tankscene:not(.bossscene)').forEach(cv => {
       const t = getTank(cv.dataset.tank); if (!t) return; const mini = cv.dataset.mini === '1';
       claim('tank:' + t.id + ':' + (mini ? 1 : 0), cv, sc => sc.refresh(t, onFish, onHero), () => new TankScene3D(cv, t, mini, onFish, onHero));
     });
     document.querySelectorAll('canvas.storescene').forEach(cv => { if (typeof StoreScene === 'undefined') return; const onSlot = () => { UI.modal = { type: 'storeAdd' }; render(); }; claim('store', cv, sc => { sc.onFish = onStoreFish; sc.onSlot = onSlot; }, () => new StoreScene(cv, onStoreFish, onSlot)); });
     document.querySelectorAll('canvas.expscene').forEach(cv => { if (typeof ExpScene !== 'undefined') claim('exp', cv, sc => {}, () => new ExpScene(cv)); });
     document.querySelectorAll('canvas.showscene').forEach(cv => { if (typeof ShowScene !== 'undefined') claim('show', cv, sc => {}, () => new ShowScene(cv)); });
+    document.querySelectorAll('canvas.campscene').forEach(cv => { if (typeof CampScene !== 'undefined') claim('camp', cv, sc => {}, () => new CampScene(cv)); });
+    document.querySelectorAll('canvas.bossscene').forEach(cv => { const i = +cv.dataset.idx; claim('boss:' + i, cv, sc => {}, () => new BossScene(cv, i)); });
     document.querySelectorAll('canvas.homescene').forEach(cv => { if (typeof HomeScene === 'undefined') return; claim('home', cv, sc => {}, () => new HomeScene(cv)); });
-    old.forEach((sc, k) => { if (k === 'store' || k === 'home' || k === 'exp' || k === 'show') this.cache.set(k, sc); else sc.dispose(); });
+    old.forEach((sc, k) => { if (k === 'store' || k === 'home' || k === 'exp' || k === 'show' || k === 'camp') this.cache.set(k, sc); else sc.dispose(); });
     this.list = next;
     if (!this.running) { this.running = true; requestAnimationFrame(t => Scenes.loop(t)); }
   },

@@ -70,8 +70,8 @@ function wqColor(q) { return q >= 65 ? '#4fe0a0' : q >= 40 ? '#ffc24a' : '#ff6b7
 function tickWater(dt) {
   S.tanks.forEach(t => {
     const n = fishIn(t.id).length; if (!n) { t.wq = Math.min(100, wqOf(t) + dt * 0.05); return; }
-    const b = tankBonus(t), rate = 0.07 * (n / tankType(t).cap) / (1 + 0.7 * t.up.filter + 0.4 * t.up.aerator) * (1 - Math.min(0.85, b.wq));
-    t.wq = Math.max(0, wqOf(t) - rate * dt);
+    const b = tankBonus(t), rate = 0.07 * (n / tankCap(t)) / (1 + 0.7 * t.up.filter + 0.4 * t.up.aerator) * (1 - Math.min(0.85, b.wq));
+    t.wq = Math.max(0, wqOf(t) - rate * dt); if (lab('biofilter') && t.wq > 15) t.wq = Math.min(100, t.wq + 0.012 * lab('biofilter') * dt);
   });
 }
 
@@ -84,10 +84,11 @@ const STAFF = [
 ];
 const STAFF_BY_ID = {}; STAFF.forEach(s => (STAFF_BY_ID[s.id] = s));
 const staffActive = id => S.staff[id] > 0 && !S.staffPaused[id];
-const staffWage = () => Math.round(STAFF.reduce((a, s) => a + (staffActive(s.id) ? s.wage[S.staff[s.id] - 1] : 0), 0) * (1 - 0.05 * lab('automation')));
+const staffWage = () => Math.round(STAFF.reduce((a, s) => a + (staffActive(s.id) ? s.wage[S.staff[s.id] - 1] : 0), 0) * Math.max(0.1, 1 - 0.05 * lab('automation') - 0.08 * lab('accounting')) * (lab('ceo') ? 0.5 : 1));
+const hireCost = (s, l) => Math.round(s.hire[l] * Math.max(0.4, 1 - 0.1 * lab('hr')));
 function hireStaff(id) {
   const s = STAFF_BY_ID[id], l = S.staff[id];
-  if (l >= 3) return fail('Maxed'); if (!spend(s.hire[l])) return fail('Not enough money');
+  if (l >= 3) return fail('Maxed'); if (!spend(hireCost(s, l))) return fail('Not enough money');
   S.staff[id]++; return ok();
 }
 function pauseStaff(id) { if (!S.staff[id]) return fail('Not hired'); S.staffPaused[id] = !S.staffPaused[id]; return ok(); }
@@ -95,7 +96,7 @@ function tickStaff(dt) {
   S.wageT += dt;
   if (S.wageT >= 60) { S.wageT = 0; const w = staffWage(); if (w) { if (S.money >= w) { S.money -= w; S.stats.spent += w; S.unpaid = false; } else if (!S.unpaid) { S.unpaid = true; G.msg('Not enough money to pay your staff — they are on strike! (You can pause them in Shop → Management.)', 'bad'); } } }
   if (S.unpaid && S.money < staffWage()) return;
-  const speed = 1 + 0.08 * lab('automation');
+  const speed = 1 + 0.08 * lab('automation') + (lab('ceo') ? 0.3 : 0);
   for (const s of STAFF) {
     const l = S.staff[s.id]; if (!l || S.staffPaused[s.id]) continue;
     const t = (S.staffT[s.id] = (S.staffT[s.id] || 0) + dt * speed); if (t < s.every[l - 1]) continue; S.staffT[s.id] = 0;
@@ -113,8 +114,6 @@ const UNLOCKS = [
   { id: 'autoPair', n: 'Matchmaking Service', icon: '💞', d: 'Unlocks the Suggest pair button in Breeding, which picks the best two fish for stacking modifiers.', price: 90000 },
 ];
 function buyUnlock(id) { const u = UNLOCKS.find(x => x.id === id); if (S.unlocks[id]) return fail('Already owned'); if (!spend(u.price)) return fail('Not enough money'); S.unlocks[id] = true; return ok(); }
-/* research lab */
-function buyLab(id) { const u = LAB_BY_ID[id], l = lab(id); if (l >= u.max) return fail('Maxed'); if (!spend(u.cost(l))) return fail('Not enough money'); S.lab[id] = l + 1; return ok(); }
 /* sell every non-favourite adult in a list (bulk sell) */
 function sellMany(ids) {
   if (!S.unlocks.bulkSell) return fail('Buy the Market Broker in Shop → Management first');
@@ -295,7 +294,7 @@ const ACHIEVEMENTS = [
 function checkAchievements() {
   for (const a of ACHIEVEMENTS) {
     if (S.ach[a.id]) continue;
-    if (a.val() >= a.goal) { S.ach[a.id] = 1; S.money += a.reward; G.msg(`Achievement: ${a.n} (+${fmt(a.reward)})`, 'gold'); G.sfx && G.sfx('level'); G.dirty = true; }
+    if (a.val() >= a.goal) { S.ach[a.id] = 1; S.money += a.reward; gainRP(2); G.msg(`Achievement: ${a.n} (+${fmt(a.reward)})`, 'gold'); G.sfx && G.sfx('level'); G.dirty = true; }
   }
 }
 
@@ -315,7 +314,7 @@ function buildSanct() {
   const st = SANCT[S.sanct]; if (!st) return fail('Complete');
   if (!st.req()) return fail('Requirement not met: ' + st.reqT);
   if (!spend(st.cost)) return fail('Not enough money');
-  S.sanct++; if (S.sanct >= SANCT.length && !S.titles.includes('Ocean Legend')) S.titles.push('Ocean Legend'); return ok();
+  gainRP(20); S.sanct++; if (S.sanct >= SANCT.length && !S.titles.includes('Ocean Legend')) S.titles.push('Ocean Legend'); return ok();
 }
 
 /* ---------- tick ---------- */

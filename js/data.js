@@ -303,21 +303,6 @@ const BREED_UPGRADES = [
   { id: 'mutation', n: 'Gene Splicer', icon: '🧫', max: 6, cost: l => Math.round(2500 * Math.pow(2.8, l)), desc: '+1.5% chance of one brand-new modifier on offspring, per level' },
   { id: 'warmer', n: 'Egg Warmer', icon: '🔥', max: 4, cost: l => Math.round(1800 * Math.pow(2.6, l)), desc: 'Fish hatch already 15% grown, per level' },
 ];
-/* Research lab: permanent global upgrades */
-const LAB = [
-  { id: 'nutrition', n: 'Nutrition Science', icon: '🥗', max: 10, cost: l => Math.round(3000 * Math.pow(1.95, l)), desc: '+5% growth speed in every tank, per level' },
-  { id: 'genetics', n: 'Genetics Lab', icon: '🔬', max: 10, cost: l => Math.round(4000 * Math.pow(2, l)), desc: '+8% modifier chance everywhere, per level' },
-  { id: 'market', n: 'Market Research', icon: '📈', max: 10, cost: l => Math.round(5000 * Math.pow(2.05, l)), desc: '+3% value on every fish, per level' },
-  { id: 'wholesale', n: 'Egg Wholesaler', icon: '📦', max: 10, cost: l => Math.round(3500 * Math.pow(2, l)), desc: 'Eggs cost 3% less, per level' },
-  { id: 'chemistry', n: 'Water Chemistry', icon: '⚗️', max: 8, cost: l => Math.round(2500 * Math.pow(2.1, l)), desc: 'Water quality drops 7% slower, per level' },
-  { id: 'bloodline', n: 'Genealogy Institute', icon: '🧬', max: 10, cost: l => Math.round(6000 * Math.pow(2, l)), desc: '+3% chance that each parent modifier is inherited, per level' },
-  { id: 'evolution', n: 'Evolution Research', icon: '🦎', max: 8, cost: l => Math.round(8000 * Math.pow(2.2, l)), desc: '+2% chance of a higher-tier offspring, per level' },
-  { id: 'nightshift', n: 'Night Shift', icon: '🌙', max: 8, cost: l => Math.round(2000 * Math.pow(2.2, l)), desc: 'Fish keep growing 1 more hour while you are away, per level' },
-  { id: 'broker', n: 'Contract Broker', icon: '🤝', max: 5, cost: l => Math.round(3000 * Math.pow(2.4, l)), desc: 'Special orders pay 10% more and arrive faster, per level' },
-  { id: 'automation', n: 'Automation Hub', icon: '🤖', max: 6, cost: l => Math.round(7000 * Math.pow(2.3, l)), desc: 'Staff work 8% faster and cost 5% less, per level' },
-  { id: 'sponge', n: 'Pro Sponge', icon: '🧽', max: 5, cost: l => Math.round(500 * Math.pow(2.3, l)), desc: 'A bigger sponge that cleans more water per smudge, per level' },
-];
-const LAB_BY_ID = {}; LAB.forEach(u => (LAB_BY_ID[u.id] = u));
 const BREED_COOLDOWN = 90;
 const BASE_INHERIT = 0.45;   // chance that each parent modifier is passed on
 const BASE_NEWMOD = 0.08;    // chance of one brand-new modifier on top

@@ -95,15 +95,17 @@ class ExpScene {
     const wrap = canvas.parentElement, cssW = Math.max(560, Math.min(1100, (wrap ? wrap.clientWidth : 900) - 20)), cssH = Math.round(cssW * 0.64), dpr = Math.min(2, window.devicePixelRatio || 1);
     canvas.width = Math.round(cssW * dpr); canvas.height = Math.round(cssH * dpr); canvas.style.width = cssW + 'px'; canvas.style.height = cssH + 'px';
     this.build();
-    const box = new THREE.Box3(new THREE.Vector3(10, -6, -14), new THREE.Vector3(MAP.W - 36, 54, MAP.D + 26));
+    const box = this.mapBox();
     fitOrtho(this.cam, box, canvas.width / canvas.height, ISO_DIR, 0.0);
-    this.zp = new ZoomPan(this, 'exp'); this.zp.bind(canvas); this.zp.capture();
+    this.zp = new ZoomPan(this, this.constructor.name); this.zp.bind(canvas); this.zp.capture();
     canvas.addEventListener('click', e => { if (this.zp.moved) return; const id = this.pickLoc(e); if (id) this.onPick(id); });
     let last = 0; canvas.addEventListener('mousemove', e => { const n = performance.now(); if (n - last < 60) return; last = n; canvas.style.cursor = this.pickLoc(e) ? 'pointer' : 'grab'; });
     this.onPick = id => { UI.expLoc = id; render(); };
   }
-  build() {
-    const sc = this.scene, mat = plainMat();
+  mapBox() { return new THREE.Box3(new THREE.Vector3(10, -6, -14), new THREE.Vector3(MAP.W - 36, 54, MAP.D + 26)); }
+  build() { this.buildOcean(); this.buildPlaces(); }
+  buildOcean() {
+    const sc = this.scene;
     // ocean: tiled wave texture on a big plane
     const cvw = document.createElement('canvas'); cvw.width = cvw.height = 128; const x = cvw.getContext('2d'); x.fillStyle = '#2a86c4'; x.fillRect(0, 0, 128, 128);
     for (let i = 0; i < 70; i++) { x.fillStyle = i % 3 ? 'rgba(255,255,255,0.14)' : 'rgba(10,50,110,0.18)'; const px = (i * 37) % 128, py = (i * 53) % 128; x.fillRect(px, py, 10 + (i % 4) * 3, 2); }
@@ -111,6 +113,10 @@ class ExpScene {
     const ocean = new THREE.Mesh(new THREE.PlaneGeometry(MAP.W + 1400, MAP.D + 1400), new THREE.MeshBasicMaterial({ map: tex })); ocean.rotation.x = -Math.PI / 2; ocean.position.set(MAP.W / 2, -2, MAP.D / 2); sc.add(ocean);
     const edge = new THREE.Mesh(new THREE.BoxGeometry(MAP.W + 40, 8, MAP.D + 40), new THREE.MeshBasicMaterial({ color: 0x0c4a80 })); edge.position.set(MAP.W / 2, -7, MAP.D / 2); sc.add(edge);
     this.isl = {}; this.hits = [];
+    this.clouds = []; for (let i = 0; i < 5; i++) { const c = new THREE.Group(); for (let k = 0; k < 4; k++) { const b = new THREE.Mesh(new THREE.BoxGeometry(14 + k * 4, 5, 9 + k * 2), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55 })); b.position.set(k * 9 - 12, k % 2 * 2, k % 3 * 3); c.add(b); } c.position.set(30 + i * 90, 46, 30 + (i * 67) % 240); sc.add(c); this.clouds.push(c); }
+  }
+  buildPlaces() {
+    const sc = this.scene, mat = plainMat();
     LOCATIONS.forEach(l => {
       const m = new THREE.Mesh(islandGeo(l.id), mat); m.position.set(l.pos[0], 0, l.pos[1]); m.scale.setScalar(ISL_S); sc.add(m); this.isl[l.id] = m;
       if (GLOWS[l.id]) { const gm = new THREE.Mesh(GLOWS[l.id], glowMat()); gm.position.copy(m.position); gm.scale.setScalar(ISL_S); sc.add(gm); }
@@ -118,7 +124,6 @@ class ExpScene {
     });
     const hb = new THREE.Mesh(harborGeo(), mat); hb.position.set(MAP.H[0], 0, MAP.H[1] + 14); sc.add(hb);
     this.boats = []; for (let i = 0; i < 4; i++) { const g = new THREE.Group(), m = new THREE.Mesh(boatGeo(), mat); g.add(m); g.visible = false; const flag = new THREE.Mesh(new THREE.BoxGeometry(5, 3, 0.6), new THREE.MeshBasicMaterial({ color: 0xffd23a })); flag.position.set(2, 25, 0); flag.visible = false; g.add(flag); sc.add(g); this.boats.push({ g, m, flag }); }
-    this.clouds = []; for (let i = 0; i < 5; i++) { const c = new THREE.Group(); for (let k = 0; k < 4; k++) { const b = new THREE.Mesh(new THREE.BoxGeometry(14 + k * 4, 5, 9 + k * 2), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55 })); b.position.set(k * 9 - 12, k % 2 * 2, k % 3 * 3); c.add(b); } c.position.set(30 + i * 90, 46, 30 + (i * 67) % 240); sc.add(c); this.clouds.push(c); }
   }
   pickLoc(e) { const r = this.cv.getBoundingClientRect(); this.mouse.set((e.clientX - r.left) / r.width * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1); this.ray.setFromCamera(this.mouse, this.cam); const h = this.ray.intersectObjects(this.hits, false)[0]; return h ? h.object.userData.loc : null; }
   proj(x, y, z) { const v = new THREE.Vector3(x, y, z).project(this.cam); return [(v.x + 1) / 2 * this.cv.width, (1 - v.y) / 2 * this.cv.height]; }

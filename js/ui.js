@@ -42,6 +42,8 @@ const SVG = {
   ev: '<path d="M12 3l2.6 5.6 6 .7-4.5 4.1 1.2 6L12 16.5 6.7 19.4l1.2-6L3.4 9.3l6-.7L12 3z"/>',
   stats: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
   home: '<path d="M3 11l9-8 9 8M5 10v10h5v-6h4v6h5V10"/>',
+  camp: '<path d="M5 21V4M5 4h11l-2 4 2 4H5"/>',
+  research: '<path d="M9 3h6M10 3v6l-5 9a2 2 0 002 3h10a2 2 0 002-3l-5-9V3M8 15h8"/>',
   exp: '<path d="M12 3v13M12 4c4 2 6 6 6 11h-6M12 7c-4 2-6 5-6 9h6M3 19c3 2 6 2 9 0s6-2 9 0"/>',
   shows: '<path d="M7 4h10v5a5 5 0 01-10 0V4zM7 6H4v1a3 3 0 003 3M17 6h3v1a3 3 0 01-3 3M12 14v4M8 21h8M10 18h4"/>',
   daily: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M8 15l2.5 2.5L16 13"/>',
@@ -71,11 +73,11 @@ const sortBar = () => { if (UI.filterTank !== 'all' && UI.filterTank !== 'store'
 const zoomCtl = (tank, home) => `<div class="zoomctl">${tank ? '<button data-act="cam" data-x="rotL" title="Rotate left">↺</button><button data-act="cam" data-x="rotR" title="Rotate right">↻</button><button data-act="cam" data-x="tilt" title="Change camera angle">⇅</button><button data-act="cam" data-x="photo" title="Save a picture">📷</button>' : ''}<button data-act="zoom" data-x="in" title="Zoom in (+)">＋</button><button data-act="zoom" data-x="out" title="Zoom out (−)">－</button><button data-act="zoom" data-x="reset" title="Reset view (0)">⟲</button></div><div class="zoomhint">${home ? 'Scroll to zoom' : 'Scroll to zoom · drag to pan · double-click to reset'}${tank ? ' · ↺ ↻ rotate' : ''}</div>`;
 
 /* ---------- chrome ---------- */
-const TABS = [['store', 'Store'], ['home', 'Home'], ['hall', 'Aquariums'], ['breed', 'Breeding'], ['exp', 'Expeditions'], ['shows', 'Fish Shows'], ['shop', 'Shop'], ['inv', 'Inventory'], ['book', 'Collection'], ['daily', 'Daily'], ['ev', 'Events'], ['stats', 'Stats'], ['menu', 'Menu']];
+const TABS = [['store', 'Store'], ['home', 'Home'], ['hall', 'Aquariums'], ['breed', 'Breeding'], ['camp', 'Campaign'], ['exp', 'Expeditions'], ['shows', 'Fish Shows'], ['shop', 'Shop'], ['inv', 'Inventory'], ['research', 'Research'], ['book', 'Collection'], ['daily', 'Daily'], ['ev', 'Events'], ['stats', 'Stats'], ['menu', 'Menu']];
 function renderHeader() {
   const tabs = TABS;
   $('#tabs').innerHTML = tabs.map(([id, l]) => {
-    const n = id === 'store' ? S.customers.filter(c => c.ready).length + S.contracts.length : id === 'inv' ? S.eggs.length : id === 'ev' ? activeEvents().length : id === 'exp' ? boatsReady() : id === 'daily' ? (loginClaimable() ? 1 : 0) + questsClaimable() : 0;
+    const n = id === 'store' ? S.customers.filter(c => c.ready).length + S.contracts.length : id === 'inv' ? S.eggs.length : id === 'ev' ? activeEvents().length : id === 'exp' ? boatsReady() : id === 'research' ? RNODES.filter(n => researchUnlocked(n) && lab(n.id) < n.max && (S.rp || 0) >= rpCost(n, lab(n.id)) && S.money >= n.cost(lab(n.id))).length : id === 'camp' ? (CAMPAIGN[campCur()] && campCandidates(CAMPAIGN[campCur()].spec).some(x => x.full) ? 1 : 0) : id === 'daily' ? (loginClaimable() ? 1 : 0) + questsClaimable() : 0;
     return `<button class="${UI.tab === id ? 'on' : ''}" data-act="tab" data-x="${id}"><svg viewBox="0 0 24 24">${SVG[id]}</svg><span>${l}</span>${n ? `<span class="badge">${n}</span>` : ''}</button>`;
   }).join('');
   if (!$('#logoimg').firstChild) $('#logoimg').innerHTML = `<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#2ad4c0" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${SVG.hall}</svg>`;
@@ -129,7 +131,7 @@ function viewHall() {
     const tt = tankType(t), fs = fishIn(t.id), grow = fs.filter(f => !isAdult(f)).length;
     h += `<div class="card click" data-act="openTank" data-x="${t.id}" data-droptank="${t.id}"><div class="scenewrap">${sceneHTML(t, true)}</div>
       <div class="row" style="margin-top:12px"><b class="grow">${esc(t.name)}</b>${waterTag(tt.w)}</div>
-      <div class="small dim" style="margin-top:2px">${fs.length}/${tt.cap} fish · ${grow} growing · rating ${rating(t)}${heroIn(t.id) ? ' · ★ ' + HERO[heroIn(t.id).kind].n : ''}</div><div class="row" style="margin-top:8px;gap:8px"><span class="small dim">Water</span><div class="grow">${wqBar(t)}</div><span class="small" style="color:${wqColor(wqOf(t))}">${wqLabel(wqOf(t))}</span></div></div>`;
+      <div class="small dim" style="margin-top:2px">${fs.length}/${tankCap(t)} fish · ${grow} growing · rating ${rating(t)}${heroIn(t.id) ? ' · ★ ' + HERO[heroIn(t.id).kind].n : ''}</div><div class="row" style="margin-top:8px;gap:8px"><span class="small dim">Water</span><div class="grow">${wqBar(t)}</div><span class="small" style="color:${wqColor(wqOf(t))}">${wqLabel(wqOf(t))}</span></div></div>`;
   }
   for (let i = regularTanks().length; i < S.hallSlots; i++) h += `<div class="empty" style="display:flex;align-items:center;justify-content:center;min-height:200px;cursor:pointer" data-act="goTanks"><div><div style="font-size:26px">＋</div>Empty slot<br><span class="small">Buy a tank in the shop</span></div></div>`;
   return h + '</div>';
@@ -158,8 +160,8 @@ function viewTank() {
   const t = getTank(UI.tankId);
   if (!t) { UI.tankId = null; return viewHall(); }
   const tt = tankType(t), fs = fishIn(t.id), b = tankBonus(t), fed = t.fedUntil > S.time, growing = fs.filter(f => !isAdult(f)).length, q = wqOf(t), vm = wqValueMult(q);
-  let h = pageHead(esc(t.name), `${tt.n} · ${tt.cap} fish capacity`, `${btn('← All tanks', 'backHall', {}, 'ghost')}${btn('Rename', 'rename', { x: t.id })}`);
-  h += `<div class="stats">${waterTag(tt.w)}${pill('Fish', fs.length + '/' + tt.cap)}${pill('Water rating', rating(t) + ' (tier ≤ ' + rating(t) + ')')}${pill('Water quality', `<span data-wqtext="${t.id}" style="color:${wqColor(q)}">${wqLabel(q)} ${Math.round(q)}%</span>`)}${vm < 1 ? pill('Dirty water', `<span class="badc">−${Math.round((1 - vm) * 100)}% value</span>`) : ''}${pill('Growth', mult(1 + b.growth))}${pill('Value', '+' + Math.round(b.value * 100) + '%')}${pill('Mutation', '+' + Math.round(b.mod * 100) + '%')}${pill('Tier-up', '+' + Math.round(b.tier * 100) + '%')}${pill('Inheritance', '+' + Math.round(b.inherit * 100) + '%')}</div>`;
+  let h = pageHead(esc(t.name), `${tt.n} · ${tankCap(t)} fish capacity`, `${btn('← All tanks', 'backHall', {}, 'ghost')}${btn('Rename', 'rename', { x: t.id })}`);
+  h += `<div class="stats">${waterTag(tt.w)}${pill('Fish', fs.length + '/' + tankCap(t))}${pill('Water rating', rating(t) + ' (tier ≤ ' + rating(t) + ')')}${pill('Water quality', `<span data-wqtext="${t.id}" style="color:${wqColor(q)}">${wqLabel(q)} ${Math.round(q)}%</span>`)}${vm < 1 ? pill('Dirty water', `<span class="badc">−${Math.round((1 - vm) * 100)}% value</span>`) : ''}${pill('Growth', mult(1 + b.growth))}${pill('Value', '+' + Math.round(b.value * 100) + '%')}${pill('Mutation', '+' + Math.round(b.mod * 100) + '%')}${pill('Tier-up', '+' + Math.round(b.tier * 100) + '%')}${pill('Inheritance', '+' + Math.round(b.inherit * 100) + '%')}</div>`;
   h += `<div class="tankwrap"><div class="tankmain"><div class="scenewrap" data-droptank="${t.id}" style="position:relative">${sceneHTML(t, false)}${zoomCtl(true)}</div>`;
   h += `<div class="row" style="margin-top:16px">${btn(`Feed · ${fmt(growing * FEED_COST_PER_FISH)} · ×${foodMult()} growth`, 'feed', { x: t.id }, 'pri', !growing)}
     <span class="dim small" data-fed="${t.id}">${fed ? 'Well fed — ' + Math.ceil(t.fedUntil - S.time) + 's left' : 'Hungry — feeding speeds up growth'}</span><span class="grow"></span>
@@ -226,7 +228,7 @@ function item(icon, name, desc, price, label, act, data, opts) {
 }
 function avgValue(ids) { return ids.reduce((a, id) => a + SPECIES[id].value, 0) / ids.length; }
 function viewShop() {
-  const cats = [['eggs', 'Eggs'], ['consumables', 'Mutagens'], ['tanks', 'Tanks'], ['upgrades', 'Tank Upgrades'], ['decor', 'Decorations'], ['food', 'Food'], ['skins', 'Skins'], ['store', 'Store'], ['breeding', 'Breeding'], ['lab', 'Research'], ['mgmt', 'Management'], ['heroes', 'Hero Fish']];
+  const cats = [['eggs', 'Eggs'], ['consumables', 'Mutagens'], ['tanks', 'Tanks'], ['upgrades', 'Tank Upgrades'], ['decor', 'Decorations'], ['food', 'Food'], ['skins', 'Skins'], ['store', 'Store'], ['breeding', 'Breeding'], ['mgmt', 'Management'], ['heroes', 'Hero Fish']];
   let h = pageHead('Shop', 'Eggs, tanks, decorations and upgrades.') + `<div class="seg">${cats.map(([id, l]) => `<button class="${UI.shopCat === id ? 'on' : ''}" data-act="shopCat" data-x="${id}">${l}</button>`).join('')}</div>`;
   const lv = level();
   switch (UI.shopCat) {
@@ -273,7 +275,7 @@ function viewShop() {
       break;
     }
     case 'food': {
-      h += `<p class="lead">Feeding makes fish grow faster for ${FED_DURATION}s. Current: <b>${FOOD[S.food].n}</b> (×${foodMult()}).</p>`;
+      h += `<p class="lead">Feeding makes fish grow faster for ${Math.round(fedDur())}s. Current: <b>${FOOD[S.food].n}</b> (×${foodMult()}).</p>`;
       FOOD.forEach((f, i) => { if (i === 0) return; h += item(ico('🍤', 28), f.n, `Feeding multiplies growth speed by ×${f.mult}`, f.price, 'Buy', 'buyFood', {}, { maxed: S.food >= i, locked: i > S.food + 1 ? 'buy the previous food first' : null }); });
       break;
     }
@@ -283,11 +285,6 @@ function viewShop() {
     }
     case 'store': {
       for (const u of STORE_UPGRADES) { const l = S.storeUp[u.id]; h += item(ico(u.icon, 28), `${u.n} <span class="dim small">Lv ${l}/${u.max}</span>`, u.desc, l >= u.max ? null : u.cost(l), 'Upgrade', 'sup', { x: u.id }, { maxed: l >= u.max }); }
-      break;
-    }
-    case 'lab': {
-      h += `<p class="lead">The research lab funds permanent upgrades that apply to <b>every</b> tank and fish you own.</p>`;
-      for (const u of LAB) { const l = lab(u.id); h += item(ico(u.icon, 28), `${u.n} <span class="dim small">Lv ${l}/${u.max}</span>`, u.desc, l >= u.max ? null : u.cost(l), 'Research', 'buyLab', { x: u.id }, { maxed: l >= u.max }); }
       break;
     }
     case 'mgmt': h += viewMgmt(); break;
@@ -329,7 +326,7 @@ function viewMenu() {
 
 /* ---------- MODALS ---------- */
 function tankRow(t, why, act, data, label) {
-  return `<div class="item" style="${why ? 'opacity:.5' : ''}"><div class="grow"><b>${esc(t.name)}</b><div class="small dim">${waterTag(tankType(t).w)} · ${fishIn(t.id).length}/${tankType(t).cap} fish · rating ${rating(t)}</div></div>${why ? `<span class="dim small">${why}</span>` : btn(label, act, data, 'pri sm')}</div>`;
+  return `<div class="item" style="${why ? 'opacity:.5' : ''}"><div class="grow"><b>${esc(t.name)}</b><div class="small dim">${waterTag(tankType(t).w)} · ${fishIn(t.id).length}/${tankCap(t)} fish · rating ${rating(t)}</div></div>${why ? `<span class="dim small">${why}</span>` : btn(label, act, data, 'pri sm')}</div>`;
 }
 function modalHTML() {
   const m = UI.modal; if (!m) return '';
@@ -351,6 +348,7 @@ function modalHTML() {
     case 'showEnter': h += showEnterModal(m.id); break;
     case 'tourneyPick': h += tourneyModal(); break;
     case 'daily': h += dailyModal(); break;
+    case 'bossWin': h += bossWinModal(m.idx, m.fid); break;
     case 'hero': h += heroModal(m.id); break;
     case 'contract': h += contractModal(m.id); break;
     case 'pickTank': {
@@ -391,7 +389,7 @@ function modalHTML() {
       <p><b>3.</b> Keep the glass clean: smudges appear as the <b>water quality</b> drops, and dirty water makes your fish worth less. Drag the <b>sponge</b> over the glass to wipe it.</p>
       <p><b>4.</b> Spend profits in the <b>Shop</b>: tanks, filters, decorations, food, store and breeding upgrades, research, staff and hero fish. High-tier eggs cost more than the fish they hatch — <b>breed</b> instead!</p>
       <p><b>5.</b> <b>Breed</b> two adults: every modifier the parents carry can be passed on (none, one or several) with a small chance of a brand-new one, so modifiers stack over generations.</p>
-      <p><b>6.</b> Send boats on <b>Expeditions</b> for wild eggs of exclusive fish, enter your best fish in <b>Fish Shows</b> and tournaments for medals (permanent value) and fame, and check the <b>Daily</b> page for quests and your login streak.</p>
+      <p><b>6.</b> Send boats on <b>Expeditions</b> for wild eggs of exclusive fish, enter your best fish in <b>Fish Shows</b> and tournaments for medals (permanent value) and fame, and check the <b>Daily</b> page for quests and your login streak. Spend research points on the <b>Research</b> tree, and challenge the boss fish of the <b>Ocean Campaign</b> by breeding exactly what they demand.</p>
       <p><b>7.</b> Your 20 most valuable fish ever live in the big aquarium at <b>Home</b>. The end-game goal is to build <b>The Great Sanctuary</b> (Stats page).</p><div class="row" style="margin-top:14px">${btn("Let's go", 'closeModal', {}, 'pri')}</div>`; break;
     }
     case 'text': { h += `<h2>${esc(m.title)}</h2><textarea id="txt" style="width:100%;height:160px;background:#0a1626;color:#cfe;border:1px solid var(--line2);border-radius:10px;padding:10px;user-select:text" ${m.ro ? 'readonly' : ''}>${esc(m.text || '')}</textarea><div class="row" style="margin-top:10px">${m.ro ? '' : btn('Load', 'doImport', {}, 'pri')}${btn('Close', 'closeModal')}</div>`; break; }
@@ -405,10 +403,11 @@ function render() {
   if (G.showResult) { UI.showLeague = G.showResult; UI.showResult = true; G.showResult = null; }
   const view = $('#view'), st = view.scrollTop;
   renderHeader(); renderStats();
-  view.innerHTML = { store: viewStore, home: viewHome, exp: viewExp, shows: viewShows, daily: viewDaily, hall: () => (UI.tankId ? viewTank() : viewHall()), breed: viewBreed, shop: viewShop, inv: viewInv, book: viewCollection, ev: viewEvents, stats: viewStats, menu: viewMenu }[UI.tab]();
+  view.innerHTML = { store: viewStore, home: viewHome, exp: viewExp, camp: viewCampaign, research: viewResearch, shows: viewShows, daily: viewDaily, hall: () => (UI.tankId ? viewTank() : viewHall()), breed: viewBreed, shop: viewShop, inv: viewInv, book: viewCollection, ev: viewEvents, stats: viewStats, menu: viewMenu }[UI.tab]();
   view.scrollTop = st;
   const mo = $('#modal');
   if (UI.modal) { const keep = mo.firstChild && mo.firstChild.scrollTop; mo.innerHTML = modalHTML(); mo.classList.toggle('hidden', !UI.modal); if (mo.firstChild && keep) mo.firstChild.scrollTop = keep; } else { mo.classList.add('hidden'); mo.innerHTML = ''; }
+  if (UI.tab === 'research') drawResearchLines();
   Scenes.bind(id => { UI.selFish = id; render(); }, id => { UI.modal = { type: 'hero', id }; render(); }, id => { UI.modal = { type: 'fish', id }; render(); });
 }
 
@@ -444,7 +443,12 @@ const ACT = {
   sellRow: d => { const r = res(sellMarket(d.x)); if (r.ok) { Sfx.play('sale'); toast(r.tokens ? `Sold for ${r.tokens} tokens` : 'Sold for ' + fmt(r.price), 'gold'); } },
   sellAll: () => { const ids = sortFish(S.fish).filter(f => isAdult(f) && !f.fav).map(f => f.id); if (!ids.length) return false; const val = ids.reduce((a, id) => a + (isEv(getFish(id)) ? 0 : fishValue(getFish(id)) * quickSell()), 0); if (!confirm(`Sell ${ids.length} fish for about ${fmt(val)}? Favourites and growing fish are kept.`)) return false; const r = res(sellMany(ids)); if (r.ok) { Sfx.play('sale'); toast(`Sold ${r.n} fish for ${fmt(r.money)}` + (r.tokens ? ` and ${r.tokens} tokens` : ''), 'gold'); } },
   cleanAll: () => { const r = res(cleanAll()); if (r.ok) { toast(`Cleaned ${r.n} tank${r.n > 1 ? 's' : ''}`, 'good'); Sfx.play('pop'); } },
-  buyLab: d => { const r = res(buyLab(d.x)); if (r.ok) { toast(LAB_BY_ID[d.x].n + ' researched', 'good'); Sfx.play('buy'); } },
+  research: d => { const r = res(buyResearch(d.x)); if (r.ok) { toast(RNODE[d.x].n + ' researched', 'good'); Sfx.play('level'); } },
+  fundRP: () => { const r = res(fundResearch()); if (r.ok) { toast('+1 research point', 'good'); Sfx.play('buy'); } },
+  rbranch: d => { UI.rbranch = d.x; },
+  campSel: d => { UI.campSel = +d.x; },
+  campNext: d => { UI.campSel = Math.min(+d.x, CAMPAIGN.length - 1); UI.modal = null; },
+  bossFight: d => { const r = res(fightBoss(+d.x, d.y)); if (r.ok) { Sfx.play('level'); UI.modal = { type: 'bossWin', idx: +d.x, fid: d.y }; } },
   pauseStaff: d => res(pauseStaff(d.x)),
   suggestPair: () => { const p = suggestPair(); if (p) UI.sel = p; else toast('No compatible pair is ready right now', 'bad'); },
   goMgmt: () => { UI.shopCat = 'mgmt'; UI.tab = 'shop'; },

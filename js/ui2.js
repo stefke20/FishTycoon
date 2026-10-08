@@ -40,7 +40,7 @@ function viewMgmt() {
   h += `<h3>Hire & upgrade</h3>`;
   for (const x of STAFF) {
     const l = S.staff[x.id];
-    h += item(ico(x.icon, 28), `${x.n} <span class="dim small">Lv ${l}/3</span>`, `${x.d}<br>${l ? `Works every ${x.every[l - 1]}s · wage ${fmt(x.wage[l - 1])}/min` : `Hire: first shift every ${x.every[0]}s · wage ${fmt(x.wage[0])}/min`}`, l >= 3 ? null : x.hire[l], l ? 'Upgrade' : 'Hire', 'hire', { x: x.id }, { maxed: l >= 3 });
+    h += item(ico(x.icon, 28), `${x.n} <span class="dim small">Lv ${l}/3</span>`, `${x.d}<br>${l ? `Works every ${x.every[l - 1]}s · wage ${fmt(x.wage[l - 1])}/min` : `Hire: first shift every ${x.every[0]}s · wage ${fmt(x.wage[0])}/min`}`, l >= 3 ? null : hireCost(x, l), l ? 'Upgrade' : 'Hire', 'hire', { x: x.id }, { maxed: l >= 3 });
   }
   h += `<h3>Facilities</h3>`;
   for (const u of UNLOCKS) h += item(ico(u.icon, 28), u.n, u.d, u.price, 'Buy', 'buyUnlock', { x: u.id }, { maxed: S.unlocks[u.id] });

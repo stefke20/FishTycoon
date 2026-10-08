@@ -11,6 +11,7 @@ function ensureG3() {
   S.exp = Object.assign({ slots: 1, up: {}, boats: [], log: [], caught: 0 }, S.exp);
   EXP_UPGRADES.forEach(u => { if (S.exp.up[u.id] == null) S.exp.up[u.id] = 0; });
   while (S.exp.boats.length < S.exp.slots) S.exp.boats.push(null);
+  S.camp = Object.assign({ done: {} }, S.camp); if (S.rp == null) S.rp = 3; S.rpTotal = S.rpTotal || 0; S.rpFunded = S.rpFunded || 0;
   S.shows = Object.assign({ fame: 0, leagues: {}, last: {}, log: [], tourney: null, wins: 0 }, S.shows);
   S.daily = Object.assign({ date: '', quests: [], bonus: false }, S.daily);
   S.streak = Object.assign({ days: 0, best: 0, last: '', claimed: '', shields: 0 }, S.streak);
@@ -20,8 +21,8 @@ function ensureG3() {
 
 /* ================= EXPEDITIONS ================= */
 const expUp = id => (S.exp.up[id] || 0);
-const expDuration = l => l.dur * Math.pow(0.92, expUp('hull'));                       // seconds
-const expCost = (l, sup) => Math.round(l.cost * EXP_SUPPLIES[sup].mult);
+const expDuration = l => l.dur * Math.pow(0.92, expUp('hull')) * Math.max(0.4, 1 - 0.06 * lab('navigation')) * (1 - Math.min(0.5, campPerk('exp')));                       // seconds
+const expCost = (l, sup) => Math.round(l.cost * EXP_SUPPLIES[sup].mult * Math.max(0.4, 1 - 0.08 * lab('provisions')));
 const expUnlocked = l => level() >= l.lvl;
 const boatProgress = b => Math.max(0, Math.min(1, (nowMs() - b.start) / b.dur));
 const boatReady = b => !!b && nowMs() >= b.start + b.dur;
@@ -36,9 +37,9 @@ function sendExpedition(locId, sup) {
   S.stats.exps++; return ok();
 }
 function rollExpedition(b) {
-  const l = LOCATION[b.loc], sup = EXP_SUPPLIES[b.sup], luck = 0.12 * expUp('crew') + sup.luck;
-  const danger = l.danger * Math.pow(0.88, expUp('safety')) * (1 - sup.safe), storm = Math.random() < danger;
-  let n = 2 + (Math.random() < 0.5 ? 1 : 0) + Math.floor(expUp('nets') / 2) + b.sup;
+  const l = LOCATION[b.loc], sup = EXP_SUPPLIES[b.sup], luck = 0.12 * expUp('crew') + sup.luck + (lab('legend') ? 0.4 : 0), bm = 1 + 0.25 * lab('bounty');
+  const danger = l.danger * Math.pow(0.88, expUp('safety')) * (1 - sup.safe), storm = !lab('legend') && Math.random() < danger;
+  let n = 2 + (Math.random() < 0.5 ? 1 : 0) + Math.floor(expUp('nets') / 2) + Math.floor(lab('cartography') / 3) + b.sup;
   if (storm) n = Math.floor(n / 2);
   const pool = SPECIES_LIST.filter(s => s.exp === l.id), w = s => (1 / Math.pow(s.t, 1.5)) * (1 + luck * (s.t - 1)), tot = pool.reduce((a, s) => a + w(s), 0);
   const catches = [];
@@ -49,8 +50,8 @@ function rollExpedition(b) {
     catches.push({ sp: sp.id, mods });
   }
   const loot = { cash: 0, items: {} };
-  if (!storm && Math.random() < 0.18) loot.cash = Math.round(l.cost * (1 + Math.random() * 1.8));
-  if (!storm && Math.random() < 0.14) { const id = l.lvl >= 7 ? 'mut3' : l.lvl >= 4 ? 'mut2' : 'mut1'; loot.items[id] = 1; }
+  if (!storm && Math.random() < 0.18 * bm) loot.cash = Math.round(l.cost * (1 + Math.random() * 1.8));
+  if (!storm && Math.random() < 0.14 * bm) { const id = l.lvl >= 7 ? 'mut3' : l.lvl >= 4 ? 'mut2' : 'mut1'; loot.items[id] = 1; }
   if (!storm && Math.random() < 0.04 + 0.01 * b.sup) loot.items.mut4 = 1;
   return { loc: l.id, sup: b.sup, storm, catches, loot };
 }
@@ -60,7 +61,7 @@ function collectExpedition(slot) {
   res.catches.forEach(c => { const sp = SPECIES[c.sp], egg = { id: 'e' + S.nextId++, water: sp.w, tier: sp.t, wild: b.loc, bred: { sp: c.sp, mods: c.mods, parents: [null, null], gen: 0 } }; S.eggs.push(egg); eggs.push(egg); });
   S.money += res.loot.cash; for (const k in res.loot.items) S.items[k] = (S.items[k] || 0) + res.loot.items[k];
   S.exp.boats[slot] = null; S.exp.caught += res.catches.length; S.stats.catches += res.catches.length;
-  S.exp.log.unshift({ t: nowMs(), loc: b.loc, n: res.catches.length, storm: res.storm, cash: res.loot.cash }); S.exp.log.length = Math.min(S.exp.log.length, 10);
+  gainRP(1 + Math.floor(res.catches.length / 2)); S.exp.log.unshift({ t: nowMs(), loc: b.loc, n: res.catches.length, storm: res.storm, cash: res.loot.cash }); S.exp.log.length = Math.min(S.exp.log.length, 10);
   G.dirty = true; return { ok: true, res, eggs };
 }
 function tickExp() {
@@ -92,12 +93,12 @@ const medalBonus = f => (f.medals ? Math.min(0.6, 0.05 * f.medals.g + 0.025 * f.
 const leagueOpen = l => level() >= l.lvl && S.shows.fame >= l.fame;
 const fishLocked = f => Object.values(S.shows.leagues).some(sh => sh && sh.entries.includes(f.id));
 function showScore(f, cat) {
-  const sp = SPECIES[f.sp], v = fishValue(f, true), wt = [0, 1, 2, 4, 8];
+  const sp = SPECIES[f.sp], v = fishValue(f, true), wt = [0, 1, 2, 4, 8], sm = 1 + 0.04 * lab('grooming') + (lab('champion') ? 0.1 : 0) + campPerk('show');
   switch (cat) {
-    case 'mods': return Math.round(70 * f.mods.reduce((a, m) => a + wt[MODS[m].t], 0) + 15 * sp.t);
-    case 'rare': return Math.round(sp.t * 140 + 40 * Math.log10(1 + v));
-    case 'pedigree': return Math.round((f.gen || 0) * 45 + 25 * f.mods.length + sp.t * 30);
-    default: return Math.round(120 * Math.log10(1 + v));
+    case 'mods': return Math.round(sm * (70 * f.mods.reduce((a, m) => a + wt[MODS[m].t], 0) + 15 * sp.t));
+    case 'rare': return Math.round(sm * (sp.t * 140 + 40 * Math.log10(1 + v)));
+    case 'pedigree': return Math.round(sm * ((f.gen || 0) * 45 + 25 * f.mods.length + sp.t * 30));
+    default: return Math.round(sm * 120 * Math.log10(1 + v));
   }
 }
 function showEligible(f, cat) {
@@ -135,7 +136,9 @@ function resolveShow(sh) {
     const f = getFish(r.fishId); fame += 2;
     if (r.place <= 3 && f) { money += L.prizes[r.place - 1]; fame += L.fameP[r.place - 1]; f.medals[['g', 's', 'b'][r.place - 1]]++; if (r.place === 1) wins++; }
   });
-  S.money += money; S.earned += money; S.shows.fame += fame; S.shows.wins += wins; S.stats.showWins += wins;
+  money = Math.round(money * (1 + 0.08 * lab('sponsors'))); fame = Math.round(fame * (1 + 0.1 * lab('press')));
+  S.money += money; S.earned += money; S.shows.fame += fame; S.shows.wins += wins; S.stats.showWins += wins; if (wins && lab('champion')) S.items.mut4 = (S.items.mut4 || 0) + wins;
+  gainRP(sh.entries.length + all.filter(r => r.you && r.place <= 3).reduce((a, r) => a + [6, 4, 3][r.place - 1], 0));
   const rec = { league: sh.league, cat: sh.cat, t: nowMs(), results: all.slice(0, 8), money, fame, entered: sh.entries.length };
   S.shows.last[sh.league] = rec;
   if (sh.entries.length) { S.shows.log.unshift(rec); S.shows.log.length = Math.min(S.shows.log.length, 12); const best = Math.min(...all.filter(r => r.you).map(r => r.place)); G.msg(`${L.n}: your best fish placed #${best}!` + (money ? ` Prize ${fmt(money)}.` : ''), best === 1 ? 'gold' : 'good'); if (G.sfx) G.sfx(best <= 3 ? 'level' : 'pop'); G.showResult = sh.league; }
@@ -165,7 +168,7 @@ function tourneyFight(fid) {
   T.used.push(fid); T.log.push({ r: T.r, cat: rd.cat, fish: f.name, sp: f.sp, mods: f.mods.slice(), mine, rival: rd.rival, theirs, won });
   if (!won) { T.state = 'lost'; const back = Math.round(T.fee * 0.15 * T.r); S.money += back; T.prize = back; G.dirty = true; return { ok: true, won, mine, theirs, over: true }; }
   T.r++;
-  if (T.r >= 3) { T.state = 'won'; const money = L.prizes[0] * 3, fame = L.fameP[0] * 3; S.money += money; S.earned += money; S.shows.fame += fame; S.shows.wins++; S.stats.showWins++; S.stats.tourneyWins = (S.stats.tourneyWins || 0) + 1; f.medals.g++; T.prize = money; T.fame = fame; }
+  if (T.r >= 3) { T.state = 'won'; const money = Math.round(L.prizes[0] * 3 * (1 + 0.08 * lab('sponsors'))), fame = Math.round(L.fameP[0] * 3 * (1 + 0.1 * lab('press'))); gainRP(10); S.money += money; S.earned += money; S.shows.fame += fame; S.shows.wins++; S.stats.showWins++; S.stats.tourneyWins = (S.stats.tourneyWins || 0) + 1; f.medals.g++; T.prize = money; T.fame = fame; }
   G.dirty = true; return { ok: true, won, mine, theirs, over: T.state !== 'active' };
 }
 function dismissTourney() { S.shows.tourney = null; return ok(); }
@@ -214,15 +217,15 @@ const LOGIN_REWARDS = [
 ];
 function claimLogin() {
   if (!loginClaimable()) return fail('Already claimed today'); const m = DAILY_MONEY[Math.max(1, Math.min(10, level()))] * streakMult(), day = (S.streak.days - 1) % 7;
-  LOGIN_REWARDS[day].f(m); S.streak.claimed = todayStr(); G.dirty = true; return { ok: true, day, text: LOGIN_REWARDS[day].t(m) };
+  LOGIN_REWARDS[day].f(m); gainRP(1); S.streak.claimed = todayStr(); G.dirty = true; return { ok: true, day, text: LOGIN_REWARDS[day].t(m) };
 }
 function claimQuest(i) {
   const q = S.daily.quests[i]; if (!q || q.claimed) return fail('Nothing to claim'); if (questProgress(q) < q.goal) return fail('Not finished yet');
-  const r = Math.round(q.reward * streakMult()); q.claimed = true; S.money += r; G.dirty = true; return { ok: true, reward: r };
+  const r = Math.round(q.reward * streakMult()); q.claimed = true; gainRP(1); S.money += r; G.dirty = true; return { ok: true, reward: r };
 }
 function claimDailyBonus() {
   if (S.daily.bonus || !S.daily.quests.every(q => q.claimed)) return fail('Finish all three quests first');
-  S.daily.bonus = true; S.items.mut3++; giveEggs(2); S.money += Math.round(DAILY_MONEY[Math.max(1, level())] * 2 * streakMult()); G.dirty = true; return { ok: true };
+  S.daily.bonus = true; gainRP(3); S.items.mut3++; giveEggs(2); S.money += Math.round(DAILY_MONEY[Math.max(1, level())] * 2 * streakMult()); G.dirty = true; return { ok: true };
 }
 
 /* ---------- tick ---------- */
@@ -230,6 +233,6 @@ let _g3T = 99;
 let _g3Sig = '';
 function tickG3(dt) {
   _g3T += dt; if (_g3T < 1) return; _g3T = 0;
-  tickExp(); tickShows(); updateDaily();
+  tickExp(); tickShows(); updateDaily(); flushRP();
   const sig = questsClaimable() + '|' + loginClaimable(); if (sig !== _g3Sig) { _g3Sig = sig; G.dirty = true; }
 }
