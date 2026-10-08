@@ -2,8 +2,29 @@
   "name": "fish-tycoon",
   "version": "1.0.0",
   "description": "A Fish Tycoon inspired idle/management game",
+  "author": "stefke20",
   "main": "main.js",
-  "scripts": { "start": "electron ." },
-  "devDependencies": { "electron": "^33.0.0" },
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win nsis --x64 --publish never"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.stefke20.fishtycoon",
+    "productName": "Fish Tycoon",
+    "artifactName": "Fish-Tycoon-Setup-${version}.${ext}",
+    "files": ["main.js", "build/icon.png", "index.html", "style.css", "js/**/*", "package.json"],
+    "directories": { "output": "dist", "buildResources": "build" },
+    "win": { "target": [{ "target": "nsis", "arch": ["x64"] }], "icon": "build/icon.png" },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
+  },
   "license": "MIT"
 }
