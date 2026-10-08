@@ -16,48 +16,76 @@ const LEVELS = [0, 0, 10, 30, 80, 160, 300, 600]; // sales needed for level inde
 
 // shape: round | slender | tall | eel ; pattern: none|stripes|spots|band|patch|belly
 const SPECIES_LIST = [
-  // ---- Freshwater
-  { id: 'guppy', n: 'Guppy', t: 1, w: 'fresh', c: '#ff9f43', c2: '#ffd8a8', sh: 'slender', pt: 'spots', v: 0.9 },
-  { id: 'goldfish', n: 'Goldfish', t: 1, w: 'fresh', c: '#ffa600', c2: '#ffd166', sh: 'round', pt: 'belly', v: 1.1 },
-  { id: 'minnow', n: 'Minnow', t: 1, w: 'fresh', c: '#9fb4c7', c2: '#dbe6f0', sh: 'slender', pt: 'belly', v: 0.8 },
-  { id: 'platy', n: 'Platy', t: 1, w: 'fresh', c: '#ff6b6b', c2: '#ffc9c9', sh: 'round', pt: 'none', v: 1.0 },
-  { id: 'betta', n: 'Betta', t: 2, w: 'fresh', c: '#d62839', c2: '#7b2cbf', sh: 'round', pt: 'none', v: 1.15 },
-  { id: 'neon', n: 'Neon Tetra', t: 2, w: 'fresh', c: '#2ec4b6', c2: '#ff4d6d', sh: 'slender', pt: 'stripes', v: 0.85 },
-  { id: 'angelfish', n: 'Angelfish', t: 2, w: 'fresh', c: '#e9ecef', c2: '#343a40', sh: 'tall', pt: 'stripes', v: 1.1 },
-  { id: 'molly', n: 'Black Molly', t: 2, w: 'fresh', c: '#2b2d42', c2: '#8d99ae', sh: 'round', pt: 'none', v: 0.95 },
-  { id: 'discus', n: 'Discus', t: 3, w: 'fresh', c: '#f4a261', c2: '#e76f51', sh: 'tall', pt: 'stripes', v: 1.15 },
-  { id: 'oscar', n: 'Oscar', t: 3, w: 'fresh', c: '#6d4c41', c2: '#ff7043', sh: 'round', pt: 'patch', v: 0.95 },
-  { id: 'flowerhorn', n: 'Flowerhorn', t: 3, w: 'fresh', c: '#ff4d6d', c2: '#ffb3c1', sh: 'round', pt: 'spots', v: 1.2 },
-  { id: 'arowana', n: 'Silver Arowana', t: 3, w: 'fresh', c: '#bfc7d1', c2: '#f1f3f5', sh: 'eel', pt: 'belly', v: 0.9 },
-  { id: 'koi', n: 'Koi', t: 4, w: 'fresh', c: '#f8f9fa', c2: '#ff6b35', sh: 'slender', pt: 'patch', v: 1.1 },
-  { id: 'arapaima', n: 'Arapaima', t: 4, w: 'fresh', c: '#b23a48', c2: '#5c6b73', sh: 'eel', pt: 'belly', v: 0.95 },
-  { id: 'gourami', n: 'Giant Gourami', t: 4, w: 'fresh', c: '#8ac926', c2: '#ffca3a', sh: 'tall', pt: 'stripes', v: 0.9 },
-  { id: 'redtail', n: 'Redtail Catfish', t: 4, w: 'fresh', c: '#3d405b', c2: '#e07a5f', sh: 'eel', pt: 'belly', v: 1.0 },
-  { id: 'celestialkoi', n: 'Celestial Koi', t: 5, w: 'fresh', c: '#e0e7ff', c2: '#7c83fd', sh: 'slender', pt: 'patch', v: 1.15 },
-  { id: 'jadedragon', n: 'Jade Dragonfish', t: 5, w: 'fresh', c: '#2d9c7a', c2: '#ffd166', sh: 'eel', pt: 'stripes', v: 1.2 },
-  { id: 'goldarowana', n: 'Golden Arowana', t: 5, w: 'fresh', c: '#ffc300', c2: '#ff8800', sh: 'eel', pt: 'belly', v: 1.1 },
-  { id: 'phoenixbetta', n: 'Phoenix Betta', t: 5, w: 'fresh', c: '#ff5400', c2: '#ffbd00', sh: 'round', pt: 'none', v: 1.0 },
-  // ---- Saltwater
-  { id: 'damsel', n: 'Blue Damselfish', t: 1, w: 'salt', c: '#3a86ff', c2: '#8ecae6', sh: 'round', pt: 'belly', v: 0.9 },
-  { id: 'blenny', n: 'Blenny', t: 1, w: 'salt', c: '#8d99ae', c2: '#edf2f4', sh: 'eel', pt: 'spots', v: 0.85 },
-  { id: 'cardinal', n: 'Cardinalfish', t: 1, w: 'salt', c: '#ef476f', c2: '#ffd6e0', sh: 'round', pt: 'stripes', v: 1.0 },
-  { id: 'goby', n: 'Yellow Goby', t: 1, w: 'salt', c: '#ffd60a', c2: '#fff3b0', sh: 'slender', pt: 'belly', v: 1.0 },
-  { id: 'clown', n: 'Clownfish', t: 2, w: 'salt', c: '#ff7b00', c2: '#ffffff', sh: 'round', pt: 'band', v: 1.15 },
-  { id: 'yellowtang', n: 'Yellow Tang', t: 2, w: 'salt', c: '#ffd60a', c2: '#fff3b0', sh: 'tall', pt: 'none', v: 1.0 },
-  { id: 'gramma', n: 'Royal Gramma', t: 2, w: 'salt', c: '#9d4edd', c2: '#ffd60a', sh: 'slender', pt: 'patch', v: 1.0 },
-  { id: 'chromis', n: 'Green Chromis', t: 2, w: 'salt', c: '#80ed99', c2: '#d8f3dc', sh: 'round', pt: 'belly', v: 0.85 },
-  { id: 'bluetang', n: 'Blue Tang', t: 3, w: 'salt', c: '#3a86ff', c2: '#ffd60a', sh: 'tall', pt: 'stripes', v: 1.1 },
-  { id: 'lionfish', n: 'Lionfish', t: 3, w: 'salt', c: '#9c3d2e', c2: '#f1e3d3', sh: 'round', pt: 'stripes', v: 1.15 },
-  { id: 'mandarin', n: 'Mandarinfish', t: 3, w: 'salt', c: '#00b4d8', c2: '#ff7b00', sh: 'slender', pt: 'patch', v: 1.2 },
-  { id: 'trigger', n: 'Picasso Triggerfish', t: 3, w: 'salt', c: '#2a9d8f', c2: '#e9c46a', sh: 'round', pt: 'spots', v: 0.9 },
-  { id: 'moorish', n: 'Moorish Idol', t: 4, w: 'salt', c: '#f1faee', c2: '#1d1d1d', sh: 'tall', pt: 'band', v: 1.1 },
-  { id: 'emperor', n: 'Emperor Angelfish', t: 4, w: 'salt', c: '#1d3557', c2: '#ffd60a', sh: 'tall', pt: 'stripes', v: 1.15 },
-  { id: 'tuskfish', n: 'Harlequin Tuskfish', t: 4, w: 'salt', c: '#f77f00', c2: '#4cc9f0', sh: 'slender', pt: 'stripes', v: 1.0 },
-  { id: 'wrasse', n: 'Napoleon Wrasse', t: 4, w: 'salt', c: '#168aad', c2: '#99d98c', sh: 'eel', pt: 'spots', v: 0.95 },
-  { id: 'seadragon', n: 'Leafy Sea Dragon', t: 5, w: 'salt', c: '#c9a227', c2: '#7a9e1e', sh: 'eel', pt: 'spots', v: 1.2 },
-  { id: 'parrot', n: 'Rainbow Parrotfish', t: 5, w: 'salt', c: '#06d6a0', c2: '#ef476f', sh: 'round', pt: 'stripes', v: 1.05 },
-  { id: 'mantaray', n: 'Reef Manta', t: 5, w: 'salt', c: '#264653', c2: '#e9f5f9', sh: 'tall', pt: 'belly', v: 1.1 },
-  { id: 'royalangel', n: 'Royal Angelfish', t: 5, w: 'salt', c: '#3a0ca3', c2: '#ffd60a', sh: 'tall', pt: 'stripes', v: 1.0 },
+  // ---- Freshwater T1
+  { id: 'goldfish', n: 'Goldfish', t: 1, w: 'fresh', f: 'Pond', c: '#ffa600', c2: '#ffd166', sh: 'round', pt: 'belly', v: 1.1 },
+  { id: 'minnow', n: 'Minnow', t: 1, w: 'fresh', f: 'Pond', c: '#9fb4c7', c2: '#dbe6f0', sh: 'slender', pt: 'belly', v: 0.8 },
+  { id: 'comet', n: 'Comet Goldfish', t: 1, w: 'fresh', f: 'Pond', c: '#ff7043', c2: '#fff1e6', sh: 'slender', pt: 'patch', v: 1.0 },
+  { id: 'guppy', n: 'Guppy', t: 1, w: 'fresh', f: 'Livebearer', c: '#ff9f43', c2: '#ffd8a8', sh: 'slender', pt: 'spots', v: 0.9 },
+  { id: 'platy', n: 'Platy', t: 1, w: 'fresh', f: 'Livebearer', c: '#ff6b6b', c2: '#ffc9c9', sh: 'round', pt: 'none', v: 1.0 },
+  { id: 'swordtail', n: 'Swordtail', t: 1, w: 'fresh', f: 'Livebearer', c: '#f06595', c2: '#2b2d42', sh: 'slender', pt: 'stripes', v: 1.05 },
+  // T2
+  { id: 'betta', n: 'Betta', t: 2, w: 'fresh', f: 'Tropical', c: '#d62839', c2: '#7b2cbf', sh: 'round', pt: 'none', v: 1.15 },
+  { id: 'neon', n: 'Neon Tetra', t: 2, w: 'fresh', f: 'Tropical', c: '#2ec4b6', c2: '#ff4d6d', sh: 'slender', pt: 'stripes', v: 0.85 },
+  { id: 'rasbora', n: 'Harlequin Rasbora', t: 2, w: 'fresh', f: 'Tropical', c: '#ffa94d', c2: '#2b2d42', sh: 'round', pt: 'patch', v: 0.95 },
+  { id: 'angelfish', n: 'Angelfish', t: 2, w: 'fresh', f: 'Community', c: '#e9ecef', c2: '#343a40', sh: 'tall', pt: 'stripes', v: 1.1 },
+  { id: 'molly', n: 'Black Molly', t: 2, w: 'fresh', f: 'Community', c: '#2b2d42', c2: '#8d99ae', sh: 'round', pt: 'none', v: 0.95 },
+  { id: 'dwarfgourami', n: 'Dwarf Gourami', t: 2, w: 'fresh', f: 'Community', c: '#4dabf7', c2: '#ff6b6b', sh: 'tall', pt: 'stripes', v: 1.0 },
+  // T3
+  { id: 'discus', n: 'Discus', t: 3, w: 'fresh', f: 'Cichlid', c: '#f4a261', c2: '#e76f51', sh: 'tall', pt: 'stripes', v: 1.15 },
+  { id: 'oscar', n: 'Oscar', t: 3, w: 'fresh', f: 'Cichlid', c: '#6d4c41', c2: '#ff7043', sh: 'round', pt: 'patch', v: 0.95 },
+  { id: 'flowerhorn', n: 'Flowerhorn', t: 3, w: 'fresh', f: 'Cichlid', c: '#ff4d6d', c2: '#ffb3c1', sh: 'puffer', pt: 'spots', v: 1.2 },
+  { id: 'arowana', n: 'Silver Arowana', t: 3, w: 'fresh', f: 'Predator', c: '#bfc7d1', c2: '#f1f3f5', sh: 'eel', pt: 'belly', v: 0.9 },
+  { id: 'snakehead', n: 'Snakehead', t: 3, w: 'fresh', f: 'Predator', c: '#6b705c', c2: '#ddbea9', sh: 'eel', pt: 'stripes', v: 0.95 },
+  { id: 'piranha', n: 'Red-Belly Piranha', t: 3, w: 'fresh', f: 'Predator', c: '#adb5bd', c2: '#e63946', sh: 'round', pt: 'belly', v: 1.1 },
+  // T4
+  { id: 'koi', n: 'Koi', t: 4, w: 'fresh', f: 'Ornamental', c: '#f8f9fa', c2: '#ff6b35', sh: 'slender', pt: 'patch', v: 1.1 },
+  { id: 'gourami', n: 'Giant Gourami', t: 4, w: 'fresh', f: 'Ornamental', c: '#8ac926', c2: '#ffca3a', sh: 'tall', pt: 'stripes', v: 0.9 },
+  { id: 'ranchu', n: 'Ranchu', t: 4, w: 'fresh', f: 'Ornamental', c: '#ff6b35', c2: '#fff3e0', sh: 'puffer', pt: 'belly', v: 1.05 },
+  { id: 'arapaima', n: 'Arapaima', t: 4, w: 'fresh', f: 'Giant', c: '#b23a48', c2: '#5c6b73', sh: 'eel', pt: 'belly', v: 0.95 },
+  { id: 'redtail', n: 'Redtail Catfish', t: 4, w: 'fresh', f: 'Giant', c: '#3d405b', c2: '#e07a5f', sh: 'eel', pt: 'belly', v: 1.0 },
+  { id: 'gar', n: 'Alligator Gar', t: 4, w: 'fresh', f: 'Giant', c: '#6a994e', c2: '#bc9a6a', sh: 'eel', pt: 'spots', v: 1.0 },
+  // T5
+  { id: 'celestialkoi', n: 'Celestial Koi', t: 5, w: 'fresh', f: 'Mythic', c: '#e0e7ff', c2: '#7c83fd', sh: 'slender', pt: 'patch', v: 1.15 },
+  { id: 'jadedragon', n: 'Jade Dragonfish', t: 5, w: 'fresh', f: 'Mythic', c: '#2d9c7a', c2: '#ffd166', sh: 'eel', pt: 'stripes', v: 1.2 },
+  { id: 'phoenixbetta', n: 'Phoenix Betta', t: 5, w: 'fresh', f: 'Mythic', c: '#ff5400', c2: '#ffbd00', sh: 'round', pt: 'none', v: 1.0 },
+  { id: 'goldarowana', n: 'Golden Arowana', t: 5, w: 'fresh', f: 'Royal', c: '#ffc300', c2: '#ff8800', sh: 'eel', pt: 'belly', v: 1.1 },
+  { id: 'stingray', n: 'Imperial Stingray', t: 5, w: 'fresh', f: 'Royal', c: '#6c584c', c2: '#f0ead2', sh: 'ray', pt: 'spots', v: 1.1 },
+  { id: 'eel', n: 'Electric Eel', t: 5, w: 'fresh', f: 'Royal', c: '#3a86ff', c2: '#ffd60a', sh: 'eel', pt: 'belly', v: 1.15 },
+  // ---- Saltwater T1
+  { id: 'damsel', n: 'Blue Damselfish', t: 1, w: 'salt', f: 'Reef Dweller', c: '#3a86ff', c2: '#8ecae6', sh: 'round', pt: 'belly', v: 0.9 },
+  { id: 'blenny', n: 'Blenny', t: 1, w: 'salt', f: 'Reef Dweller', c: '#8d99ae', c2: '#edf2f4', sh: 'eel', pt: 'spots', v: 0.85 },
+  { id: 'goby', n: 'Yellow Goby', t: 1, w: 'salt', f: 'Reef Dweller', c: '#ffd60a', c2: '#fff3b0', sh: 'slender', pt: 'belly', v: 1.0 },
+  { id: 'cardinal', n: 'Cardinalfish', t: 1, w: 'salt', f: 'Shoaler', c: '#ef476f', c2: '#ffd6e0', sh: 'round', pt: 'stripes', v: 1.0 },
+  { id: 'anthias', n: 'Anthias', t: 1, w: 'salt', f: 'Shoaler', c: '#ff9a76', c2: '#ffe3d6', sh: 'slender', pt: 'belly', v: 1.0 },
+  { id: 'firefish', n: 'Firefish', t: 1, w: 'salt', f: 'Shoaler', c: '#ff5d73', c2: '#fff1f2', sh: 'slender', pt: 'patch', v: 1.05 },
+  // T2
+  { id: 'clown', n: 'Clownfish', t: 2, w: 'salt', f: 'Clown', c: '#ff7b00', c2: '#ffffff', sh: 'round', pt: 'band', v: 1.15 },
+  { id: 'yellowtang', n: 'Yellow Tang', t: 2, w: 'salt', f: 'Clown', c: '#ffd60a', c2: '#fff3b0', sh: 'tall', pt: 'none', v: 1.0 },
+  { id: 'tomato', n: 'Tomato Clownfish', t: 2, w: 'salt', f: 'Clown', c: '#e63946', c2: '#fff3e0', sh: 'round', pt: 'band', v: 1.1 },
+  { id: 'gramma', n: 'Royal Gramma', t: 2, w: 'salt', f: 'Gem', c: '#9d4edd', c2: '#ffd60a', sh: 'slender', pt: 'patch', v: 1.0 },
+  { id: 'chromis', n: 'Green Chromis', t: 2, w: 'salt', f: 'Gem', c: '#80ed99', c2: '#d8f3dc', sh: 'round', pt: 'belly', v: 0.85 },
+  { id: 'dottyback', n: 'Orchid Dottyback', t: 2, w: 'salt', f: 'Gem', c: '#c77dff', c2: '#ffd166', sh: 'slender', pt: 'belly', v: 1.0 },
+  // T3
+  { id: 'bluetang', n: 'Blue Tang', t: 3, w: 'salt', f: 'Showy', c: '#3a86ff', c2: '#ffd60a', sh: 'tall', pt: 'stripes', v: 1.1 },
+  { id: 'mandarin', n: 'Mandarinfish', t: 3, w: 'salt', f: 'Showy', c: '#00b4d8', c2: '#ff7b00', sh: 'slender', pt: 'patch', v: 1.2 },
+  { id: 'flameangel', n: 'Flame Angelfish', t: 3, w: 'salt', f: 'Showy', c: '#ff4d00', c2: '#1d3557', sh: 'tall', pt: 'stripes', v: 1.1 },
+  { id: 'lionfish', n: 'Lionfish', t: 3, w: 'salt', f: 'Hunter', c: '#9c3d2e', c2: '#f1e3d3', sh: 'round', pt: 'stripes', v: 1.15 },
+  { id: 'trigger', n: 'Picasso Triggerfish', t: 3, w: 'salt', f: 'Hunter', c: '#2a9d8f', c2: '#e9c46a', sh: 'round', pt: 'spots', v: 0.9 },
+  { id: 'porcupine', n: 'Porcupinefish', t: 3, w: 'salt', f: 'Hunter', c: '#e9c46a', c2: '#6d4c41', sh: 'puffer', pt: 'spots', v: 1.0 },
+  // T4
+  { id: 'moorish', n: 'Moorish Idol', t: 4, w: 'salt', f: 'Angel', c: '#f1faee', c2: '#1d1d1d', sh: 'tall', pt: 'band', v: 1.1 },
+  { id: 'emperor', n: 'Emperor Angelfish', t: 4, w: 'salt', f: 'Angel', c: '#1d3557', c2: '#ffd60a', sh: 'tall', pt: 'stripes', v: 1.15 },
+  { id: 'queenangel', n: 'Queen Angelfish', t: 4, w: 'salt', f: 'Angel', c: '#4cc9f0', c2: '#ffd60a', sh: 'tall', pt: 'belly', v: 1.1 },
+  { id: 'tuskfish', n: 'Harlequin Tuskfish', t: 4, w: 'salt', f: 'Wrasse', c: '#f77f00', c2: '#4cc9f0', sh: 'slender', pt: 'stripes', v: 1.0 },
+  { id: 'wrasse', n: 'Napoleon Wrasse', t: 4, w: 'salt', f: 'Wrasse', c: '#168aad', c2: '#99d98c', sh: 'eel', pt: 'spots', v: 0.95 },
+  { id: 'moray', n: 'Dragon Moray', t: 4, w: 'salt', f: 'Wrasse', c: '#6a994e', c2: '#ffd60a', sh: 'eel', pt: 'spots', v: 1.05 },
+  // T5
+  { id: 'seadragon', n: 'Leafy Sea Dragon', t: 5, w: 'salt', f: 'Deep', c: '#c9a227', c2: '#7a9e1e', sh: 'eel', pt: 'spots', v: 1.2 },
+  { id: 'mantaray', n: 'Reef Manta', t: 5, w: 'salt', f: 'Deep', c: '#264653', c2: '#e9f5f9', sh: 'ray', pt: 'belly', v: 1.1 },
+  { id: 'anglerfish', n: 'Lantern Anglerfish', t: 5, w: 'salt', f: 'Deep', c: '#3a0ca3', c2: '#ffd60a', sh: 'puffer', pt: 'spots', v: 1.15 },
+  { id: 'parrot', n: 'Rainbow Parrotfish', t: 5, w: 'salt', f: 'Crown', c: '#06d6a0', c2: '#ef476f', sh: 'round', pt: 'stripes', v: 1.05 },
+  { id: 'royalangel', n: 'Royal Angelfish', t: 5, w: 'salt', f: 'Crown', c: '#3a0ca3', c2: '#ffd60a', sh: 'tall', pt: 'stripes', v: 1.0 },
+  { id: 'opah', n: 'Opah (Moonfish)', t: 5, w: 'salt', f: 'Crown', c: '#ff6b6b', c2: '#e9ecef', sh: 'puffer', pt: 'spots', v: 1.1 },
 ];
 const SPECIES = {};
 SPECIES_LIST.forEach(s => {
@@ -65,6 +93,30 @@ SPECIES_LIST.forEach(s => {
   SPECIES[s.id] = s;
 });
 const speciesOf = (water, tier) => SPECIES_LIST.filter(s => s.w === water && s.t === tier);
+
+/* Egg types: one per family (3 species) + a cheaper random 'Mystery' egg per water/tier */
+const EGG_TYPES = [];
+const EGG_TYPE = {};
+['fresh', 'salt'].forEach(w => {
+  for (let t = 1; t <= 5; t++) {
+    const fams = [...new Set(speciesOf(w, t).map(s => s.f))];
+    fams.forEach(f => {
+      const e = { id: w + t + '_' + f.toLowerCase().replace(/\W/g, ''), n: f + ' Egg', w, t, pool: speciesOf(w, t).filter(s => s.f === f).map(s => s.id), pm: 1 };
+      EGG_TYPES.push(e); EGG_TYPE[e.id] = e;
+    });
+    const m = { id: w + t + '_mix', n: 'Mystery Egg', w, t, pool: speciesOf(w, t).map(s => s.id), pm: 0.8 };
+    EGG_TYPES.push(m); EGG_TYPE[m.id] = m;
+  }
+});
+
+/* Consumables: chance (flat, 0-1) that a hatch / breeding gets one extra random modifier */
+const CONSUMABLES = [
+  { id: 'mut1', n: 'Mutagen Drops', e: '🧪', boost: 0.05, price: 150 },
+  { id: 'mut2', n: 'Mutagen Vial', e: '⚗️', boost: 0.15, price: 500 },
+  { id: 'mut3', n: 'Mutagen Elixir', e: '☣️', boost: 0.30, price: 1250 },
+];
+const CONSUMABLE = {};
+CONSUMABLES.forEach(c => (CONSUMABLE[c.id] = c));
 
 /* Modifiers: t = tier, m = value multiplier, p = base chance on hatch/breed, glow = css drop-shadow colour */
 const MODS_LIST = [

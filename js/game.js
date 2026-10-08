@@ -24,14 +24,14 @@ function newState() {
   S = {
     v: 1, money: 100, sales: 0, earned: 0, nextId: 1, time: 0, savedAt: Date.now(),
     hallSlots: START_HALL_SLOTS, tanks: [], fish: [], eggs: [],
-    decorInv: {}, skins: { classic: true }, food: 0,
+    decorInv: {}, items: { mut1: 0, mut2: 0, mut3: 0 }, skins: { classic: true }, food: 0,
     storeUp: { cases: 0, ads: 0, sign: 0, seats: 0, counter: 0, cashier: 0, collector: 0 },
     breedUp: { clutch: 0, cooldown: 0, match: 0, lineage: 0 },
     customers: [], nextCustomer: 8, cashierOn: true, seenHelp: false, bredCount: 0, bestValue: 0,
   };
   S.tanks.push(newTank('starter', 'My First Tank'));
-  S.eggs.push({ id: 'e' + S.nextId++, water: 'fresh', tier: 1, bred: null });
-  S.eggs.push({ id: 'e' + S.nextId++, water: 'fresh', tier: 1, bred: null });
+  S.eggs.push({ id: 'e' + S.nextId++, water: 'fresh', tier: 1, kind: 'fresh1_pond', bred: null });
+  S.eggs.push({ id: 'e' + S.nextId++, water: 'fresh', tier: 1, kind: 'fresh1_livebearer', bred: null });
   return S;
 }
 
@@ -52,6 +52,7 @@ function importSave(raw, offline) {
     const base = JSON.parse(JSON.stringify((newState(), S)));
     S = Object.assign(base, d);
     S.storeUp = Object.assign({ cases: 0, ads: 0, sign: 0, seats: 0, counter: 0, cashier: 0, collector: 0 }, d.storeUp);
+    S.items = Object.assign({ mut1: 0, mut2: 0, mut3: 0 }, d.items);
     S.breedUp = Object.assign({ clutch: 0, cooldown: 0, match: 0, lineage: 0 }, d.breedUp);
     let gained = 0;
     if (offline) {
@@ -122,14 +123,35 @@ const fail = err => ({ ok: false, err });
 const ok = () => { G.dirty = true; return { ok: true }; };
 function spend(n) { if (S.money < n) return false; S.money -= n; return true; }
 
-function eggPrice(water, tier) { return Math.round(EGG_PRICE[tier] * (water === 'salt' ? SALT_EGG_MULT : 1)); }
-function eggUnlocked(water, tier) { return level() >= (water === 'salt' ? SALT_EGG_UNLOCK_LEVEL[tier] : EGG_UNLOCK_LEVEL[tier]) && (water === 'fresh' || S.tanks.some(t => tankType(t).w === 'salt')); }
-function buyEgg(water, tier, qty) {
+const eggType = e => EGG_TYPE[e.kind] || EGG_TYPE[e.water + e.tier + '_mix'];
+function eggPrice(kind) {
+  const e = EGG_TYPE[kind];
+  return Math.round(EGG_PRICE[e.t] * (e.w === 'salt' ? SALT_EGG_MULT : 1) * e.pm);
+}
+const eggLevel = e => (e.w === 'salt' ? SALT_EGG_UNLOCK_LEVEL[e.t] : EGG_UNLOCK_LEVEL[e.t]);
+const hasSaltTank = () => S.tanks.some(t => tankType(t).w === 'salt');
+function eggUnlocked(kind) { const e = EGG_TYPE[kind]; return level() >= eggLevel(e) && (e.w === 'fresh' || hasSaltTank()); }
+function buyEgg(kind, qty) {
   qty = qty || 1;
-  if (!eggUnlocked(water, tier)) return fail('Not unlocked yet');
-  if (!spend(eggPrice(water, tier) * qty)) return fail('Not enough money');
-  for (let i = 0; i < qty; i++) S.eggs.push({ id: 'e' + S.nextId++, water, tier, bred: null });
+  const e = EGG_TYPE[kind];
+  if (!eggUnlocked(kind)) return fail('Not unlocked yet');
+  if (!spend(eggPrice(kind) * qty)) return fail('Not enough money');
+  for (let i = 0; i < qty; i++) S.eggs.push({ id: 'e' + S.nextId++, water: e.w, tier: e.t, kind, bred: null });
   return ok();
+}
+function buyConsumable(id) {
+  const c = CONSUMABLE[id];
+  if (!spend(c.price)) return fail('Not enough money');
+  S.items[id]++; return ok();
+}
+/* Mutagen: flat chance for one extra random modifier (weighted by base rarity) */
+function applyBoost(mods, boostId) {
+  if (!boostId || Math.random() >= CONSUMABLE[boostId].boost) return mods;
+  const pool = MODS_LIST.filter(m => !mods.includes(m.id));
+  if (!pool.length) return mods;
+  let r = Math.random() * pool.reduce((a, m) => a + m.p, 0);
+  for (const m of pool) { r -= m.p; if (r <= 0) { G.boosted = true; return mods.concat(m.id); } }
+  return mods;
 }
 function buyTank(typeId) {
   const tt = TANK_TYPE[typeId];
@@ -218,14 +240,20 @@ function canHatchIn(egg, t) {
   if (tankFree(t) <= 0) return 'Tank is full';
   return null;
 }
-function hatchEgg(eid, tid) {
+function hatchEgg(eid, tid, boostId) {
   const egg = S.eggs.find(e => e.id === eid), t = getTank(tid);
   if (!egg || !t) return fail('Missing');
   const why = canHatchIn(egg, t);
   if (why) return fail(why);
   let sp, mods;
   if (egg.bred) { sp = egg.bred.sp; mods = egg.bred.mods.slice(); }
-  else { sp = pick(speciesOf(egg.water, egg.tier)).id; mods = rollMods([], tankBonus(t).mod); }
+  else { sp = pick(eggType(egg).pool); mods = rollMods([], tankBonus(t).mod); }
+  G.boosted = false;
+  if (boostId) {
+    if (!(S.items[boostId] > 0)) return fail('You have none of that mutagen');
+    S.items[boostId]--;
+    mods = applyBoost(mods, boostId);
+  }
   S.eggs = S.eggs.filter(e => e !== egg);
   const f = makeFish(sp, mods, tid);
   S.fish.push(f);
@@ -295,13 +323,17 @@ function breedOdds(a, b) {
   MODS_LIST.forEach(m => { mods[m.id] = 1 - (1 - (mods[m.id] || 0)) * (1 - clamp(m.p * (1 + modBonus), 0, 1)); });
   return { species, tierUp, inh, mods, eggs: 1 + S.breedUp.clutch };
 }
-function breedFish(aid, bid) {
+function breedFish(aid, bid, boostId) {
   const a = getFish(aid), b = getFish(bid);
   const why = breedCheck(a, b);
   if (why) return fail(why);
   const odds = breedOdds(a, b), water = SPECIES[a.sp].w;
   const inh = odds.inh, mb = parentBonus(a, b, 'mod');
   const made = [];
+  if (boostId) {
+    if (!(S.items[boostId] > 0)) return fail('You have none of that mutagen');
+    S.items[boostId]--;
+  }
   for (let i = 0; i < odds.eggs; i++) {
     let sp = pick([a, b]).sp, up = false;
     const s = SPECIES[sp];
@@ -310,6 +342,7 @@ function breedFish(aid, bid) {
     [a, b].forEach(p => p.mods.forEach(m => { if (!mods.includes(m) && Math.random() < inh) mods.push(m); }));
     const inherited = mods.length;
     mods = rollMods(mods, mb);
+    mods = applyBoost(mods, boostId);
     const egg = { id: 'e' + S.nextId++, water, tier: SPECIES[sp].t, bred: { sp, mods } };
     S.eggs.push(egg);
     made.push({ sp, mods, up, inherited });
