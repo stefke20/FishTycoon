@@ -45,7 +45,7 @@ function wallArt(bg, w, h, salt) {
 
 
 /* ===== WebGL / three.js service ===== */
-const TANK_DIM3 = { starter: [96, 72, 64], medium: [120, 90, 72], large: [150, 110, 82], huge: [190, 140, 92], reef_s: [120, 90, 72], reef_m: [150, 110, 82], reef_l: [190, 140, 92], reef_g: [230, 160, 102] };
+const TANK_DIM3 = { starter: [144, 108, 96], medium: [180, 135, 108], large: [225, 165, 123], huge: [285, 210, 138], reef_s: [180, 135, 108], reef_m: [225, 165, 123], reef_l: [285, 210, 138], reef_g: [345, 240, 153] };
 const DECOR_POS = [[0.22, 0.26], [0.72, 0.2], [0.26, 0.74], [0.74, 0.7]];
 const FLOOR_Y = 3;
 
@@ -82,7 +82,7 @@ function fitOrtho(cam, box, aspect, dir, margin) {
 }
 
 /* ---- materials with vertex-shader animation ---- */
-const FX_FLAGS = { pearl: [0, 0], golden: [0, 1], fiery: [0, 2], frosty: [0, 3], glowing: [1, 0], electric: [1, 1], toxic: [1, 2], aurora: [1, 3], cosmic: [2, 0], prismatic: [2, 1], shadow: [2, 2], celestial: [2, 3] };
+const FX_FLAGS = { neon: [3, 0], magma: [3, 1], glitch: [3, 2], diamond: [3, 3], phoenix: [4, 0], robot: [4, 1], ruby: [4, 2], emerald: [4, 2], sapphire: [4, 2], zombie: [4, 3], pearl: [0, 0], golden: [0, 1], fiery: [0, 2], frosty: [0, 3], glowing: [1, 0], electric: [1, 1], toxic: [1, 2], aurora: [1, 3], cosmic: [2, 0], prismatic: [2, 1], shadow: [2, 2], celestial: [2, 3] };
 const FX_GLSL = `
   vec3 vox = floor(vP - vN * 0.25 + 0.5); float hv = h31(vox);
   if (uF1.x > 0.5) { float sw = sin(vP.x * 0.16 + vP.y * 0.1 + uTime * 1.6); float bnd = smoothstep(0.5, 1.0, sw); vec3 ir = 0.5 + 0.5 * cos(6.2831 * (vec3(0.0, 0.33, 0.67) + vP.x * 0.03 + uTime * 0.3)); diffuseColor.rgb = mix(diffuseColor.rgb, ir, 0.55 * bnd); totalEmissiveRadiance += ir * 0.2 * bnd + vec3(0.02); }
@@ -97,25 +97,37 @@ const FX_GLSL = `
   if (uF3.y > 0.5) { vec3 rb = 0.5 + 0.5 * cos(6.2831 * (vec3(0.0, 0.33, 0.67) + vP.x * 0.04 + uTime * 0.35)); diffuseColor.rgb = mix(diffuseColor.rgb, rb, 0.72); totalEmissiveRadiance += rb * 0.08; }
   if (uF3.z > 0.5) { totalEmissiveRadiance += vec3(0.35, 0.1, 0.85) * step(0.93, h31(vox + floor(uTime * 3.0))) * 0.9; diffuseColor.rgb *= 0.85; }
   if (uF3.w > 0.5) { float tw = pow(max(0.0, sin(uTime * 3.0 + hv * 70.0)), 18.0) * step(0.72, hv); totalEmissiveRadiance += vec3(1.0, 0.95, 0.7) * (0.1 + 0.08 * sin(uTime * 2.0)) + vec3(1.0, 1.0, 0.9) * tw * 1.3; }
+
+  float lumx = max(diffuseColor.r, max(diffuseColor.g, diffuseColor.b));
+  if (uF4.x > 0.5) { totalEmissiveRadiance += diffuseColor.rgb * smoothstep(0.5, 0.85, lumx) * 1.7 * (0.85 + 0.15 * sin(uTime * 5.0)); }
+  if (uF4.y > 0.5) { totalEmissiveRadiance += diffuseColor.rgb * smoothstep(0.5, 0.85, lumx) * 1.5 + vec3(1.0, 0.4, 0.05) * 0.18 * h31(vox + floor(uTime * 5.0)) * smoothstep(0.5, 0.85, lumx); }
+  if (uF4.z > 0.5) { float g1 = step(0.9, h31(vec3(vox.y, floor(uTime * 9.0), 1.0))); vec3 gc = mix(vec3(0.0, 1.0, 1.0), vec3(1.0, 0.0, 0.8), step(0.5, h31(vox + floor(uTime * 9.0)))); diffuseColor.rgb = mix(diffuseColor.rgb, gc, g1 * 0.35); totalEmissiveRadiance += gc * g1 * 0.8; }
+  if (uF4.w > 0.5) { float tw = pow(max(0.0, sin(uTime * 5.0 + hv * 90.0)), 12.0) * step(0.55, hv); vec3 rb = 0.5 + 0.5 * cos(6.2831 * (vec3(0.0, 0.33, 0.67) + hv + uTime * 0.3)); totalEmissiveRadiance += rb * tw * 1.7 + vec3(0.1, 0.12, 0.16); }
+  if (uF5.x > 0.5) { float fl2 = h31(vox + floor(uTime * 8.0)); totalEmissiveRadiance += vec3(1.0, 0.45, 0.05) * (0.12 + 0.45 * fl2) + vec3(1.0, 0.8, 0.2) * step(0.9, fl2) * 0.5; }
+  if (uF5.y > 0.5) { float bl = step(0.975, h31(vox)) * (0.5 + 0.5 * sin(uTime * 6.0 + hv * 20.0)); totalEmissiveRadiance += vec3(1.0, 0.2, 0.1) * bl * 1.6; }
+  if (uF5.z > 0.5) { float tw = pow(max(0.0, sin(uTime * 4.0 + hv * 70.0)), 14.0) * step(0.68, hv); totalEmissiveRadiance += diffuseColor.rgb * 0.3 + vec3(1.0) * tw * 1.3; }
+  if (uF5.w > 0.5) { totalEmissiveRadiance += vec3(0.3, 0.5, 0.1) * step(0.93, h31(vox + floor(uTime * 2.0))) * 0.6; }
 `;
 function fishMaterial(model, mods) {
   const m = new THREE.MeshLambertMaterial({ vertexColors: true });
-  const F1 = new THREE.Vector4(0, 0, 0, 0), F2 = new THREE.Vector4(0, 0, 0, 0), F3 = new THREE.Vector4(0, 0, 0, 0), arr = [F1, F2, F3], comp = ['x', 'y', 'z', 'w'];
+  const F1 = new THREE.Vector4(0, 0, 0, 0), F2 = new THREE.Vector4(0, 0, 0, 0), F3 = new THREE.Vector4(0, 0, 0, 0), F4 = new THREE.Vector4(0, 0, 0, 0), F5 = new THREE.Vector4(0, 0, 0, 0), arr = [F1, F2, F3, F4, F5], comp = ['x', 'y', 'z', 'w'];
   (mods || []).forEach(md => { const f = FX_FLAGS[md]; if (f) arr[f[0]][comp[f[1]]] = 1; });
-  m.userData.u = { uPhase: { value: 0 }, uAmp: { value: 0.3 }, uLen: { value: model.L }, uTime: { value: 0 }, uF1: { value: F1 }, uF2: { value: F2 }, uF3: { value: F3 } };
+  m.userData.u = { uPhase: { value: 0 }, uAmp: { value: 0.3 }, uLen: { value: model.L }, uTime: { value: 0 }, uF1: { value: F1 }, uF2: { value: F2 }, uF3: { value: F3 }, uF4: { value: F4 }, uF5: { value: F5 } };
   m.onBeforeCompile = sh => {
     Object.assign(sh.uniforms, m.userData.u);
-    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nuniform float uPhase;uniform float uAmp;uniform float uLen;varying vec3 vP;varying vec3 vN;')
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nuniform float uPhase;uniform float uAmp;uniform float uLen;uniform float uTime;uniform vec4 uF4;varying vec3 vP;varying vec3 vN;')
       .replace('#include <begin_vertex>', `#include <begin_vertex>
         vP = position; vN = normal;
+        { float gr = fract(sin(dot(vec3(floor(position.y * 0.5), floor(uTime * 7.0), 3.0), vec3(12.9898, 78.233, 37.719))) * 43758.5453); if (uF4.z > 0.5 && gr > 0.93) transformed.x += (gr - 0.93) * 70.0; }
         float k = clamp((-0.02 * uLen - transformed.x) / (0.85 * uLen), 0.0, 1.0);
         transformed.z += sin(uPhase + transformed.x * 0.3) * uAmp * k * k * uLen * 0.17;
         float hd = clamp(transformed.x / (0.6 * uLen), 0.0, 1.0);
         transformed.z -= sin(uPhase) * uAmp * hd * hd * uLen * 0.035;`);
-    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vP;varying vec3 vN;uniform float uTime;uniform vec4 uF1;uniform vec4 uF2;uniform vec4 uF3;\nfloat h31(vec3 p){ return fract(sin(dot(p, vec3(12.9898, 78.233, 37.719))) * 43758.5453); }')
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vP;varying vec3 vN;uniform float uTime;uniform vec4 uF1;uniform vec4 uF2;uniform vec4 uF3;uniform vec4 uF4;uniform vec4 uF5;\nfloat h31(vec3 p){ return fract(sin(dot(p, vec3(12.9898, 78.233, 37.719))) * 43758.5453); }')
       .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n' + FX_GLSL);
   };
   m.customProgramCacheKey = () => 'fishfx';
+  if ((mods || []).includes('ghost')) { m.transparent = true; m.opacity = 0.55; m.depthWrite = false; }
   if (model.glow) m.emissive = new THREE.Color(model.glow).multiplyScalar(0.05);
   return m;
 }
@@ -147,6 +159,7 @@ function fxTexture(kind) {
   else if (kind === 'star') { x.translate(32, 32); const g = x.createRadialGradient(0, 0, 0, 0, 0, 12); g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = g; x.fillRect(-32, -32, 64, 64); x.fillStyle = '#fff'; for (let i = 0; i < 4; i++) { x.rotate(Math.PI / 2); x.beginPath(); x.moveTo(-2, 0); x.lineTo(0, -30); x.lineTo(2, 0); x.closePath(); x.fill(); } }
   else if (kind === 'flake') { x.translate(32, 32); x.strokeStyle = '#fff'; x.lineWidth = 3; for (let i = 0; i < 6; i++) { x.rotate(Math.PI / 3); x.beginPath(); x.moveTo(0, 0); x.lineTo(0, -26); x.moveTo(0, -14); x.lineTo(7, -20); x.moveTo(0, -14); x.lineTo(-7, -20); x.stroke(); } }
   else if (kind === 'ring') { x.strokeStyle = '#fff'; x.lineWidth = 5; x.beginPath(); x.arc(32, 32, 22, 0, 7); x.stroke(); x.fillStyle = 'rgba(255,255,255,.25)'; x.fill(); }
+  else if (kind === 'square') { x.fillStyle = '#fff'; x.fillRect(16, 16, 32, 32); }
   else if (kind === 'bolt') { x.strokeStyle = '#fff'; x.lineWidth = 5; x.lineJoin = 'miter'; x.beginPath(); x.moveTo(38, 4); x.lineTo(22, 32); x.lineTo(38, 32); x.lineTo(24, 60); x.stroke(); }
   const t = new THREE.CanvasTexture(c); return (_fxTex[kind] = t);
 }
@@ -162,13 +175,28 @@ const FX_DEF = {
   cosmic: { tex: 'star', col: [0.85, 0.85, 1], n: 14, size: 11, kind: 'orbit' },
   prismatic: { tex: 'soft', col: [1, 1, 1], n: 10, size: 14, kind: 'orbit', rainbow: true },
   shadow: { tex: 'soft', col: [0.5, 0.2, 0.95], n: 14, size: 16, kind: 'rise', speed: 0.25 },
+  camo: null,
+  bubbly: { tex: 'ring', col: [0.6, 0.85, 1], n: 8, size: 10, kind: 'rise', speed: 0.7 },
+  candy: { tex: 'star', col: [1, 0.75, 0.9], n: 10, size: 10, kind: 'twinkle', rainbow: true },
+  ruby: { tex: 'star', col: [1, 0.3, 0.4], n: 8, size: 12, kind: 'twinkle' },
+  emerald: { tex: 'star', col: [0.3, 1, 0.55], n: 8, size: 12, kind: 'twinkle' },
+  sapphire: { tex: 'star', col: [0.35, 0.6, 1], n: 8, size: 12, kind: 'twinkle' },
+  neon: { tex: 'soft', col: [1, 0.3, 0.85], n: 3, size: 34, kind: 'halo' },
+  zombie: { tex: 'soft', col: [0.45, 0.8, 0.15], n: 10, size: 9, kind: 'fall', speed: 0.45 },
+  skeleton: { tex: 'soft', col: [0.8, 0.78, 0.7], n: 8, size: 8, kind: 'fall', speed: 0.25 },
+  magma: { tex: 'soft', col: [1, 0.45, 0.1], n: 14, size: 10, kind: 'rise', speed: 0.5 },
+  ghost: { tex: 'soft', col: [0.7, 0.85, 1], n: 12, size: 22, kind: 'rise', speed: 0.3 },
+  robot: { tex: 'star', col: [1, 0.85, 0.3], n: 6, size: 12, kind: 'flash' },
+  glitch: { tex: 'square', col: [0.2, 1, 0.9], n: 10, size: 9, kind: 'flash', rainbow: true },
+  diamond: { tex: 'star', col: [0.9, 0.97, 1], n: 16, size: 15, kind: 'twinkle', rainbow: true },
+  phoenix: { tex: 'soft', col: [1, 0.5, 0.1], n: 24, size: 16, kind: 'rise', speed: 0.9, halo: true },
   celestial: { tex: 'star', col: [1, 0.95, 0.7], n: 10, size: 14, kind: 'rise', speed: 0.35, halo: true },
 };
 class FishFX {
   constructor(group, mods, L, mini) {
     this.sys = [];
     mods.forEach(m => {
-      const d = FX_DEF[m]; if (!d) return;
+      const d = FX_DEF[m]; if (!d || (typeof G !== 'undefined' && G.lowFx)) return;
       const n = mini ? Math.ceil(d.n * 0.5) : d.n, pos = new Float32Array(n * 3), colr = new Float32Array(n * 3);
       const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('color', new THREE.BufferAttribute(colr, 3));
       const mat = new THREE.PointsMaterial({ size: d.size, map: fxTexture(d.tex), vertexColors: true, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: false });
@@ -248,6 +276,32 @@ function buildTankGroup(tank, mini) {
   return out;
 }
 
+
+/* ---- zoom & pan (mouse wheel, drag, double-click) ---- */
+const _views = {};
+class ZoomPan {
+  constructor(scene, key) { this.s = scene; this.v = _views[key] || (_views[key] = { zoom: 1, px: 0, py: 0 }); this.moved = false; }
+  capture() { const c = this.s.cam; this.b = { cx: (c.left + c.right) / 2, cy: (c.top + c.bottom) / 2, hw: (c.right - c.left) / 2, hh: (c.top - c.bottom) / 2 }; this.apply(); }
+  apply() {
+    const v = this.v, b = this.b, c = this.s.cam, hw = b.hw / v.zoom, hh = b.hh / v.zoom, mx = Math.max(0, b.hw - hw) + b.hw * 0.25, my = Math.max(0, b.hh - hh) + b.hh * 0.25;
+    v.px = Math.max(-mx, Math.min(mx, v.px)); v.py = Math.max(-my, Math.min(my, v.py));
+    c.left = b.cx + v.px - hw; c.right = b.cx + v.px + hw; c.top = b.cy + v.py + hh; c.bottom = b.cy + v.py - hh; c.updateProjectionMatrix();
+  }
+  zoomAt(f, nx, ny) {
+    const v = this.v, b = this.b, z0 = v.zoom, z1 = Math.max(0.85, Math.min(6, z0 * f)), hw0 = b.hw / z0, hh0 = b.hh / z0, hw1 = b.hw / z1, hh1 = b.hh / z1;
+    const Px = b.cx + v.px + nx * hw0, Py = b.cy + v.py + ny * hh0; v.px = Px - nx * hw1 - b.cx; v.py = Py - ny * hh1 - b.cy; v.zoom = z1; this.apply();
+  }
+  reset() { this.v.zoom = 1; this.v.px = 0; this.v.py = 0; this.apply(); }
+  bind(cv) {
+    cv.addEventListener('wheel', e => { e.preventDefault(); const r = cv.getBoundingClientRect(); this.zoomAt(Math.exp(-e.deltaY * 0.0016), (e.clientX - r.left) / r.width * 2 - 1, -((e.clientY - r.top) / r.height * 2 - 1)); }, { passive: false });
+    cv.addEventListener('dblclick', () => this.reset());
+    let drag = null;
+    cv.addEventListener('mousedown', e => { if (e.button !== 0) return; drag = { x: e.clientX, y: e.clientY, px: this.v.px, py: this.v.py }; this.moved = false; });
+    window.addEventListener('mousemove', e => { if (!drag || !cv.isConnected) return; const dx = e.clientX - drag.x, dy = e.clientY - drag.y; if (Math.abs(dx) + Math.abs(dy) > 5) this.moved = true; if (!this.moved) return; const r = cv.getBoundingClientRect(), b = this.b, z = this.v.zoom; this.v.px = drag.px - dx / r.width * 2 * b.hw / z; this.v.py = drag.py + dy / r.height * 2 * b.hh / z; this.apply(); cv.style.cursor = 'grabbing'; });
+    window.addEventListener('mouseup', () => { drag = null; setTimeout(() => (this.moved = false), 0); });
+  }
+}
+
 /* ---- a tank scene on a 2D canvas ---- */
 class TankScene3D {
   constructor(canvas, tank, mini, onFish) {
@@ -261,7 +315,7 @@ class TankScene3D {
     canvas.style.width = mini ? '100%' : cssW + 'px'; canvas.style.height = mini ? 'auto' : cssH + 'px';
     this.ray = new THREE.Raycaster(); this.mouse = new THREE.Vector2();
     if (!mini && onFish) {
-      canvas.addEventListener('click', e => { const f = this.pick(e); if (f) onFish(f); });
+      canvas.addEventListener('click', e => { if (this.zp && this.zp.moved) return; const f = this.pick(e); if (f) onFish(f); });
       let last = 0; canvas.addEventListener('mousemove', e => { const n = performance.now(); if (n - last < 60) return; last = n; const f = this.pick(e); canvas.style.cursor = f ? 'pointer' : 'default'; canvas.title = f && getFish(f) ? fishName(getFish(f)) : ''; });
     }
     this.rebuildStatic();
@@ -278,6 +332,7 @@ class TankScene3D {
     ({ W: this.W, D: this.D, WH: this.WH, WTR: this.WTR } = this.stat);
     const box3 = new THREE.Box3(new THREE.Vector3(-6, -14, -6), new THREE.Vector3(this.W + 6, this.WH + 5, this.D + 6));
     fitOrtho(this.cam, box3, this.cv.width / this.cv.height, ISO_DIR, this.mini ? 0.03 : 0.025);
+    if (!this.mini) { if (!this.zp) { this.zp = new ZoomPan(this, 'tank' + this.tank.id); this.zp.bind(this.cv); } this.zp.capture(); }
     this.key = this.tank.type + '|' + this.tank.bg + '|' + this.tank.skin;
     this.fish.forEach(f => { this.scene.remove(f.group); }); this.fish.clear(); this.dkey = '';
   }
@@ -291,7 +346,7 @@ class TankScene3D {
       const sway = DECOR_SWAY[id], mat = sway ? swayMaterial(mod.h, sway, i * 1.7) : plainMat();
       const m = new THREE.Mesh(mod.geo, mat); m.userData.mat = sway ? mat : null; grp.add(m);
       if (mod.glow) { const gm = new THREE.Mesh(mod.glow, glowMat()); grp.add(gm); }
-      grp.position.set(this.W * fx, FLOOR_Y - mod.minY + (id === 'bubbles' ? 0 : -0.5), this.D * fz); grp.rotation.y = (i % 2 ? -0.5 : 0.35) + (id === 'ship' ? 0.3 : 0); grp.userData.id = id; grp.userData.sway = m;
+      const ds = 1.35; grp.scale.setScalar(ds); grp.position.set(this.W * fx, FLOOR_Y - mod.minY * ds + (id === 'bubbles' ? 0 : -0.5), this.D * fz); grp.rotation.y = (i % 2 ? -0.5 : 0.35) + (id === 'ship' ? 0.3 : 0); grp.userData.id = id; grp.userData.sway = m;
       this.scene.add(grp); this.decor.push(grp);
     });
   }
@@ -356,7 +411,7 @@ class TankScene3D {
     this.syncDecor(); this.syncFish();
     const dt = Math.min(0.05, dtReal); this.t += dt;
     this.step(dt);
-    for (const d of this.decor) { if (d.userData.sway && d.userData.sway.userData.mat) d.userData.sway.userData.mat.userData.u.uTime.value = this.t; if (d.userData.id === 'bubbles' && Math.random() < dt * 9) this.bubbles.push({ x: d.position.x + 12 + (Math.random() - 0.5) * 3, y: d.position.y + 8, z: d.position.z + 5 + (Math.random() - 0.5) * 3, vy: 14 + Math.random() * 10 }); }
+    for (const d of this.decor) { if (d.userData.sway && d.userData.sway.userData.mat) d.userData.sway.userData.mat.userData.u.uTime.value = this.t; if (d.userData.id === 'bubbles' && Math.random() < dt * 9) this.bubbles.push({ x: d.position.x + 16 + (Math.random() - 0.5) * 3, y: d.position.y + 11, z: d.position.z + 6 + (Math.random() - 0.5) * 3, vy: 14 + Math.random() * 10 }); }
     if (Math.random() < dt * (this.mini ? 1.5 : 4)) this.bubbles.push({ x: 8 + Math.random() * (this.W - 16), y: FLOOR_Y + 2, z: 8 + Math.random() * (this.D - 16), vy: 9 + Math.random() * 8 });
     this.bubbles = this.bubbles.filter(b => (b.y += b.vy * dt) < this.WTR - 1);
     if (!this.bub) { this.bub = new THREE.InstancedMesh(new THREE.BoxGeometry(1.5, 1.5, 1.5), new THREE.MeshBasicMaterial({ color: 0xe8f8ff, transparent: true, opacity: 0.75 }), 80); this.bub.frustumCulled = false; this.bub.renderOrder = 3; this.scene.add(this.bub); this.dummy = new THREE.Object3D(); }

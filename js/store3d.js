@@ -150,7 +150,8 @@ class StoreScene {
     this.build();
     const box = new THREE.Box3(new THREE.Vector3(-2, -4, -22), new THREE.Vector3(SHOP.W + 2, SHOP.WH + 2, SHOP.D + 2));
     fitOrtho(this.cam, box, canvas.width / canvas.height, ISO_DIR, 0.0);
-    canvas.addEventListener('click', e => this.click(e));
+    this.zp = new ZoomPan(this, 'store'); this.zp.bind(canvas); this.zp.capture();
+    canvas.addEventListener('click', e => { if (!this.zp.moved) this.click(e); });
     let last = 0; canvas.addEventListener('mousemove', e => { const n = performance.now(); if (n - last < 60) return; last = n; const h = this.pickTank(e); canvas.style.cursor = h ? 'pointer' : 'default'; });
   }
   build() {

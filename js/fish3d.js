@@ -22,6 +22,8 @@ function buildFish(s, mods, L) {
   let finC = finPlain ? mixC(c2, base, 0.3) : base;
   if (s.id === 'goldfish' || s.id === 'comet' || s.id === 'ranchu') finC = mixC(base, [255, 235, 190], 0.25);
   const belly = s.pt === 'belly' ? c2 : mixC(base, [255, 250, 235], 0.5);
+  const hasGem = mods.some(m => m === 'ruby' || m === 'emerald' || m === 'sapphire');
+  const bodyKeys = new Set();
   const tail = A.tail, tlen = tail.len, topAt = P.top, botAt = P.bot;
   const hzAt = u => Math.max(0.6 / L, (topAt(u) + botAt(u)) / 2 * wr);
   const t_h0 = Math.max(0.02, Math.min(topAt(0) + botAt(0), 0.5)) / 2;
@@ -53,8 +55,8 @@ function buildFish(s, mods, L) {
     if (A.stripeFins && s.pt === 'stripes') for (const cc of [0.3, 0.46, 0.62]) if (Math.abs(f.X - cc) < 0.05) c = c2;
     c = mixC(c, shadeC(c, 0.35), Math.min(1, (f.fade == null ? 0.5 : f.fade) * 0.8));
     if (f.d && f.d.col === 'fin') c = _hx('#e63946');
-    mods.forEach(m => (c = modTint(m, c, f.X + 0.5, 0.5, ix, iy)));
-    if (mods.length) c = [c[0] * 0.8, c[1] * 0.8, c[2] * 0.82];
+    mods.forEach(m => (c = modTint(m, c, f.X + 0.5, 0.5, ix, iy, true)));
+    if (mods.length && !hasGem) c = [c[0] * 0.8, c[1] * 0.8, c[2] * 0.82];
     if (f.k !== 'pelv' && f.k !== 'sword' && rayLine(f.ang || 0, f.k === 'tail' ? nRay : 7)) c = shadeC(c, -0.2); else c = shadeC(c, 0.05);
     return c;
   };
@@ -74,7 +76,7 @@ function buildFish(s, mods, L) {
           const Z = iz / L;
           let tpp = tp, spk = 0;
           const d = ((Y - yc) / hy) ** 2 + (Z / hz) ** 2;
-          if (d <= 1.0) { g.set(ix, iy, iz, bodyCol(X, (Y + tp) / (tp + bt), ix, iy, iz)); }
+          if (d <= 1.0) { g.set(ix, iy, iz, bodyCol(X, (Y + tp) / (tp + bt), ix, iy, iz)); bodyKeys.add(VGrid.key(ix, iy, iz)); }
         }
       }
     } else if (A.beak) { // long jaw
@@ -162,12 +164,37 @@ function buildFish(s, mods, L) {
     }
   }
 
+  /* ---------- structural modifiers ---------- */
+  const keys6 = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]];
+  if (mods.includes('skeleton')) {
+    const snap = new Set(g.m.keys()), has2 = (x, y, z) => snap.has(VGrid.key(x, y, z));
+    for (const e of [...g.m.values()]) {
+      const x = e[3], y = e[4], z = e[5];
+      if (bodyKeys.has(VGrid.key(x, y, z))) {
+        const u = Math.max(0, Math.min(1, x / L)), axis = Math.round(((topAt(u) - botAt(u)) / 2) * L), dy = y - axis;
+        const spine = Math.abs(dy) <= 1 && Math.abs(z) <= 1, exposed = !has2(x, y + 1, z) || !has2(x, y - 1, z) || !has2(x, y, z + 1) || !has2(x, y, z - 1);
+        const rib = x % 3 === 0 && exposed && u < 0.74 && u > 0.12, skull = u >= 0.76;
+        if (spine || rib || skull) g.setRaw(x, y, z, skull ? [236, 230, 214] : [224, 218, 198]); else g.del(x, y, z);
+      } else if (((x + y) & 1) === 0) g.setRaw(x, y, z, [208, 203, 188]); else g.del(x, y, z);
+    }
+  }
+  if (mods.includes('zombie')) {
+    const holes = [];
+    for (let i = 0; i < 6; i++) { const h = hash(s.id + 'zb' + i), u = 0.18 + ((h % 100) / 100) * 0.58, side = i % 2 ? 1 : -1, tpv = Math.round(topAt(u) * L), bt = Math.round(botAt(u) * L), cy = Math.round((0.25 + ((h >> 4) % 50) / 100) * (tpv + bt) - bt); holes.push([Math.round(u * L), cy, side * Math.max(1, Math.round(hzAt(u) * L * 0.95)), Math.max(3, Math.round(L * (0.09 + ((h >> 12) % 4) * 0.018)))]); }
+    const removed = [];
+    for (const e of [...g.m.values()]) { const x = e[3], y = e[4], z = e[5]; for (const H of holes) if ((x - H[0]) ** 2 + (y - H[1]) ** 2 + (z - H[2]) ** 2 <= H[3] * H[3]) { removed.push([x, y, z]); break; } }
+    removed.forEach(p => g.del(p[0], p[1], p[2]));
+    const rim = new Set(); removed.forEach(([x, y, z]) => keys6.forEach(d => { if (g.has(x + d[0], y + d[1], z + d[2])) rim.add(VGrid.key(x + d[0], y + d[1], z + d[2])); }));
+    rim.forEach(k => { const e = g.m.get(k), h = hash('rim' + k); g.setRaw(e[3], e[4], e[5], h % 3 === 0 ? [228, 218, 190] : h % 3 === 1 ? [168, 58, 60] : [128, 50, 70]); });
+    for (const e of [...g.m.values()]) if (e[3] < -L * tlen * 0.5 && hash('rg' + e[3] + ',' + e[4]) % 4 === 0) g.del(e[3], e[4], e[5]);
+  }
   /* ---------- details ---------- */
   const ink = [14, 10, 20];
   // eyes (both sides)
   const eu = A.eye.u, ex = Math.round(eu * L), er = Math.max(1, Math.floor(A.eye.r * L * 0.62));
   const tpE = topAt(eu), btE = botAt(eu), ey = Math.round(-(((btE - tpE) / 2) + (A.eye.dy || 0) - (tpE + btE) * 0.1) * L);
-  const irisC = s.id === 'neon' || s.id === 'goby' ? [250, 250, 250] : [250, 205, 70];
+  let irisC = s.id === 'neon' || s.id === 'goby' ? [250, 250, 250] : [250, 205, 70];
+  if (mods.includes('robot')) irisC = [255, 60, 40]; else if (mods.includes('zombie')) irisC = [214, 232, 120]; else if (mods.includes('skeleton')) irisC = [255, 90, 40]; else if (mods.includes('ghost')) irisC = [255, 255, 255];
   for (const sgn of [-1, 1]) {
     let zmax = 0; for (let z = 0; z <= L; z++) if (g.has(ex, ey, z * sgn)) zmax = z; else if (z > zmax + 1) break;
     for (let a = -er; a <= er; a++) for (let b = -er; b <= er; b++) {

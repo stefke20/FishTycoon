@@ -140,11 +140,11 @@ CONSUMABLES.forEach(c => (CONSUMABLE[c.id] = c));
 
 /* Modifiers: t = tier, m = value multiplier, p = base chance on hatch/breed, glow = css drop-shadow colour */
 const MODS_LIST = [
-  { id: 'pearl', n: 'Pearlescent', t: 1, m: 1.5, p: 0.032, glow: '#ffd6f5', icon: '🫧', d: 'A pearly shimmer sweeps across the body' },
-  { id: 'spotted', n: 'Spotted', t: 1, m: 1.4, p: 0.032, glow: null, icon: '🔘', d: 'Bold white spots' },
-  { id: 'striped', n: 'Striped', t: 1, m: 1.4, p: 0.032, glow: null, icon: '🦓', d: 'Dark racing stripes' },
-  { id: 'dappled', n: 'Dappled', t: 1, m: 1.4, p: 0.032, glow: null, icon: '🌸', d: 'Soft pink blotches' },
-  { id: 'marbled', n: 'Marbled', t: 1, m: 1.45, p: 0.032, glow: null, icon: '🪨', d: 'Swirling marble veins' },
+  { id: 'pearl', n: 'Pearlescent', t: 1, m: 1.5, p: 0.026, glow: '#ffd6f5', icon: '🫧', d: 'A pearly shimmer sweeps across the body' },
+  { id: 'spotted', n: 'Spotted', t: 1, m: 1.4, p: 0.026, glow: null, icon: '🔘', d: 'Bold white spots' },
+  { id: 'striped', n: 'Striped', t: 1, m: 1.4, p: 0.026, glow: null, icon: '🦓', d: 'Dark racing stripes' },
+  { id: 'dappled', n: 'Dappled', t: 1, m: 1.4, p: 0.026, glow: null, icon: '🌸', d: 'Soft pink blotches' },
+  { id: 'marbled', n: 'Marbled', t: 1, m: 1.45, p: 0.026, glow: null, icon: '🪨', d: 'Swirling marble veins' },
   { id: 'fiery', n: 'Fiery', t: 2, m: 2.5, p: 0.01, glow: '#ff6a00', icon: '🔥', d: 'Burns with flickering flames' },
   { id: 'frosty', n: 'Frosty', t: 2, m: 2.5, p: 0.01, glow: '#7fdcff', icon: '❄️', d: 'Ice crystals and drifting snow' },
   { id: 'golden', n: 'Golden', t: 2, m: 2.5, p: 0.01, glow: '#ffd23f', icon: '✨', d: 'Gleaming gold with sparkles' },
@@ -156,10 +156,26 @@ const MODS_LIST = [
   { id: 'prismatic', n: 'Prismatic', t: 3, m: 6, p: 0.0025, glow: '#ffffff', icon: '🌈', d: 'Cycles through every colour' },
   { id: 'shadow', n: 'Shadow', t: 3, m: 6, p: 0.0025, glow: '#6a00ff', icon: '🌑', d: 'Trailing wisps of living shadow' },
   { id: 'celestial', n: 'Celestial', t: 3, m: 6.5, p: 0.002, glow: '#fff2b0', icon: '👼', d: 'A radiant halo and drifting motes of light' },
+  { id: 'camo', n: 'Camo', t: 1, m: 1.4, p: 0.026, glow: null, icon: '🪖', d: 'Jungle camouflage blotches' },
+  { id: 'bubbly', n: 'Bubbly', t: 1, m: 1.4, p: 0.026, glow: null, icon: '🫧', d: 'Translucent blue skin that blows bubbles' },
+  { id: 'candy', n: 'Candy', t: 2, m: 2.4, p: 0.009, glow: '#ff9ad5', icon: '🍬', d: 'Pink-and-white swirls with sprinkles' },
+  { id: 'ruby', n: 'Ruby', t: 2, m: 3, p: 0.007, glow: '#ff3050', icon: '♦️', d: 'Fins turn to glittering red rubies' },
+  { id: 'emerald', n: 'Emerald', t: 2, m: 3, p: 0.007, glow: '#30e070', icon: '💚', d: 'Fins turn to glittering green emeralds' },
+  { id: 'sapphire', n: 'Sapphire', t: 2, m: 3, p: 0.007, glow: '#4080ff', icon: '🔷', d: 'Fins turn to glittering blue sapphires' },
+  { id: 'neon', n: 'Neon', t: 2, m: 2.7, p: 0.008, glow: '#ff40d0', icon: '💖', d: 'Dark body traced with buzzing neon lines' },
+  { id: 'zombie', n: 'Zombie', t: 3, m: 5, p: 0.002, glow: null, icon: '🧟', d: 'Rotting flesh, chunks missing, dripping slime' },
+  { id: 'skeleton', n: 'Skeleton', t: 3, m: 5.5, p: 0.002, glow: null, icon: '💀', d: 'Nothing left but bones' },
+  { id: 'magma', n: 'Magma', t: 3, m: 6, p: 0.002, glow: '#ff5a10', icon: '🌋', d: 'Cooled lava crust with glowing cracks' },
+  { id: 'ghost', n: 'Ghost', t: 3, m: 6, p: 0.002, glow: '#bfe4ff', icon: '👻', d: 'See-through and trailing spirit wisps' },
+  { id: 'robot', n: 'Robot', t: 3, m: 5, p: 0.002, glow: null, icon: '🤖', d: 'Riveted steel plating and blinking LEDs' },
+  { id: 'glitch', n: 'Glitch', t: 3, m: 6, p: 0.0018, glow: '#ff30d0', icon: '👾', d: 'Flickers, tears and shifts colour' },
+  { id: 'diamond', n: 'Diamond', t: 4, m: 12, p: 0.0004, glow: '#d8f4ff', icon: '💎', d: 'Flawless crystal that throws rainbow flashes' },
+  { id: 'phoenix', n: 'Phoenix', t: 4, m: 14, p: 0.0003, glow: '#ff8a20', icon: '🐦‍🔥', d: 'Wreathed in rebirth flames and trailing embers' },
 ];
 const MODS = {};
 MODS_LIST.forEach(m => (MODS[m.id] = m));
-const MOD_TIER_COLORS = ['', '#9fb3c8', '#4cc9a0', '#ffb830'];
+const MOD_TIER_COLORS = ['', '#9fb3c8', '#4cc9a0', '#ffb830', '#ff6ad5'];
+const MOD_TIER_NAMES = ['', 'Common', 'Uncommon', 'Rare', 'Mythic'];
 
 /* Tanks */
 const TANK_TYPES = [

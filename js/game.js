@@ -27,7 +27,7 @@ function newState() {
     decorInv: {}, items: { mut1: 0, mut2: 0, mut3: 0 }, skins: { classic: true }, food: 0,
     storeUp: { cases: 0, ads: 0, sign: 0, seats: 0, counter: 0, cashier: 0, collector: 0 },
     breedUp: { clutch: 0, cooldown: 0, match: 0, lineage: 0 },
-    customers: [], nextCustomer: 8, cashierOn: true, seenHelp: false, bredCount: 0, bestValue: 0,
+    settings: { sound: true, fx: true }, customers: [], nextCustomer: 8, cashierOn: true, seenHelp: false, bredCount: 0, bestValue: 0,
   };
   S.tanks.push(newTank('starter', 'My First Tank'));
   S.eggs.push({ id: 'e' + S.nextId++, water: 'fresh', tier: 1, kind: 'fresh1_pond', bred: null });
@@ -52,6 +52,7 @@ function importSave(raw, offline) {
     const base = JSON.parse(JSON.stringify((newState(), S)));
     S = Object.assign(base, d);
     S.storeUp = Object.assign({ cases: 0, ads: 0, sign: 0, seats: 0, counter: 0, cashier: 0, collector: 0 }, d.storeUp);
+    S.settings = Object.assign({ sound: true, fx: true }, d.settings);
     S.items = Object.assign({ mut1: 0, mut2: 0, mut3: 0 }, d.items);
     S.breedUp = Object.assign({ clutch: 0, cooldown: 0, match: 0, lineage: 0 }, d.breedUp);
     const MIG = { stingray: 'sturgeon', mantaray: 'hammerhead' };
@@ -298,6 +299,29 @@ function feedTank(tid, auto) {
   if (!spend(cost)) return fail('Not enough money for food');
   t.fedUntil = S.time + FED_DURATION;
   return ok();
+}
+
+/* ---------- quality-of-life actions ---------- */
+function feedAllCost() { return S.tanks.reduce((a, t) => a + (t.fedUntil - S.time > FED_DURATION * 0.5 ? 0 : fishIn(t.id).filter(f => !isAdult(f)).length * FEED_COST_PER_FISH), 0); }
+function feedAll() {
+  let n = 0;
+  for (const t of S.tanks) { const r = feedTank(t.id); if (r.ok) n++; else if (r.err === 'Not enough money for food') return { ok: n > 0, err: r.err, n }; }
+  return n ? { ok: true, n } : fail('Nothing needs feeding');
+}
+function fillStore() {
+  const free = storeCap() - storeFish().length;
+  if (free <= 0) return fail('Your display cases are full');
+  const cand = S.fish.filter(f => isAdult(f) && f.loc !== 'store').sort((a, b) => fishValue(b) - fishValue(a)).slice(0, free);
+  if (!cand.length) return fail('No fully grown fish to display');
+  cand.forEach(f => (f.loc = 'store')); G.dirty = true; return { ok: true, n: cand.length };
+}
+function hatchAll() {
+  let n = 0;
+  for (const e of S.eggs.slice()) {
+    const t = S.tanks.filter(t => !canHatchIn(e, t)).sort((a, b) => rating(a) - rating(b) || tankFree(b) - tankFree(a))[0];
+    if (t && hatchEgg(e.id, t.id).ok) n++;
+  }
+  return n ? { ok: true, n } : fail('No egg fits in any tank right now');
 }
 
 /* ---------- breeding ---------- */

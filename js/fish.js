@@ -145,6 +145,21 @@ function modTint(m, c, u, v, x, y, fin) {
     case 'cosmic': return (hash('co' + x + ',' + y) % 15 === 0) ? [255, 255, 255] : (hash('cx' + x + ',' + y) % 31 === 0) ? [140, 200, 255] : mixC(c, vnoise(u * 4, v * 3, 'neb') > 0.55 ? [130, 45, 185] : [34, 12, 95], 0.82);
     case 'prismatic': return mixC(c, [[255, 80, 80], [255, 210, 70], [90, 255, 140], [80, 205, 255], [150, 90, 255], [255, 90, 215]][Math.floor(((u + v * 0.35) * 6 + 60) % 6)], 0.68);
     case 'shadow': return (hash('sh' + x + ',' + y) % 13 === 0) ? [170, 110, 255] : mixC(c, [20, 4, 36], 0.8);
+    case 'camo': { const n = vnoise(u * 4.5, v * 3.5, 'cm') + 0.35 * vnoise(u * 11, v * 9, 'cm2'); return n > 0.95 ? [52, 62, 36] : n > 0.62 ? [96, 112, 62] : [142, 126, 84]; }
+    case 'bubbly': return (hash('bb' + Math.floor(x / 3) + ',' + Math.floor(y / 3)) % 4 === 0 && (x % 3 === 1 && y % 3 === 1)) ? [235, 250, 255] : mixC(c, [120, 200, 250], 0.55);
+    case 'candy': { const st = ((x + y * 2) % 8) < 4; if (hash('cs' + x + ',' + y) % 19 === 0) return [[255, 230, 90], [120, 220, 255], [150, 255, 150]][hash('cc' + x + y) % 3]; return st ? [255, 130, 190] : [255, 242, 248]; }
+    case 'ruby': return fin ? (((x + y) % 3) === 0 ? [255, 120, 140] : ((x + y) % 3) === 1 ? [220, 28, 60] : [150, 10, 38]) : mixC(c, [220, 40, 70], 0.14);
+    case 'emerald': return fin ? (((x + y) % 3) === 0 ? [130, 255, 170] : ((x + y) % 3) === 1 ? [30, 190, 90] : [10, 110, 56]) : mixC(c, [40, 200, 100], 0.14);
+    case 'sapphire': return fin ? (((x + y) % 3) === 0 ? [150, 190, 255] : ((x + y) % 3) === 1 ? [40, 100, 240] : [18, 52, 160]) : mixC(c, [50, 110, 255], 0.14);
+    case 'neon': { const lineA = (Math.floor(y / 1) % 5 === 0), lineB = (Math.floor((x + u * 0) / 1) % 7 === 0 && v > 0.15); const base = mixC(c, [18, 14, 34], 0.82); return lineA ? [255, 70, 215] : lineB ? [70, 235, 255] : base; }
+    case 'zombie': return mixC(c, vnoise(u * 6, v * 4, 'zm') > 0.55 ? [120, 128, 84] : [92, 118, 96], 0.7);
+    case 'skeleton': return [228, 222, 204];
+    case 'magma': { const r = Math.abs(Math.sin((u * 7 + vnoise(u * 5, v * 5, 'mg') * 5) * 1.3)); return r < 0.2 ? [255, 160, 30] : r < 0.3 ? [230, 70, 20] : (hash('mgr' + x + y) % 5 === 0 ? [62, 54, 58] : [42, 36, 40]); }
+    case 'ghost': return mixC(c, [205, 228, 255], 0.78);
+    case 'robot': { const seam = (x % 6 === 0) || (y % 5 === 0); const rivet = (x % 6 === 1 && y % 5 === 1); return rivet ? [200, 205, 215] : seam ? [70, 76, 90] : mixC([138, 148, 164], c, 0.08); }
+    case 'glitch': return (Math.floor(y / 2) % 3 === 0) ? mixC(c, [40, 240, 230], 0.55) : (Math.floor(y / 2) % 3 === 1) ? mixC(c, [255, 40, 200], 0.4) : c;
+    case 'diamond': { const f = (x + y * 2 + Math.floor(u * 9)) % 4; return f === 0 ? [255, 255, 255] : f === 1 ? [214, 236, 255] : f === 2 ? [190, 214, 245] : [232, 224, 255]; }
+    case 'phoenix': return mixC(c, v < 0.3 ? [255, 214, 90] : v < 0.65 ? [255, 120, 20] : [200, 30, 20], 0.82);
     case 'celestial': return mixC(c, v < 0.5 ? [255, 250, 225] : [255, 226, 150], 0.78);
   }
   return c;
