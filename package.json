@@ -1,0 +1,9 @@
+{
+  "name": "fish-tycoon",
+  "version": "1.0.0",
+  "description": "A Fish Tycoon inspired idle/management game",
+  "main": "main.js",
+  "scripts": { "start": "electron ." },
+  "devDependencies": { "electron": "^33.0.0" },
+  "license": "MIT"
+}
