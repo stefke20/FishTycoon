@@ -15,4 +15,5 @@ Progress auto-saves to local storage (and fish keep growing while you're away, u
 - **Growing** – hatched fish start as babies; feed them to grow faster (better food = bigger multiplier).
 - **Modifiers** – 11 modifiers in 3 tiers (Pearlescent … Cosmic) multiply value and stack; each only once per fish.
 - **Breeding** – any two adult fish of the same water type. Offspring takes either parent's species, has a small chance of a higher tier, inherits each parent's modifiers with some probability and can roll new ones — so you can stack modifiers generation after generation.
+- **Art** – every fish, tank and decoration is generated as pixel art at runtime (no image files): anatomy-based fish with finned tails, gills, scales and animated tails, and an isometric glass aquarium sized per tank type.
 - **Decor** can be placed and removed freely (back to your inventory).

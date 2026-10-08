@@ -27,6 +27,7 @@ h3{margin:22px 0 10px;font-size:12px;font-weight:700;letter-spacing:1.2px;text-t
 .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .grow{flex:1;min-width:0}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
+.grid.halls{grid-template-columns:repeat(auto-fill,minmax(340px,1fr))}
 .grid.sm{grid-template-columns:repeat(auto-fill,minmax(210px,1fr))}
 .card{background:var(--panel);border:2px solid var(--line);border-radius:var(--r);padding:12px;box-shadow:0 3px 0 #04101b}
 .card.click{cursor:pointer} .card.click:hover{border-color:var(--accent)}
@@ -50,22 +51,13 @@ h3{margin:22px 0 10px;font-size:12px;font-weight:700;letter-spacing:1.2px;text-t
 .lead{color:var(--dim);margin:-6px 0 16px;max-width:760px}
 
 /* scene */
-.scene{position:relative;height:300px;overflow:hidden;border:6px solid var(--frame,#3b4b63);border-radius:var(--r);background:linear-gradient(#1177b5,#0a3358 70%,#07223b);box-shadow:inset 0 0 0 2px rgba(0,0,0,.35),0 4px 0 #04101b}
-.scene.salt{background:linear-gradient(#10a0c4,#0a4568 70%,#07304a)}
-.scene::before{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(105deg,rgba(255,255,255,.05) 0 28px,transparent 28px 84px)}
-.scene.mini{height:132px;border-width:4px;pointer-events:none}
-.scene .gravel{position:absolute;left:0;right:0;bottom:0;height:26px;background-image:var(--gravel-img);background-size:32px 16px;image-rendering:pixelated;border-top:3px solid rgba(0,0,0,.35)}
-.scene.mini .gravel{height:14px;background-size:16px 8px}
-.scene .dec{position:absolute;bottom:20px;pointer-events:none}
-.scene.mini .dec{bottom:9px}
-.bub{position:absolute;bottom:20px;width:6px;height:6px;background:rgba(255,255,255,.35);animation:rise 8s steps(24) infinite;pointer-events:none}
-@keyframes rise{to{transform:translateY(-290px);opacity:0}}
-.swimmer{position:absolute;left:0;top:0;z-index:2;cursor:pointer;will-change:transform}
-.scene.mini .swimmer{cursor:default}
-.swimmer .fw{display:inline-block}
+canvas.tankscene{display:block;image-rendering:pixelated;image-rendering:crisp-edges;margin:0 auto}
+canvas.tankscene.mini{pointer-events:none}
+.scenewrap{background:radial-gradient(ellipse at 50% 30%,#0e2a44,#071522 70%);border:2px solid var(--line);border-radius:var(--r);padding:14px 8px;box-shadow:0 4px 0 #04101b}
+.card .scenewrap{padding:6px;box-shadow:none}
+.fw{display:inline-block}
 .fw.prism{animation:hue 4s linear infinite}
 @keyframes hue{to{filter:hue-rotate(360deg)}}
-.scene .empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.55);z-index:1}
 
 /* tank page */
 .slots{display:flex;gap:8px;flex-wrap:wrap}
@@ -95,7 +87,7 @@ h3{margin:22px 0 10px;font-size:12px;font-weight:700;letter-spacing:1.2px;text-t
 .cats button:hover{color:var(--text);background:var(--panel)}
 .cats button.on{background:var(--accent-d);border-color:var(--accent);color:#fff;font-weight:600}
 .item{display:flex;gap:14px;align-items:center;background:var(--panel);border:2px solid var(--line);border-radius:var(--r);padding:10px 14px;margin-bottom:8px}
-.item .ic{width:44px;display:flex;justify-content:center;flex:none}
+.item .ic{min-width:76px;display:flex;justify-content:center;align-items:center;flex:none}
 .item.locked{opacity:.5}
 .egg{display:flex;flex-direction:column;gap:6px}
 .egg .top{display:flex;gap:10px;align-items:center}

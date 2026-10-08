@@ -24,84 +24,8 @@ const waterTag = w => w === 'salt' ? '🧂 Saltwater' : '💧 Freshwater';
 
 /* ---------- scene ---------- */
 function sceneHTML(t, mini) {
-  const tt = tankType(t), skin = SKIN[t.skin], fs = fishIn(t.id);
-  const bgCss = t.bg ? `background:${DECOR_BY_ID[t.bg].css};` : '';
-  let h = `<div class="scene ${tt.w} ${mini ? 'mini' : ''}" data-sk="${t.id}${mini ? 'm' : ''}" style="--frame:${skin.frame};--gravel-img:url(${gravelURL(skin.gravel)});${bgCss}">`;
-  for (let i = 0; i < (mini ? 3 : 9); i++) h += `<span class="bub" style="left:${(hash(t.id + i) % 92) + 3}%;animation-delay:-${(i * 2.3) % 8}s;animation-duration:${7 + (i % 4)}s"></span>`;
-  h += `<div class="gravel"></div>`;
-  t.slots.forEach((id, i) => { if (id) h += `<span class="dec" style="left:${SLOT_POS[i]}%">${ico(DECOR_BY_ID[id].e, mini ? 24 : 52)}</span>`; });
-  fs.forEach(f => {
-    const sp = SPECIES[f.sp];
-    const base = (40 + 16 * sp.t) * (mini ? 0.62 : 1), sc = Math.max(1, Math.round(base / GW));
-    const sc2 = 0.45 + 0.55 * Math.min(1, f.g);
-    h += `<div class="swimmer" ${mini ? '' : `data-act="openFish" data-x="${f.id}"`} data-fid="${f.id}" data-w="${GW * sc}" data-h="${GH * sc}">
-      <span data-grow="${f.id}" style="display:inline-block;transform:scale(${sc2.toFixed(3)})" title="${esc(fishName(f))}">${fishSVG(f.sp, f.mods, GW * sc)}</span></div>`;
-  });
-  if (!fs.length) h += `<div class="empty">${mini ? 'Empty' : 'Empty tank — hatch an egg from your inventory!'}</div>`;
-  return h + '</div>';
+  return `<canvas class="tankscene ${mini ? 'mini' : ''}" data-tank="${t.id}" data-mini="${mini ? 1 : 0}"></canvas>`;
 }
-
-/* ---------- smooth swimming engine ---------- */
-const Swim = {
-  states: new Map(), list: [], last: 0,
-  bind() {
-    this.list = [];
-    document.querySelectorAll('.swimmer').forEach(el => {
-      const scene = el.parentElement, key = scene.dataset.sk + ':' + el.dataset.fid;
-      const mini = scene.classList.contains('mini');
-      let s = this.states.get(key);
-      const w = +el.dataset.w, h = +el.dataset.h, W = scene.clientWidth, H = scene.clientHeight;
-      if (!s) {
-        const hs = hash(key);
-        s = { x: (hs % 1000) / 1000 * Math.max(10, W - w), y: ((hs >>> 10) % 1000) / 1000 * Math.max(10, H * 0.6 - h) + 10, vx: 0, vy: 0, face: hs % 2 ? 1 : -1, tx: 0, ty: 0, pause: 0, spd: (22 + hs % 26) * (mini ? 0.55 : 1), phase: (hs % 628) / 100, burst: 1 };
-        s.tx = s.x; s.ty = s.y; this.pick(s, W, H, w, h, mini);
-        this.states.set(key, s);
-      }
-      s.el = el; s.scene = scene; s.w = w; s.h = h; s.mini = mini;
-      this.list.push(s); this.apply(s);
-    });
-    if (this.states.size > 400) { const live = new Set(this.list); for (const [k, v] of this.states) if (!live.has(v)) this.states.delete(k); }
-  },
-  pick(s, W, H, w, h, mini) {
-    const gh = mini ? 14 : 26;
-    const near = Math.random() < 0.55;
-    const rx = near ? 140 : 9999, ry = near ? 60 : 9999;
-    const minX = 4, maxX = Math.max(minX + 1, W - w - 4), minY = H * 0.05, maxY = Math.max(minY + 1, H - gh - h - 4);
-    s.tx = Math.min(maxX, Math.max(minX, s.x + (Math.random() * 2 - 1) * Math.min(rx, W)));
-    s.ty = Math.min(maxY, Math.max(minY, s.y + (Math.random() * 2 - 1) * Math.min(ry, H)));
-    if (!near) { s.tx = minX + Math.random() * (maxX - minX); s.ty = minY + Math.random() * (maxY - minY); }
-    s.burst = 0.55 + Math.random() * 0.9;
-    if (Math.random() < 0.2) s.pause = 0.4 + Math.random() * 1.6;
-  },
-  apply(s) {
-    const bob = Math.sin(s.phase) * 1.6;
-    const ang = Math.max(-0.7, Math.min(0.7, s.vy / (Math.abs(s.vx) + 28))) * 20 * s.face + Math.sin(s.phase * 1.3) * 1.2;
-    s.el.style.transform = `translate(${s.x.toFixed(1)}px,${(s.y + bob).toFixed(1)}px) rotate(${ang.toFixed(1)}deg) scaleX(${s.face.toFixed(2)})`;
-  },
-  frame(now) {
-    const dt = Math.min(0.05, (now - (Swim.last || now)) / 1000); Swim.last = now;
-    const dims = new Map();
-    for (const s of Swim.list) {
-      if (!s.el.isConnected) continue;
-      let d = dims.get(s.scene); if (!d) dims.set(s.scene, d = [s.scene.clientWidth, s.scene.clientHeight]);
-      const [W, H] = d;
-      const dx = s.tx - s.x, dy = s.ty - s.y, dist = Math.hypot(dx, dy);
-      let dvx = 0, dvy = 0;
-      if (s.pause > 0) s.pause -= dt;
-      else if (dist < 14) Swim.pick(s, W, H, s.w, s.h, s.mini);
-      else { const sp = s.spd * s.burst; dvx = dx / dist * sp; dvy = dy / dist * sp * 0.7; }
-      const k = 1 - Math.exp(-dt * 1.6);
-      s.vx += (dvx - s.vx) * k; s.vy += (dvy - s.vy) * k;
-      s.x += s.vx * dt; s.y += s.vy * dt;
-      s.x = Math.max(0, Math.min(W - s.w, s.x)); s.y = Math.max(0, Math.min(H - (s.mini ? 14 : 26) - s.h, s.y));
-      const tf = s.vx > 5 ? 1 : s.vx < -5 ? -1 : (s.face >= 0 ? 1 : -1);
-      s.face += (tf - s.face) * (1 - Math.exp(-dt * 6));
-      s.phase += dt * (2.5 + Math.hypot(s.vx, s.vy) * 0.12);
-      Swim.apply(s);
-    }
-    requestAnimationFrame(Swim.frame);
-  },
-};
 
 /* ---------- chrome ---------- */
 function renderHeader() {
@@ -147,10 +71,10 @@ function viewStore() {
 
 /* ---------- HALL ---------- */
 function viewHall() {
-  let h = `<h2>Aquarium Hall</h2><div class="stats">${pill('Tanks', S.tanks.length + '/' + S.hallSlots)}${pill('Fish', S.fish.length)}</div><div class="grid">`;
+  let h = `<h2>Aquarium Hall</h2><div class="stats">${pill('Tanks', S.tanks.length + '/' + S.hallSlots)}${pill('Fish', S.fish.length)}</div><div class="grid halls">`;
   for (const t of S.tanks) {
     const tt = tankType(t), fs = fishIn(t.id), grow = fs.filter(f => !isAdult(f)).length;
-    h += `<div class="card click" data-act="openTank" data-x="${t.id}">${sceneHTML(t, true)}
+    h += `<div class="card click" data-act="openTank" data-x="${t.id}"><div class="scenewrap">${sceneHTML(t, true)}</div>
       <div style="margin-top:10px"><b>${esc(t.name)}</b> <span class="dim small">${waterTag(tt.w)}</span></div>
       <div class="small dim">${fs.length}/${tt.cap} fish · ${grow} growing · ${fs.length - grow} adult · rating ${rating(t)}</div></div>`;
   }
@@ -166,12 +90,12 @@ function viewTank() {
   const tt = tankType(t), fs = fishIn(t.id), b = tankBonus(t), fed = t.fedUntil > S.time, growing = fs.filter(f => !isAdult(f)).length;
   let h = `<div class="row" style="margin-bottom:12px">${btn('← Hall', 'backHall', {}, 'sm')}<h2 style="margin:0">${esc(t.name)}</h2>${btn('Rename', 'rename', { x: t.id }, 'sm')}</div>
     <div class="stats">${pill('', waterTag(tt.w))}${pill('Fish', fs.length + '/' + tt.cap)}${pill('Water rating', rating(t) + ' (up to tier ' + rating(t) + ')')}${pill('Growth', mult(1 + b.growth))}${pill('Value', '+' + Math.round(b.value * 100) + '%')}${pill('Mutation', '+' + Math.round(b.mod * 100) + '%')}${pill('Tier-up', '+' + Math.round(b.tier * 100) + '%')}${pill('Inherit', '+' + Math.round(b.inherit * 100) + '%')}</div>`;
-  h += sceneHTML(t, false);
+  h += `<div class="scenewrap">${sceneHTML(t, false)}</div>`;
   h += `<div class="row" style="margin-top:14px">${btn(`Feed · ${fmt(growing * FEED_COST_PER_FISH)} · ${FOOD[S.food].n} ×${foodMult()}`, 'feed', { x: t.id }, 'pri', !growing)}
     <span class="dim small" data-fed="${t.id}">${fed ? '🍽️ Well fed: ' + Math.ceil(t.fedUntil - S.time) + 's left' : 'Hungry — feeding speeds up growth'}</span><span class="grow"></span>
     ${btn('Hatch an egg', 'hatchHere', { x: t.id })}${btn('Tank upgrades', 'goUpgrades', { x: t.id })}</div>`;
-  h += `<h3>Decorations</h3><div class="slots"><div class="slot ${t.bg ? 'full' : ''}" data-act="slotPick" data-x="${t.id}" data-y="bg">${t.bg ? ico(DECOR_BY_ID[t.bg].e, 36) : ico('🖼️', 36)}${t.bg ? DECOR_BY_ID[t.bg].n : 'Background'}</div>`;
-  t.slots.forEach((id, i) => { const d = id && DECOR_BY_ID[id]; h += `<div class="slot ${d ? 'full' : ''}" data-act="slotPick" data-x="${t.id}" data-y="${i}">${d ? ico(d.e, 36) : '<span style="font-size:24px">＋</span>'}${d ? d.n : 'Empty'}</div>`; });
+  h += `<h3>Decorations</h3><div class="slots"><div class="slot ${t.bg ? 'full' : ''}" data-act="slotPick" data-x="${t.id}" data-y="bg">${t.bg ? decorPic(DECOR_BY_ID[t.bg], 52) : ico('🖼️', 32)}${t.bg ? DECOR_BY_ID[t.bg].n : 'Background'}</div>`;
+  t.slots.forEach((id, i) => { const d = id && DECOR_BY_ID[id]; h += `<div class="slot ${d ? 'full' : ''}" data-act="slotPick" data-x="${t.id}" data-y="${i}">${d ? decorPic(d, 56) : '<span style="font-size:24px">＋</span>'}${d ? d.n : 'Empty'}</div>`; });
   h += `</div><div class="row" style="margin-top:10px"><span class="dim small">Skin</span><select data-change="skin" data-x="${t.id}">${SKINS.filter(s => S.skins[s.id]).map(s => `<option value="${s.id}" ${t.skin === s.id ? 'selected' : ''}>${s.n}</option>`).join('')}</select></div>`;
   h += `<h3>Fish</h3><div class="list">`;
   if (!fs.length) h += `<div class="dim" style="padding:14px">No fish yet.</div>`;
@@ -261,7 +185,7 @@ function viewShop() {
     }
     case 'tanks': {
       h += `<div class="stats">${pill('Hall slots', S.tanks.length + '/' + S.hallSlots)}${hallSlotCost() != null ? btn(`Buy slot · ${fmt(hallSlotCost())}`, 'buySlot', {}, 'sm pri', S.money < hallSlotCost()) : ''}<span class="dim small">You keep all your old tanks.</span></div>`;
-      for (const tt of TANK_TYPES) h += item(ico(tt.w === 'salt' ? '🪸' : '🐠', 36), tt.n, `${waterTag(tt.w)} · holds ${tt.cap} fish · base water rating ${tt.base} (up to ${tt.base + 3} with upgrades)`, tt.price, 'Buy', 'buyTank', { x: tt.id }, { locked: lv < tt.lvl ? 'Store level ' + tt.lvl : null });
+      for (const tt of TANK_TYPES) h += item(tankIcon(tt.id, 76), tt.n, `${waterTag(tt.w)} · holds ${tt.cap} fish · base water rating ${tt.base} (up to ${tt.base + 3} with upgrades)`, tt.price, 'Buy', 'buyTank', { x: tt.id }, { locked: lv < tt.lvl ? 'Store level ' + tt.lvl : null });
       break;
     }
     case 'upgrades': {
@@ -274,7 +198,7 @@ function viewShop() {
     case 'decor': {
       for (const [k, label] of [['plant', 'Plants'], ['rock', 'Rocks'], ['acc', 'Accessories'], ['bg', 'Backgrounds']]) {
         h += `<h3>${label}</h3>`;
-        for (const d of DECOR.filter(d => d.k === k)) h += item(ico(d.e, 36), d.n + ` <span class="dim small">${d.w === 'both' ? '' : d.w === 'salt' ? '🧂 salt only' : '💧 fresh only'}</span>`, bonusText(d.b), d.price, 'Buy', 'buyDecor', { x: d.id }, { badge: S.decorInv[d.id] ? `<span class="pill">owned ${S.decorInv[d.id]}</span>` : '' });
+        for (const d of DECOR.filter(d => d.k === k)) h += item(decorPic(d, 72), d.n + ` <span class="dim small">${d.w === 'both' ? '' : d.w === 'salt' ? '🧂 salt only' : '💧 fresh only'}</span>`, bonusText(d.b), d.price, 'Buy', 'buyDecor', { x: d.id }, { badge: S.decorInv[d.id] ? `<span class="pill">owned ${S.decorInv[d.id]}</span>` : '' });
       }
       break;
     }
@@ -309,7 +233,7 @@ function viewInv() {
   h += `<h3>Decorations</h3>`;
   const owned = DECOR.filter(d => S.decorInv[d.id] > 0);
   if (!owned.length) h += `<div class="card flat dim">No spare decorations. Buy some in the shop, then place them from a tank's page.</div>`;
-  h += `<div class="grid sm">${owned.map(d => `<div class="card row">${ico(d.e, 36)}<div><b>${d.n}</b> ×${S.decorInv[d.id]}<div class="small dim">${bonusText(d.b)}</div></div></div>`).join('')}</div>`;
+  h += `<div class="grid sm">${owned.map(d => `<div class="card row">${decorPic(d, 60)}<div><b>${d.n}</b> ×${S.decorInv[d.id]}<div class="small dim">${bonusText(d.b)}</div></div></div>`).join('')}</div>`;
   h += `<h3>All fish · ${S.fish.length}</h3><div class="list">${S.fish.map(f => fishRow(f)).join('') || '<div class="dim" style="padding:14px">None</div>'}</div>`;
   return h;
 }
@@ -370,9 +294,9 @@ function modalHTML() {
       const t = getTank(m.id), isBg = m.slot === 'bg';
       const cur = isBg ? t.bg : t.slots[m.slot];
       h += `<h2>${isBg ? 'Background' : 'Decoration'} · ${esc(t.name)}</h2>`;
-      if (cur) h += `<div class="item"><div class="ic">${ico(DECOR_BY_ID[cur].e, 32)}</div><div class="grow"><b>${DECOR_BY_ID[cur].n}</b> <span class="dim small">equipped</span></div>${btn('Remove', 'slotClear', { x: t.id, y: m.slot }, 'bad sm')}</div>`;
+      if (cur) h += `<div class="item"><div class="ic">${decorPic(DECOR_BY_ID[cur], 60)}</div><div class="grow"><b>${DECOR_BY_ID[cur].n}</b> <span class="dim small">equipped</span></div>${btn('Remove', 'slotClear', { x: t.id, y: m.slot }, 'bad sm')}</div>`;
       const list = DECOR.filter(d => (d.k === 'bg') === isBg && S.decorInv[d.id] > 0 && decorFits(d, t));
-      h += list.length ? list.map(d => `<div class="item"><div class="ic">${ico(d.e, 32)}</div><div class="grow"><b>${d.n}</b> ×${S.decorInv[d.id]}<div class="small dim">${bonusText(d.b)}</div></div>${btn('Place', 'slotSet', { x: t.id, y: m.slot, z: d.id }, 'pri sm')}</div>`).join('') : '<p class="dim">Nothing suitable in your inventory — visit Shop → Decorations.</p>'; break;
+      h += list.length ? list.map(d => `<div class="item"><div class="ic">${decorPic(d, 60)}</div><div class="grow"><b>${d.n}</b> ×${S.decorInv[d.id]}<div class="small dim">${bonusText(d.b)}</div></div>${btn('Place', 'slotSet', { x: t.id, y: m.slot, z: d.id }, 'pri sm')}</div>`).join('') : '<p class="dim">Nothing suitable in your inventory — visit Shop → Decorations.</p>'; break;
     }
     case 'help': {
       h += `<h2>How to play</h2>
@@ -397,7 +321,7 @@ function render() {
   view.scrollTop = st;
   const mo = $('#modal');
   if (UI.modal) { const keep = mo.firstChild && mo.firstChild.scrollTop; mo.innerHTML = modalHTML(); mo.classList.toggle('hidden', !UI.modal); if (mo.firstChild && keep) mo.firstChild.scrollTop = keep; } else { mo.classList.add('hidden'); mo.innerHTML = ''; }
-  Swim.bind();
+  Scenes.bind(id => { UI.modal = { type: 'fish', id }; render(); });
 }
 
 function toast(text, type) {
@@ -504,7 +428,6 @@ function boot() {
   if (r.away > 60) toast(`Welcome back! Your fish kept growing for ${Math.round(r.away / 60)} min` + (r.matured ? ` — ${r.matured} reached adulthood.` : '.'), 'good');
   if (!S.seenHelp) { UI.modal = { type: 'help' }; S.seenHelp = true; }
   render();
-  requestAnimationFrame(Swim.frame);
   let last = performance.now(), lastMoney = S.money, saveT = 0, renderT = 0;
   setInterval(() => {
     const now = performance.now(), dt = Math.min(1, (now - last) / 1000); last = now;

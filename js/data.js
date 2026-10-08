@@ -25,7 +25,7 @@ const SPECIES_LIST = [
   { id: 'swordtail', n: 'Swordtail', t: 1, w: 'fresh', f: 'Livebearer', c: '#f06595', c2: '#2b2d42', sh: 'slender', pt: 'stripes', v: 1.05 },
   // T2
   { id: 'betta', n: 'Betta', t: 2, w: 'fresh', f: 'Tropical', c: '#d62839', c2: '#7b2cbf', sh: 'round', pt: 'none', v: 1.15 },
-  { id: 'neon', n: 'Neon Tetra', t: 2, w: 'fresh', f: 'Tropical', c: '#2ec4b6', c2: '#ff4d6d', sh: 'slender', pt: 'stripes', v: 0.85 },
+  { id: 'neon', n: 'Neon Tetra', t: 2, w: 'fresh', f: 'Tropical', c: '#2a5fd1', c2: '#ff3b4f', sh: 'slender', pt: 'lateral', v: 0.85 },
   { id: 'rasbora', n: 'Harlequin Rasbora', t: 2, w: 'fresh', f: 'Tropical', c: '#ffa94d', c2: '#2b2d42', sh: 'round', pt: 'patch', v: 0.95 },
   { id: 'angelfish', n: 'Angelfish', t: 2, w: 'fresh', f: 'Community', c: '#e9ecef', c2: '#343a40', sh: 'tall', pt: 'stripes', v: 1.1 },
   { id: 'molly', n: 'Black Molly', t: 2, w: 'fresh', f: 'Community', c: '#2b2d42', c2: '#8d99ae', sh: 'round', pt: 'none', v: 0.95 },
