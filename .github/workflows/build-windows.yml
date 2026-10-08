@@ -2,6 +2,11 @@ name: Build Windows installer
 
 on:
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Optional: publish a GitHub Release with this tag (e.g. v1.0.0)'
+        required: false
+        default: ''
   push:
     tags: ['v*']
     branches: [claude/trusting-rubin-expv3l]
@@ -23,8 +28,15 @@ jobs:
         with:
           name: Fish-Tycoon-Windows-Installer
           path: dist/*.exe
-      - name: Publish release
+      - name: Publish release (tag push)
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
+          files: dist/*.exe
+      - name: Publish release (manual)
+        if: github.event_name == 'workflow_dispatch' && inputs.release_tag != ''
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.release_tag }}
+          target_commitish: ${{ github.sha }}
           files: dist/*.exe
