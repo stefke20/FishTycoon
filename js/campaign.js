@@ -117,6 +117,7 @@ function viewCampaign() {
   const sp = SPECIES[c.spec.sp];
   h += `<div class="dim small" style="margin-bottom:6px">The boss demands</div><div class="demand"><div class="dpic">${fishSVG(sp.id, c.spec.mods, 86)}</div><div class="grow"><b>${sp.n}</b> ${tierBadge(sp.t)} ${waterTag(sp.w)}<div style="margin:4px 0">${c.spec.mods.map(m => `<span class="chip m${MODS[m].t}" title="${esc(modByLoc(m))}">${MODS[m].icon} ${MODS[m].n}</span>`).join('')}${c.spec.gen ? `<span class="chip m1">Generation ${c.spec.gen}+</span>` : ''}</div><div class="small dim">${c.spec.mods.some(m => MODS[m].exp) ? '⛵ ' + c.spec.mods.filter(m => MODS[m].exp).map(modByLoc).join(', ') : 'All modifiers can be bred into a line.'}</div></div></div>`;
   if (!conquered) {
+    h += `<div class="row" style="margin-top:10px">${btn('🧬 Plan this fish', 'planOpen', { sp: c.spec.sp, mods: c.spec.mods.join(',') }, 'sm pri')}</div>`;
     const cands = campCandidates(c.spec), full = cands.filter(x => x.full);
     h += `<div class="dim small" style="margin:12px 0 6px">${full.length ? 'Your fish that meet the demand' : cands.length ? 'Closest fish you own' : 'You own no fish of this kind yet'}</div>`;
     if (!cands.length) h += `<div class="empty">Hatch or breed a ${sp.n} and give it the required modifiers.</div>`;

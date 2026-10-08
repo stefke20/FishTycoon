@@ -111,6 +111,7 @@ const UNLOCKS = [
   { id: 'hatchAll', n: 'Hatchery Console', icon: '🥚', d: 'Unlocks the Hatch all button in the Inventory.', price: 25000 },
   { id: 'cleanAll', n: 'Water Station', icon: '🚿', d: 'Unlocks Clean all tanks in the Aquarium Hall.', price: 40000 },
   { id: 'bulkSell', n: 'Market Broker', icon: '💼', d: 'Unlocks Sell all (with filters) in the Inventory — sells every non-favourite adult you are looking at.', price: 60000 },
+  { id: 'autoRules', n: 'Auto-Sorter', icon: '🗂️', d: 'Unlocks auto-rules in the Inventory: sell plain fish and keep only the best of each species, automatically.', price: 150000 },
   { id: 'autoPair', n: 'Matchmaking Service', icon: '💞', d: 'Unlocks the Suggest pair button in Breeding, which picks the best two fish for stacking modifiers.', price: 90000 },
 ];
 function buyUnlock(id) { const u = UNLOCKS.find(x => x.id === id); if (S.unlocks[id]) return fail('Already owned'); if (!spend(u.price)) return fail('Not enough money'); S.unlocks[id] = true; return ok(); }
@@ -118,7 +119,7 @@ function buyUnlock(id) { const u = UNLOCKS.find(x => x.id === id); if (S.unlocks
 function sellMany(ids) {
   if (!S.unlocks.bulkSell) return fail('Buy the Market Broker in Shop → Management first');
   let n = 0, money = 0, tokens = 0;
-  for (const id of ids) { const f = getFish(id); if (!f || !isAdult(f) || f.fav) continue; const r = sellMarket(id); if (r.ok) { n++; money += r.price; tokens += r.tokens || 0; } }
+  for (const id of ids) { const f = getFish(id); if (!f || !isAdult(f) || f.fav || tagKept(f)) continue; const r = sellMarket(id); if (r.ok) { n++; money += r.price; tokens += r.tokens || 0; } }
   return n ? { ok: true, n, money, tokens } : fail('Nothing to sell');
 }
 /* suggest the two compatible fish that carry the most modifiers between them */
@@ -320,6 +321,6 @@ function buildSanct() {
 /* ---------- tick ---------- */
 let _achT = 0, _evT = 99;
 function tickExtras(dt) {
-  tickWater(dt); tickStaff(dt); tickContracts(dt); tickG3(dt); _evT += dt; if (_evT > 3) { _evT = 0; tickEventWelcome(); }
+  tickWater(dt); tickStaff(dt); tickContracts(dt); tickG3(dt); tickG4(dt); _evT += dt; if (_evT > 3) { _evT = 0; tickEventWelcome(); }
   _achT += dt; if (_achT > 2) { _achT = 0; checkAchievements(); }
 }

@@ -17,6 +17,7 @@ function ensureG3() {
   S.streak = Object.assign({ days: 0, best: 0, last: '', claimed: '', shields: 0 }, S.streak);
   ['wiped', 'showsEntered', 'showWins', 'exps', 'catches', 'matured', 'tourneys'].forEach(k => { if (S.stats[k] == null) S.stats[k] = 0; });
   S.fish.forEach(f => { if (!f.medals) f.medals = { g: 0, s: 0, b: 0 }; });
+  ensureG4();
 }
 
 /* ================= EXPEDITIONS ================= */

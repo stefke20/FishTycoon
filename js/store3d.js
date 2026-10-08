@@ -207,7 +207,7 @@ class StoreScene {
     });
     const back = texMesh(W, WH, backTex); back.position.set(W / 2, WH / 2, 0); sc.add(back);
     // sunlit street behind the door
-    const street = new THREE.Mesh(new THREE.PlaneGeometry(40, 90), new THREE.MeshBasicMaterial({ color: 0xcfe9f5 })); street.position.set(216, 45, -2); sc.add(street);
+    const street = new THREE.Mesh(new THREE.PlaneGeometry(40, 90), new THREE.MeshBasicMaterial({ color: 0xcfe9f5 })); street.position.set(216, 45, -2); sc.add(street); this.street = street;
     const leftTex = paintTexture(D * 2, WH * 2, (x, w, h) => {
       x.fillStyle = '#d9ccaa'; x.fillRect(0, 0, w, h); for (let i = 0; i < w; i += 16) { x.fillStyle = 'rgba(130,110,80,0.10)'; x.fillRect(i, 0, 8, h); }
       x.fillStyle = '#6a4a30'; x.fillRect(0, h - 56, w, 56); x.fillStyle = '#7e5a3a'; for (let i = 0; i < w; i += 24) x.fillRect(i + 2, h - 52, 20, 44); x.fillStyle = '#b08a5a'; x.fillRect(0, h - 58, w, 4);
@@ -315,7 +315,12 @@ class StoreScene {
     const ctx = this.ctx; ctx.clearRect(0, 0, this.cv.width, this.cv.height); ctx.drawImage(GL.r.domElement, 0, 0);
     this.overlay(ctx, dt);
   }
-  frame(dt) { this.frameDt(dt); }
+  frame(dt) { if (!this._dn) { this._dn = 1; this.dayNight(sunAt(lightHour())); } this.frameDt(dt); }
+  /* the street behind the door follows the time of day */
+  dayNight(sun) {
+    if (!this.street) return; const c = mixRGB(mixRGB([14, 22, 52], [207, 233, 245], sun.k), [255, 170, 110], sun.warm * 0.5);
+    this.street.material.color.setRGB(c[0] / 255, c[1] / 255, c[2] / 255);
+  }
   proj(x, y, z) { const v = new THREE.Vector3(x, y, z).project(this.cam); return [(v.x + 1) / 2 * this.cv.width, (1 - v.y) / 2 * this.cv.height]; }
   overlay(ctx, dt) {
     const k = this.cv.height / 700; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';

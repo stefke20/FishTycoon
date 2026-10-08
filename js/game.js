@@ -64,6 +64,7 @@ function importSave(raw, offline) {
     S.staff = Object.assign({ feeder: 0, aquarist: 0, handler: 0, hatcher: 0 }, d.staff);
     S.unlocks = Object.assign({}, d.unlocks);
     ['lineage', 'ach', 'staffT', 'tokens', 'evSeen', 'lab', 'staffPaused', 'evBought', 'charms'].forEach(k => { if (!S[k]) S[k] = {}; }); ['contracts', 'heroes', 'hof', 'titles'].forEach(k => { if (!S[k]) S[k] = []; });
+    if (!d.g4) S.g4 = null;
     ensureG3();
     if (d.rp == null) S.rp = 12;
     S.tanks.forEach(t => { if (t.wq == null) t.wq = 100; TANK_UPGRADES.forEach(u => { if (t.up[u.id] == null) t.up[u.id] = 0; }); });
@@ -76,6 +77,7 @@ function importSave(raw, offline) {
     let gained = 0;
     if (offline) {
       const gap = clamp((Date.now() - (S.savedAt || Date.now())) / 1000, 0, maxOffline());
+      G.awayList = [];
       if (gap > 30) gained = advanceGrowth(gap);
       S.customers = [];
       seedHof();
@@ -364,7 +366,7 @@ function feedAll(auto) {
 function fillStore() {
   const free = storeCap() - storeFish().length;
   if (free <= 0) return fail('Your display cases are full');
-  const cand = S.fish.filter(f => isAdult(f) && f.loc !== 'store' && !f.fav && !SPECIES[f.sp].ev && !fishLocked(f)).sort((a, b) => fishValue(b) - fishValue(a)).slice(0, free);
+  const cand = S.fish.filter(f => isAdult(f) && f.loc !== 'store' && !f.fav && !tagKept(f) && !SPECIES[f.sp].ev && !fishLocked(f)).sort((a, b) => fishValue(b) - fishValue(a)).slice(0, free);
   if (!cand.length) return fail('No fully grown fish to display');
   cand.forEach(f => (f.loc = 'store')); G.dirty = true; return { ok: true, n: cand.length };
 }
@@ -448,7 +450,7 @@ function breedFish(aid, bid, boostId) {
 /* ---------- store ---------- */
 const CUSTOMER_NAMES = ['Ava', 'Ben', 'Chloe', 'Dmitri', 'Elena', 'Farid', 'Gina', 'Hugo', 'Iris', 'Jonas', 'Keiko', 'Liam', 'Mina', 'Noah', 'Olga', 'Pablo', 'Quinn', 'Rosa', 'Sven', 'Tara', 'Uma', 'Vic', 'Wren', 'Xavi', 'Yara', 'Zed'];
 const CUSTOMER_FACES = ['🧑', '👩', '👨', '🧓', '👧', '👦', '🧔', '👩‍🦰', '👨‍🦳', '🧑‍🎤', '🧑‍🔬', '🧑‍🍳'];
-function arrivalInterval() { return 16 / ((1 + 0.3 * S.storeUp.ads) * (1 + 0.08 * lab('marketing')) * (1 + campPerk('cust'))); }
+function arrivalInterval() { return 16 / trafficMult() / ((1 + 0.3 * S.storeUp.ads) * (1 + 0.08 * lab('marketing')) * (1 + campPerk('cust'))); }
 function spawnCustomer() {
   const fs = storeFish();
   if (!fs.length || S.customers.length >= customerCap()) return;
@@ -516,7 +518,7 @@ function advanceGrowth(secs) {
     if (f.loc === 'store' || f.g >= 1) return;
     const t = getTank(f.loc); if (!t) return;
     f.g += growthRate({ sp: f.sp }, t) * secs / (t.fedUntil > S.time ? foodMult() : 1);
-    if (f.g >= 1) { f.vb = tankBonus(t).value; f.g = 1; n++; discover(f); noteRecord(f); S.stats.matured++; }
+    if (f.g >= 1) { f.vb = tankBonus(t).value; f.g = 1; n++; discover(f); noteRecord(f); S.stats.matured++; if (G.awayList) G.awayList.push(f.id); }
   });
   return n;
 }

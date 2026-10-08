@@ -14,7 +14,7 @@ const Sfx = {
     } catch (e) {}
   },
 };
-const UI = { tab: 'store', qty: 1, sort: 'value', onlyMods: false, tankId: null, shopCat: 'eggs', upTank: null, sel: [], modal: null, lastBreed: null, boost: null, selFish: null, filterTank: 'all', homeTip: null };
+const UI = { tab: 'store', qty: 1, sort: 'value', onlyMods: false, tankId: null, shopCat: 'eggs', upTank: null, sel: [], modal: null, lastBreed: null, boost: null, selFish: null, filterTank: 'all', filterTag: 'all', homeTip: null };
 const $ = s => document.querySelector(s);
 const pct = x => { const v = x * 100; return (v < 10 && v > 0 ? v.toFixed(1) : Math.round(v)) + '%'; };
 let mouseDown = false;
@@ -65,27 +65,28 @@ function sortFish(list) {
   if (UI.onlyMods) f = f.filter(x => x.g >= 1 && x.mods.length);
   if (UI.onlyFav) f = f.filter(x => x.fav);
   if (UI.filterTank !== 'all') f = f.filter(x => x.loc === UI.filterTank);
+  if (UI.filterTag && UI.filterTag !== 'all') f = f.filter(x => (UI.filterTag === 'none' ? !x.tag : x.tag === UI.filterTag));
   const val = x => (x.g >= 1 ? fishValue(x) : -1), key = { value: x => -val(x), tier: x => -(x.g >= 1 ? SPECIES[x.sp].t : 0) * 1e9 - val(x), mods: x => -(x.g >= 1 ? x.mods.length : 0) * 1e12 - val(x), name: x => 0, growth: x => -x.g }[UI.sort];
   return f.sort((a, b) => UI.sort === 'name' ? fishName(a).localeCompare(fishName(b)) : key(a) - key(b));
 }
 const tankFilter = () => `<select data-change="filterTank" title="Show only the fish in one aquarium"><option value="all">All aquariums</option><option value="store" ${UI.filterTank === 'store' ? 'selected' : ''}>Store display</option>${S.tanks.map(t => `<option value="${t.id}" ${UI.filterTank === t.id ? 'selected' : ''}>${esc(t.name)}</option>`).join('')}</select>`;
-const sortBar = () => { if (UI.filterTank !== 'all' && UI.filterTank !== 'store' && !getTank(UI.filterTank)) UI.filterTank = 'all'; return `<div class="row" style="margin-bottom:12px"><span class="dim small">Aquarium</span>${tankFilter()}<span class="dim small">Sort</span><div class="seg" style="margin:0">${Object.entries(SORTS).map(([k, l]) => `<button class="${UI.sort === k ? 'on' : ''}" data-act="sortBy" data-x="${k}">${l}</button>`).join('')}</div><button class="boost-chip ${UI.onlyMods ? 'on' : ''}" data-act="onlyMods">Modified only</button><button class="boost-chip ${UI.onlyFav ? 'on' : ''}" data-act="onlyFav">★ Favourites</button></div>`; };
+const sortBar = () => { if (UI.filterTank !== 'all' && UI.filterTank !== 'store' && !getTank(UI.filterTank)) UI.filterTank = 'all'; return `<div class="row" style="margin-bottom:12px"><span class="dim small">Aquarium</span>${tankFilter()}<span class="dim small">Sort</span><div class="seg" style="margin:0">${Object.entries(SORTS).map(([k, l]) => `<button class="${UI.sort === k ? 'on' : ''}" data-act="sortBy" data-x="${k}">${l}</button>`).join('')}</div><button class="boost-chip ${UI.onlyMods ? 'on' : ''}" data-act="onlyMods">Modified only</button><button class="boost-chip ${UI.onlyFav ? 'on' : ''}" data-act="onlyFav">★ Favourites</button>${tagFilter()}</div>`; };
 const zoomCtl = (tank, home) => `<div class="zoomctl">${tank ? '<button data-act="cam" data-x="rotL" title="Rotate left">↺</button><button data-act="cam" data-x="rotR" title="Rotate right">↻</button><button data-act="cam" data-x="tilt" title="Change camera angle">⇅</button><button data-act="cam" data-x="photo" title="Save a picture">📷</button>' : ''}<button data-act="zoom" data-x="in" title="Zoom in (+)">＋</button><button data-act="zoom" data-x="out" title="Zoom out (−)">－</button><button data-act="zoom" data-x="reset" title="Reset view (0)">⟲</button></div><div class="zoomhint">${home ? 'Scroll to zoom' : 'Scroll to zoom · drag to pan · double-click to reset'}${tank ? ' · ↺ ↻ rotate' : ''}</div>`;
 
 /* ---------- chrome ---------- */
 const TABS = [['store', 'Store'], ['home', 'Home'], ['hall', 'Aquariums'], ['breed', 'Breeding'], ['camp', 'Campaign'], ['exp', 'Expeditions'], ['shows', 'Fish Shows'], ['shop', 'Shop'], ['inv', 'Inventory'], ['research', 'Research'], ['book', 'Collection'], ['daily', 'Daily'], ['ev', 'Events'], ['stats', 'Stats'], ['menu', 'Menu']];
 function renderHeader() {
-  const tabs = TABS;
+  const tabs = visibleTabs();
   $('#tabs').innerHTML = tabs.map(([id, l]) => {
-    const n = id === 'store' ? S.customers.filter(c => c.ready).length + S.contracts.length : id === 'inv' ? S.eggs.length : id === 'ev' ? activeEvents().length : id === 'exp' ? boatsReady() : id === 'research' ? RNODES.filter(n => researchUnlocked(n) && lab(n.id) < n.max && (S.rp || 0) >= rpCost(n, lab(n.id)) && S.money >= n.cost(lab(n.id))).length : id === 'camp' ? (CAMPAIGN[campCur()] && campCandidates(CAMPAIGN[campCur()].spec).some(x => x.full) ? 1 : 0) : id === 'daily' ? (loginClaimable() ? 1 : 0) + questsClaimable() : 0;
-    return `<button class="${UI.tab === id ? 'on' : ''}" data-act="tab" data-x="${id}"><svg viewBox="0 0 24 24">${SVG[id]}</svg><span>${l}</span>${n ? `<span class="badge">${n}</span>` : ''}</button>`;
-  }).join('');
+    const n = id === 'store' ? S.customers.filter(c => c.ready).length + S.contracts.length + guideClaimable() : id === 'inv' ? S.eggs.length : id === 'ev' ? activeEvents().length : id === 'exp' ? boatsReady() : id === 'research' ? RNODES.filter(n => researchUnlocked(n) && lab(n.id) < n.max && (S.rp || 0) >= rpCost(n, lab(n.id)) && S.money >= n.cost(lab(n.id))).length : id === 'camp' ? (CAMPAIGN[campCur()] && campCandidates(CAMPAIGN[campCur()].spec).some(x => x.full) ? 1 : 0) : id === 'daily' ? (loginClaimable() ? 1 : 0) + questsClaimable() : 0;
+    return `<button class="${UI.tab === id ? 'on' : ''}" data-act="tab" data-x="${id}"><svg viewBox="0 0 24 24">${SVG[id]}</svg><span>${l}</span>${S.g4.fresh[id] ? '<span class="badge new">NEW</span>' : n ? `<span class="badge">${n}</span>` : ''}</button>`;
+  }).join('') + nextUnlockHint();
   if (!$('#logoimg').firstChild) $('#logoimg').innerHTML = `<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#2ad4c0" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${SVG.hall}</svg>`;
 }
 function renderStats() {
   const nl = nextLevelAt(), lv = level();
   const prog = nl ? (S.sales - LEVELS[lv]) / (nl - LEVELS[lv]) : 1;
-  $('#stats').innerHTML = `<div class="lbl">Balance</div><div class="money">${fmt(S.money)}</div><div class="lvl"><span>Store level ${lv}</span><span>${nl ? S.sales + ' / ' + nl : 'MAX'}</span></div><div class="bar"><i style="width:${Math.round(prog * 100)}%"></i></div>`;
+  $('#stats').innerHTML = `<div class="lbl">Balance</div><div class="money">${fmt(S.money)}</div><div class="lvl"><span>Store level ${lv}</span><span>${nl ? S.sales + ' / ' + nl : 'MAX'}</span></div><div class="bar"><i style="width:${Math.round(prog * 100)}%"></i></div><div class="clk" data-clockpill>${clockPillHTML()}</div>`;
 }
 
 /* ---------- STORE ---------- */
@@ -94,8 +95,8 @@ function viewStore() {
   let h = pageHead('Your Store', `Display fully grown fish in your cases and customers will make offers. Click a tank in the shop to manage it.`,
     `${S.storeUp.cashier ? `<span class="pill">Cashier ${btn(S.cashierOn ? 'ON' : 'OFF', 'cashier', {}, 'sm')} <b>≥ ${Math.round(cashierThreshold() * 100)}%</b></span>` : ''}${storeCap() > fs.length ? btn('Auto-fill cases', 'fillStore') : ''}${btn('Upgrade store', 'goStoreUp', {}, 'pri')}`);
   h += `<div class="scenewrap" style="position:relative"><canvas class="storescene"></canvas>${zoomCtl()}</div>`;
-  h += `<div class="stats" style="margin-top:16px">${pill('Sales', S.sales)}${pill('Total earned', fmt(S.earned))}${pill('Best sale', fmt(S.bestValue || 0))}${pill('Next customer', '~' + Math.round(arrivalInterval()) + 's')}${pill('Display cases', fs.length + '/' + cap)}</div>`;
-  h += `<div style="margin-top:6px">${recordCard(false)}</div>`;
+  h += `<div class="stats" style="margin-top:16px">${pill('Sales', S.sales)}${pill('Total earned', fmt(S.earned))}${pill('Best sale', fmt(S.bestValue || 0))}${clockPill() + pill('Next customer', '~' + Math.round(arrivalInterval()) + 's')}${pill('Display cases', fs.length + '/' + cap)}</div>`;
+  h += guideCard() + `<div style="margin-top:6px">${recordCard(false)}</div>`;
   const ready = S.customers.filter(c => c.ready), browsing = S.customers.length - ready.length;
   h += `<div class="two"><div><h3>Customers at the counter · ${ready.length}${browsing ? ` <span class="dim small" style="font-weight:400">(+${browsing} still browsing)</span>` : ''}</h3>`;
   if (!fs.length) h += `<div class="empty">Your cases are empty — put fully grown fish on display.</div>`;
@@ -110,7 +111,7 @@ function viewStore() {
       <div class="row" style="gap:6px;flex-wrap:nowrap">${btn('Accept', 'accept', { x: c.id }, 'pri')}${btn('✕', 'decline', { x: c.id }, 'sm bad')}</div></div>`;
   }
   h += `</div><div><h3>Display cases</h3><div class="casegrid">`;
-  for (const f of fs) h += `<div class="casecard"><div data-act="openFish" data-x="${f.id}" style="cursor:pointer">${fishPic(f, 70)}</div><div class="grow" style="min-width:0"><div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${f.fav ? '<span class="gold">★</span> ' : ''}${esc(f.name)}</div><div class="small dim" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(fishName(f))}</div><div class="gold small">${fmt(fishValue(f))}</div></div>${btn('Take back', 'unstore', { x: f.id }, 'sm ghost')}</div>`;
+  for (const f of fs) h += `<div class="casecard"><div data-act="openFish" data-x="${f.id}" style="cursor:pointer">${fishPic(f, 70)}</div><div class="grow" style="min-width:0"><div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${f.fav ? '<span class="gold">★</span> ' : ''}${esc(f.name)}${tagDot(f)}</div><div class="small dim" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(fishName(f))}</div><div class="gold small">${fmt(fishValue(f))}</div></div>${btn('Take back', 'unstore', { x: f.id }, 'sm ghost')}</div>`;
   for (let i = fs.length; i < cap; i++) h += `<div class="casecard emptyc" data-act="storeAdd">＋ Add a fish</div>`;
   return h + `</div>${contractsPanel()}</div></div>`;
 }
@@ -144,7 +145,7 @@ function fishActions(f) {
     h += (f.loc === 'store' ? btn('Back to a tank', 'fishPickTank', { x: f.id }) : (isEv(f) ? '' : btn('Put in store', 'toStore', { x: f.id }, 'pri')) + btn('Move tank', 'fishPickTank', { x: f.id }));
     h += btn('Breed', 'breedWith', { x: f.id }) + btn(f.fav ? '★ Protected' : isEv(f) ? `Sell · 🎟 ${tokenReward(f)}` : `Sell · ${fmt(fishValue(f) * quickSell())}`, 'sellMarket', { x: f.id }, 'bad', f.fav);
   } else h += btn('Move tank', 'fishPickTank', { x: f.id });
-  return h + `</div><div class="row" style="margin-top:8px;gap:8px">${btn(f.fav ? '★ Favourited' : '☆ Favourite', 'toggleFav', { x: f.id }, f.fav ? 'sm gold-btn' : 'sm')}${btn('Rename', 'renameFish', { x: f.id }, 'sm')}${btn('Family tree', 'openTree', { x: f.id }, 'sm')}</div>`;
+  return h + `</div><div class="row" style="margin-top:8px;gap:8px">${btn(f.fav ? '★ Favourited' : '☆ Favourite', 'toggleFav', { x: f.id }, f.fav ? 'sm gold-btn' : 'sm')}${btn('Rename', 'renameFish', { x: f.id }, 'sm')}${btn('Family tree', 'openTree', { x: f.id }, 'sm')}</div>` + tagBar(f);
 }
 function selPanel(t) {
   const f = getFish(UI.selFish);
@@ -154,7 +155,7 @@ function selPanel(t) {
 }
 function tankFishRow(f) {
   const adult = isAdult(f);
-  return `<div class="tfrow ${UI.selFish === f.id ? 'sel' : ''}" data-act="selFish" data-x="${f.id}"><div class="tfpic">${fishPic(f, 56)}</div><div class="grow" style="min-width:0"><div class="tfname">${f.fav ? '<span class="gold">★</span> ' : ''}${esc(f.name)}</div><div class="small dim tfsub">${adult ? esc(fishName(f)) : `Baby · <span data-gtext="${f.id}">${Math.round(f.g * 100)}</span>%`}</div></div><div class="gold small" style="white-space:nowrap">${adult ? worthText(f) : ''}</div></div>`;
+  return `<div class="tfrow ${UI.selFish === f.id ? 'sel' : ''}" data-act="selFish" data-x="${f.id}"><div class="tfpic">${fishPic(f, 56)}</div><div class="grow" style="min-width:0"><div class="tfname">${f.fav ? '<span class="gold">★</span> ' : ''}${esc(f.name)}${tagDot(f)}</div><div class="small dim tfsub">${adult ? esc(fishName(f)) : `Baby · <span data-gtext="${f.id}">${Math.round(f.g * 100)}</span>%`}</div></div><div class="gold small" style="white-space:nowrap">${adult ? worthText(f) : ''}</div></div>`;
 }
 function viewTank() {
   const t = getTank(UI.tankId);
@@ -194,7 +195,7 @@ function viewBreed() {
   UI.sel = UI.sel.filter(id => getFish(id) && isAdult(getFish(id)));
   const a = getFish(UI.sel[0]), b = getFish(UI.sel[1]);
   const water = a ? SPECIES[a.sp].w : null;
-  let h = pageHead('Breeding', 'Pair two fully grown fish of the same water type. Every modifier the parents carry can be passed on (none, one or several), with a small extra chance of a brand-new one — so they stack generation after generation. Each modifier can only be applied once.', S.unlocks.autoPair ? btn('Suggest a pair', 'suggestPair', {}, 'pri') : btn('🔒 Suggest a pair', 'goMgmt', {}, 'ghost'));
+  let h = pageHead('Breeding', 'Pair two fully grown fish of the same water type. Every modifier the parents carry can be passed on (none, one or several), with a small extra chance of a brand-new one — so they stack generation after generation. Each modifier can only be applied once.', btn('🧬 Planner', 'planOpen', {}, 'pri') + (S.unlocks.autoPair ? btn('Suggest a pair', 'suggestPair') : btn('🔒 Suggest a pair', 'goMgmt', {}, 'ghost')));
   const slot = (f, label) => `<div class="card parent ${f ? '' : 'flat'}" ${f ? '' : 'style="border-style:dashed"'}>${f ? `${fishSVG(f.sp, f.mods, 190)}<div><b>${esc(fishName(f))}</b> ${tierBadge(SPECIES[f.sp].t)}</div><div>${modChips(f.mods)}</div>${btn('Remove', 'breedSel', { x: f.id }, 'sm ghost')}` : `<span class="dim">${label}<br><span class="small">select a fish below</span></span>`}</div>`;
   h += `<div class="parents">${slot(a, 'Parent A')}<div style="align-self:center;font-size:30px;color:var(--accent)">♥</div>${slot(b, 'Parent B')}</div>`;
   if (a && b) {
@@ -214,7 +215,7 @@ function viewBreed() {
   for (const f of sortFish(adults)) {
     const selected = UI.sel.includes(f.id), cd = f.ready - S.time;
     const incompatible = water && !selected && SPECIES[f.sp].w !== water;
-    h += `<div class="card click ${selected ? 'sel' : ''} ${incompatible ? 'dis' : ''}" data-act="breedSel" data-x="${f.id}">${fishSVG(f.sp, f.mods, 130)}<b>${esc(fishName(f))}</b><div>${modChips(f.mods)}</div>
+    h += `<div class="card click ${selected ? 'sel' : ''} ${incompatible ? 'dis' : ''}" data-act="breedSel" data-x="${f.id}">${fishSVG(f.sp, f.mods, 130)}<b>${esc(fishName(f))}</b>${tagDot(f)}<div>${modChips(f.mods)}</div>
       <div class="small ${cd > 0 ? 'badc' : 'good'}" data-cd="${f.id}">${cd > 0 ? 'Resting ' + Math.ceil(cd) + 's' : 'Ready'}</div><div class="small dim">${f.loc === 'store' ? 'In store' : esc(getTank(f.loc).name)}</div></div>`;
   }
   return h + '</div>';
@@ -309,9 +310,9 @@ function viewInv() {
   const owned = DECOR.filter(d => S.decorInv[d.id] > 0);
   if (!owned.length) h += `<div class="empty">No spare decorations. Buy some, then place them from a tank's page.</div>`;
   h += `<div class="grid sm">${owned.map(d => `<div class="card row">${decorPic(d, 64)}<div><b>${d.n}</b> ×${S.decorInv[d.id]}<div class="small dim">${bonusText(d.b)}</div></div></div>`).join('')}</div>`;
-  const shown = sortFish(S.fish), sellIds = shown.filter(f => isAdult(f) && !f.fav);
-  h += `<h3>All fish · ${shown.length}${shown.length !== S.fish.length ? ' of ' + S.fish.length : ''}</h3>${sortBar()}`;
-  h += `<div class="row" style="margin-bottom:12px">${S.unlocks.bulkSell ? btn(`Sell all shown · ${sellIds.length} fish`, 'sellAll', {}, 'bad sm', !sellIds.length) : btn('🔒 Sell all shown', 'goMgmt', {}, 'sm ghost')}<span class="dim small">${S.unlocks.bulkSell ? 'Favourites and growing fish are never sold. Use the filters above first!' : 'Unlock the Market Broker in Shop → Management to sell everything you are looking at.'} Or click Sell on a single row.</span></div>`;
+  const shown = sortFish(S.fish), sellIds = shown.filter(f => isAdult(f) && !f.fav && !tagKept(f));
+  h += rulesPanel() + `<h3>All fish · ${shown.length}${shown.length !== S.fish.length ? ' of ' + S.fish.length : ''}</h3>${sortBar()}`;
+  h += tagBulkRow(shown) + `<div class="row" style="margin-bottom:12px">${S.unlocks.bulkSell ? btn(`Sell all shown · ${sellIds.length} fish`, 'sellAll', {}, 'bad sm', !sellIds.length) : btn('🔒 Sell all shown', 'goMgmt', {}, 'sm ghost')}<span class="dim small">${S.unlocks.bulkSell ? 'Favourites, protected tags and growing fish are never sold. Use the filters above first!' : 'Unlock the Market Broker in Shop → Management to sell everything you are looking at.'} Or click Sell on a single row.</span></div>`;
   h += `<div class="list">${shown.map(f => fishRow(f)).join('') || '<div class="dim" style="padding:16px">None</div>'}</div>`;
   return h;
 }
@@ -320,8 +321,8 @@ function viewInv() {
 function viewMenu() {
   return pageHead('Menu', 'Saves happen automatically every 10 seconds. Fish keep growing while you are away (up to 4 hours).') +
     `<div class="row">${btn('Save now', 'save', {}, 'pri')}${btn('How to play', 'help')}${btn('Export save', 'export')}${btn('Import save', 'import')}${btn('Reset game', 'reset', {}, 'bad')}</div>
-  <h3>Settings</h3><div class="row"><button class="boost-chip ${S.settings.sound ? 'on' : ''}" data-act="setting" data-x="sound">Sound effects: ${S.settings.sound ? 'On' : 'Off'}</button><button class="boost-chip ${S.settings.fx ? 'on' : ''}" data-act="setting" data-x="fx">Modifier particle effects: ${S.settings.fx ? 'On' : 'Off'}</button></div><div class="row" style="margin-top:12px"><span class="dim small">Seasonal events</span><select data-change="evPreview"><option value="auto" ${S.settings.event === 'auto' ? 'selected' : ''}>Real calendar dates</option><option value="all" ${S.settings.event === 'all' ? 'selected' : ''}>Preview: all events active</option>${EVENTS.map(e => `<option value="${e.id}" ${S.settings.event === e.id ? 'selected' : ''}>Preview: ${e.n}</option>`).join('')}</select></div><div class="dim small" style="margin-top:8px">Shortcuts: 1–9 switch pages · + / − zoom the tank or store · 0 resets the view · Esc closes dialogs</div><h3>Statistics</h3><div class="stats">${pill('Fish owned', S.fish.length)}${pill('Times bred', S.bredCount)}${pill('Total earned', fmt(S.earned))}${pill('Play time', Math.round(S.time / 60) + ' min')}</div>
-  <h3>Modifiers</h3><div class="card">${MODS_LIST.map(m => `<div class="row" style="padding:5px 0"><span class="chip m${m.t}" style="min-width:128px">${m.icon} ${m.n}</span><span class="dim small grow">${m.d}</span><span class="gold small">×${m.m}</span></div>`).join('')}</div>`;
+  <h3>Settings</h3><div class="row"><button class="boost-chip ${S.settings.sound ? 'on' : ''}" data-act="setting" data-x="sound">Sound effects: ${S.settings.sound ? 'On' : 'Off'}</button><button class="boost-chip ${S.settings.fx ? 'on' : ''}" data-act="setting" data-x="fx">Modifier particle effects: ${S.settings.fx ? 'On' : 'Off'}</button></div><div class="row" style="margin-top:12px"><span class="dim small">Seasonal events</span><select data-change="evPreview"><option value="auto" ${S.settings.event === 'auto' ? 'selected' : ''}>Real calendar dates</option><option value="all" ${S.settings.event === 'all' ? 'selected' : ''}>Preview: all events active</option>${EVENTS.map(e => `<option value="${e.id}" ${S.settings.event === e.id ? 'selected' : ''}>Preview: ${e.n}</option>`).join('')}</select></div>${daymodeRow()}<div class="dim small" style="margin-top:8px">Shortcuts: 1–9 switch pages · + / − zoom the tank or store · 0 resets the view · Esc closes dialogs</div><h3>Statistics</h3><div class="stats">${pill('Fish owned', S.fish.length)}${pill('Times bred', S.bredCount)}${pill('Total earned', fmt(S.earned))}${pill('Play time', Math.round(S.time / 60) + ' min')}</div>
+  ${versionCard()}<h3>Modifiers</h3><div class="card">${MODS_LIST.map(m => `<div class="row" style="padding:5px 0"><span class="chip m${m.t}" style="min-width:128px">${m.icon} ${m.n}</span><span class="dim small grow">${m.d}</span><span class="gold small">×${m.m}</span></div>`).join('')}</div>`;
 }
 
 /* ---------- MODALS ---------- */
@@ -351,6 +352,10 @@ function modalHTML() {
     case 'bossWin': h += bossWinModal(m.idx, m.fid); break;
     case 'hero': h += heroModal(m.id); break;
     case 'contract': h += contractModal(m.id); break;
+    case 'newFeature': h += newFeatureModal(m); break;
+    case 'away': h += awayModal(); break;
+    case 'rulesPrev': h += rulesPreviewModal(); break;
+    case 'planner': h += plannerModal(); break;
     case 'pickTank': {
       const f = getFish(m.id), sp = SPECIES[f.sp];
       h += `<h2>Move ${esc(fishName(f))}</h2>` + S.tanks.map(t => {
@@ -390,7 +395,7 @@ function modalHTML() {
       <p><b>4.</b> Spend profits in the <b>Shop</b>: tanks, filters, decorations, food, store and breeding upgrades, research, staff and hero fish. High-tier eggs cost more than the fish they hatch — <b>breed</b> instead!</p>
       <p><b>5.</b> <b>Breed</b> two adults: every modifier the parents carry can be passed on (none, one or several) with a small chance of a brand-new one, so modifiers stack over generations.</p>
       <p><b>6.</b> Send boats on <b>Expeditions</b> for wild eggs of exclusive fish, enter your best fish in <b>Fish Shows</b> and tournaments for medals (permanent value) and fame, and check the <b>Daily</b> page for quests and your login streak. Spend research points on the <b>Research</b> tree, and challenge the boss fish of the <b>Ocean Campaign</b> by breeding exactly what they demand.</p>
-      <p><b>7.</b> Your 20 most valuable fish ever live in the big aquarium at <b>Home</b>. The end-game goal is to build <b>The Great Sanctuary</b> (Stats page).</p><div class="row" style="margin-top:14px">${btn("Let's go", 'closeModal', {}, 'pri')}</div>`; break;
+      <p><b>7.</b> Tag fish (Breeding stock, Boss candidate…) so filters and auto-rules know what to keep, and use the <b>Planner</b> on the Breeding page to find the cheapest route to a target fish. Home, Shows, Expeditions, Research and the Campaign unlock as your store levels up. Your 20 most valuable fish ever live in the big aquarium at <b>Home</b>. The end-game goal is to build <b>The Great Sanctuary</b> (Stats page).</p><div class="row" style="margin-top:14px">${btn("Let's go", 'closeModal', {}, 'pri')}</div>`; break;
     }
     case 'text': { h += `<h2>${esc(m.title)}</h2><textarea id="txt" style="width:100%;height:160px;background:#0a1626;color:#cfe;border:1px solid var(--line2);border-radius:10px;padding:10px;user-select:text" ${m.ro ? 'readonly' : ''}>${esc(m.text || '')}</textarea><div class="row" style="margin-top:10px">${m.ro ? '' : btn('Load', 'doImport', {}, 'pri')}${btn('Close', 'closeModal')}</div>`; break; }
   }
@@ -401,6 +406,7 @@ function modalHTML() {
 function render() {
   G.dirty = false;
   if (G.showResult) { UI.showLeague = G.showResult; UI.showResult = true; G.showResult = null; }
+  if (!tabOpen(UI.tab)) UI.tab = 'store';
   const view = $('#view'), st = view.scrollTop;
   renderHeader(); renderStats();
   view.innerHTML = { store: viewStore, home: viewHome, exp: viewExp, camp: viewCampaign, research: viewResearch, shows: viewShows, daily: viewDaily, hall: () => (UI.tankId ? viewTank() : viewHall()), breed: viewBreed, shop: viewShop, inv: viewInv, book: viewCollection, ev: viewEvents, stats: viewStats, menu: viewMenu }[UI.tab]();
@@ -441,7 +447,7 @@ const ACT = {
   goDaily: () => { UI.tab = 'daily'; UI.modal = null; },
   selFish: d => { UI.selFish = UI.selFish === d.x ? null : d.x; },
   sellRow: d => { const r = res(sellMarket(d.x)); if (r.ok) { Sfx.play('sale'); toast(r.tokens ? `Sold for ${r.tokens} tokens` : 'Sold for ' + fmt(r.price), 'gold'); } },
-  sellAll: () => { const ids = sortFish(S.fish).filter(f => isAdult(f) && !f.fav).map(f => f.id); if (!ids.length) return false; const val = ids.reduce((a, id) => a + (isEv(getFish(id)) ? 0 : fishValue(getFish(id)) * quickSell()), 0); if (!confirm(`Sell ${ids.length} fish for about ${fmt(val)}? Favourites and growing fish are kept.`)) return false; const r = res(sellMany(ids)); if (r.ok) { Sfx.play('sale'); toast(`Sold ${r.n} fish for ${fmt(r.money)}` + (r.tokens ? ` and ${r.tokens} tokens` : ''), 'gold'); } },
+  sellAll: () => { const ids = sortFish(S.fish).filter(f => isAdult(f) && !f.fav && !tagKept(f)).map(f => f.id); if (!ids.length) return false; const val = ids.reduce((a, id) => a + (isEv(getFish(id)) ? 0 : fishValue(getFish(id)) * quickSell()), 0); if (!confirm(`Sell ${ids.length} fish for about ${fmt(val)}? Favourites, protected tags and growing fish are kept.`)) return false; const r = res(sellMany(ids)); if (r.ok) { Sfx.play('sale'); toast(`Sold ${r.n} fish for ${fmt(r.money)}` + (r.tokens ? ` and ${r.tokens} tokens` : ''), 'gold'); } },
   cleanAll: () => { const r = res(cleanAll()); if (r.ok) { toast(`Cleaned ${r.n} tank${r.n > 1 ? 's' : ''}`, 'good'); Sfx.play('pop'); } },
   research: d => { const r = res(buyResearch(d.x)); if (r.ok) { toast(RNODE[d.x].n + ' researched', 'good'); Sfx.play('level'); } },
   fundRP: () => { const r = res(fundResearch()); if (r.ok) { toast('+1 research point', 'good'); Sfx.play('buy'); } },
@@ -475,7 +481,7 @@ const ACT = {
   sortBy: d => { UI.sort = d.x; }, onlyMods: () => { UI.onlyMods = !UI.onlyMods; }, setQty: d => { UI.qty = +d.x; },
   setting: d => { S.settings[d.x] = !S.settings[d.x]; G.lowFx = !S.settings.fx; if (d.x === 'sound' && S.settings.sound) Sfx.play('good'); },
   noop: () => toast('Locked — reach a higher store level / get a saltwater tank', 'bad'),
-  tab: d => { UI.tab = d.x; if (d.x !== 'hall') UI.tankId = null; },
+  tab: d => { UI.tab = d.x; delete S.g4.fresh[d.x]; if (d.x !== 'hall') UI.tankId = null; },
   openTank: d => { UI.tankId = d.x; UI.tab = 'hall'; },
   backHall: () => { UI.tankId = null; },
   goTanks: () => { UI.shopCat = 'tanks'; UI.tab = 'shop'; },
@@ -523,7 +529,7 @@ const ACT = {
   export: () => { UI.modal = { type: 'text', title: 'Export save', text: exportSave(), ro: true }; },
   import: () => { UI.modal = { type: 'text', title: 'Import save (paste data)', text: '' }; },
   doImport: () => { const r = importSave($('#txt').value, false); toast(r.error ? 'Import failed' : 'Save loaded', r.error ? 'bad' : 'good'); UI.modal = null; UI.tankId = null; saveGame(); },
-  reset: () => { if (confirm('Delete all progress and start over?')) { resetGame(); UI.tankId = null; UI.sel = []; UI.tab = 'store'; UI.lastBreed = null; UI.modal = { type: 'help' }; } },
+  reset: () => { if (confirm('Delete all progress and start over?')) { resetGame(); UI.tankId = null; UI.sel = []; UI.tab = 'store'; UI.lastBreed = null; G.awayRep = null; UI.modal = { type: 'help' }; } },
 };
 
 function hatchWith(eggId, tankId) {
@@ -538,11 +544,12 @@ document.addEventListener('click', e => {
   const el = e.target.closest('[data-act]');
   if (!el) return;
   if (el.getAttribute('aria-disabled')) { toast(/[$🎟]/.test(el.textContent) ? 'Not enough money or tokens' : 'Not available right now', 'bad'); return; }
-  const fn = ACT[el.dataset.act];
+  const fn = ACT[el.dataset.act] || ACT4[el.dataset.act];
   if (fn) { const r = fn(el.dataset); if (r !== false) render(); }
 });
 document.addEventListener('change', e => {
   const k = e.target.dataset.change; if (!k) return;
+  if (changeG4(e)) { render(); return; }
   if (k === 'skin') res(applySkin(e.target.dataset.x, e.target.value));
   if (k === 'upTank') UI.upTank = e.target.value;
   if (k === 'filterTank') UI.filterTank = e.target.value;
@@ -554,7 +561,7 @@ document.addEventListener('change', e => {
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && UI.modal) { UI.modal = null; render(); return; }
   if (e.target.matches && e.target.matches('textarea,input,select') || e.ctrlKey || e.metaKey || e.altKey) return;
-  const tabs = TABS.map(t => t[0]);
+  const tabs = visibleTabs().map(t => t[0]);
   if (e.key >= '1' && e.key <= '9') { UI.tab = tabs[+e.key - 1]; if (UI.tab !== 'hall') UI.tankId = null; render(); }
   else if (e.key === '+' || e.key === '=' || e.key === '-' || e.key === '_' || e.key === '0') { const sc = Scenes.list.find(x => x.zp); if (!sc) return; if (e.key === '0') sc.zp.reset(); else sc.zp.zoomAt(e.key === '+' || e.key === '=' ? 1.25 : 0.8, 0, 0); e.preventDefault(); }
 });
@@ -597,6 +604,7 @@ document.addEventListener('mouseup', e => {
 
 /* ---------- live updates ---------- */
 function live() {
+  liveG4();
   const mo = $('.money'); if (mo) mo.textContent = fmt(S.money);
   document.querySelectorAll('[data-grow]').forEach(el => { const f = getFish(el.dataset.grow); if (f) el.style.transform = `scale(${(0.45 + 0.55 * Math.min(1, f.g)).toFixed(3)})`; });
   document.querySelectorAll('[data-gbar]').forEach(el => { const f = getFish(el.dataset.gbar); if (f) el.style.width = Math.round(f.g * 100) + '%'; });
@@ -619,15 +627,16 @@ G.sfx = k => Sfx.play(k);
 G.msg = (t, ty) => { toast(t, ty); if (/Store level/.test(t)) Sfx.play('level'); };
 G.lowFx = false;
 function boot() {
+  document.title = 'Fish Tycoon v' + GAME_VERSION;
   const r = loadGame(); G.lowFx = !S.settings.fx;
-  if (r.away > 60) toast(`Welcome back! Your fish kept growing for ${Math.round(r.away / 60)} min` + (r.matured ? ` — ${r.matured} reached adulthood.` : '.'), 'good');
   updateDaily(); ensureShows();
-  if (!S.seenHelp) { UI.modal = { type: 'help' }; S.seenHelp = true; } else if (loginClaimable()) UI.modal = { type: 'daily' };
+  G.awayRep = S.seenHelp ? buildAway(r) : null;
+  if (!S.seenHelp) { UI.modal = { type: 'help' }; S.seenHelp = true; } else if (G.awayRep) UI.modal = { type: 'away' }; else if (loginClaimable()) UI.modal = { type: 'daily' };
   render();
   let last = performance.now(), lastMoney = S.money, saveT = 0, renderT = 0;
   setInterval(() => {
     const now = performance.now(), dt = Math.min(1, (now - last) / 1000); last = now;
-    tick(dt); live();
+    tick(dt); live(); if (checkPopups()) G.dirty = true;
     saveT += dt; renderT += dt;
     if (saveT > 10) { saveT = 0; saveGame(); }
     const moneyChanged = S.money !== lastMoney; lastMoney = S.money;

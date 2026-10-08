@@ -3,7 +3,7 @@
 
 const evWater = w => (w.startsWith('ev_') ? EVENT[w.slice(3)] : null);
 function waterTag2(w) { const ev = evWater(w); return ev ? `<span class="wt" style="--dot:${ev.color}">${ev.icon} ${ev.short} event</span>` : `<span class="wt ${w}">${w === 'salt' ? 'Saltwater' : 'Freshwater'}</span>`; }
-const fishTitle = f => `<b>${esc(f.name)}</b>${f.fav ? ' <span class="gold" title="Favourite">★</span>' : ''} <span class="dim">${esc(fishName(f))}</span>`;
+const fishTitle = f => `<b>${esc(f.name)}</b>${f.fav ? ' <span class="gold" title="Favourite">★</span>' : ''}${tagDot(f)} <span class="dim">${esc(fishName(f))}</span>`;
 const genChip = f => (f.gen > 0 ? `<span class="chip m1" title="Generations of selective breeding">Gen ${f.gen}</span>` : '');
 const wqBar = t => { const q = wqOf(t); return `<div class="wq"><div class="bar"><i data-wq="${t.id}" style="width:${Math.round(q)}%;background:${wqColor(q)}"></i></div></div>`; };
 function mmss(sec) { sec = Math.max(0, Math.floor(sec)); return Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0'); }
@@ -181,5 +181,5 @@ const fmt2 = n => (n >= 1e4 ? fmt(n).replace('$', '') : Math.floor(n).toLocaleSt
 function contractModal(cid) {
   const c = S.contracts.find(x => x.id === cid); if (!c) { UI.modal = null; return ''; }
   const list = S.fish.filter(f => contractMatches(c, f)).sort((a, b) => (a.fav ? 1 : 0) - (b.fav ? 1 : 0) || fishValue(a) - fishValue(b));
-  return `<h2>Deliver: ${contractSpec(c)}</h2><p class="dim">Reward <b class="gold">${fmt(c.reward)}</b> + ${c.rep} reputation. Pick a fish to hand over:</p>` + (list.length ? list.map(f => `<div class="item"><div style="width:84px">${fishSVG(f.sp, f.mods, 80)}</div><div class="grow">${fishTitle(f)}<div>${modChips(f.mods)}</div></div><span class="gold">${fmt(fishValue(f))}</span>${btn('Deliver', 'deliver', { x: c.id, y: f.id }, 'pri sm')}</div>`).join('') : '<p class="dim">You have no matching fish.</p>');
+  return `<h2>Deliver: ${contractSpec(c)}</h2><p class="dim">Reward <b class="gold">${fmt(c.reward)}</b> + ${c.rep} reputation. Pick a fish to hand over:</p>` + (list.length ? list.map(f => `<div class="item"><div style="width:84px">${fishSVG(f.sp, f.mods, 80)}</div><div class="grow">${fishTitle(f)}<div>${modChips(f.mods)}</div></div><span class="gold">${fmt(fishValue(f))}</span>${btn('Deliver', 'deliver', { x: c.id, y: f.id }, 'pri sm')}</div>`).join('') : '<p class="dim">You have no matching fish.</p>') + (c.sp ? `<div class="row" style="margin-top:10px">${btn('🧬 Plan this fish', 'planOpen', { sp: c.sp, mods: [c.mod, c.mod2].filter(Boolean).join(',') }, 'sm')}</div>` : '');
 }

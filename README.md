@@ -31,6 +31,16 @@ Progress auto-saves to local storage (and fish keep growing while you're away, u
 - **Hero fish** – expensive, unsellable companions (cleaner wrasse, nurse shark, sage koi, octopus, turtle, jellyfish, dragon eel) that roam a tank without using capacity and grant bonuses (e.g. nurse shark speeds baby growth).
 - **Camera** – wheel zoom, drag to pan, double-click reset, rotate and tilt buttons, and a photo button.
 
+## v1.1 – quality of life
+- **Auto-rules** (Shop → Management → Auto-Sorter, then Inventory) – up to eight rules such as *sell adults with no modifiers below tier 3*, *keep the best 2 of each species* or *sell everything tagged "Sell soon"*. Preview what would be sold, run them on demand, or flip the master switch to run them every few seconds. Favourites, protected tags, fish on display, show entrants, fish that fit an open order and fish that satisfy the current campaign boss are never touched.
+- **Fish tags** – Breeding stock, Boss candidate, Show fish, Keeper (all protected) and Sell soon. Tag from any fish panel or tag everything you are looking at; the Inventory and Breeding filters have a Tag filter, and Sell all / Auto-fill skip protected tags.
+- **Progressive menu** – Home and Fish Shows unlock at store level 2, Expeditions and Research at 3, the Campaign at 4. A new player sees 10 tabs instead of 15, gets a one-time "new" card when something unlocks and a NEW badge until they visit it. Existing saves keep everything they already had.
+- **First-hour checklist** – six small goals (hatch, grow up, sell, clean, breed, reach level 2) with rewards and a completion bonus, shown on the Store page.
+- **While you were away** – one card on launch: what grew up, what is still growing, boats and daily rewards waiting, tanks that need cleaning.
+- **Day & night** – a game clock (8 real minutes per day; or follow your computer's clock, or force day/night in the Menu). The scenes are tinted for dawn, dusk and night, and the store has a lunch rush and an evening crowd (customers ×2 at noon, about half at night; averages out to the same traffic as before).
+- **Breeding planner** – Breeding → Planner (also from the Campaign and special orders): pick a species and up to five modifiers and it finds the cheapest chain of pairings using the fish you own, including how many eggs to buy and how long it should take.
+- **Version** – the version and changelog are on the Menu page; the Windows installer is named after it.
+
 ## Latest changes
 - **No more resets** – scenes survive page refreshes, so fish keep swimming smoothly and customers keep walking.
 - **Living store** – customers enter, wander between your display tanks, and only walk to the counter (with an offer bubble above their heads) when they want to buy. They leave when their patience runs out.
