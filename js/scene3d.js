@@ -64,8 +64,8 @@ const GL = {
   size(w, h) { if (this.w !== w || this.h !== h) { this.r.setSize(w, h, false); this.w = w; this.h = h; } },
 };
 function addLights(scene, strong) {
-  scene.add(new THREE.HemisphereLight(0xd8ecff, 0x5a7090, strong ? 0.9 : 0.7));
-  const d = new THREE.DirectionalLight(0xfff1d6, 1.0); d.position.set(-0.55, 1, 0.6); scene.add(d);
+  scene.add(new THREE.HemisphereLight(0xd8ecff, 0x5a7090, strong ? 0.75 : 0.55));
+  const d = new THREE.DirectionalLight(0xfff1d6, 0.85); d.position.set(-0.55, 1, 0.6); scene.add(d);
   const f = new THREE.DirectionalLight(0x9ec8ff, 0.25); f.position.set(0.8, 0.2, -0.5); scene.add(f);
 }
 const ISO_DIR = new THREE.Vector3(1, 0.78, 1).normalize();
@@ -82,23 +82,41 @@ function fitOrtho(cam, box, aspect, dir, margin) {
 }
 
 /* ---- materials with vertex-shader animation ---- */
-function fishMaterial(model) {
+const FX_FLAGS = { pearl: [0, 0], golden: [0, 1], fiery: [0, 2], frosty: [0, 3], glowing: [1, 0], electric: [1, 1], toxic: [1, 2], aurora: [1, 3], cosmic: [2, 0], prismatic: [2, 1], shadow: [2, 2], celestial: [2, 3] };
+const FX_GLSL = `
+  vec3 vox = floor(vP - vN * 0.25 + 0.5); float hv = h31(vox);
+  if (uF1.x > 0.5) { float sw = sin(vP.x * 0.16 + vP.y * 0.1 + uTime * 1.6); float bnd = smoothstep(0.5, 1.0, sw); vec3 ir = 0.5 + 0.5 * cos(6.2831 * (vec3(0.0, 0.33, 0.67) + vP.x * 0.03 + uTime * 0.3)); diffuseColor.rgb = mix(diffuseColor.rgb, ir, 0.55 * bnd); totalEmissiveRadiance += ir * 0.2 * bnd + vec3(0.02); }
+  if (uF1.y > 0.5) { float tw = pow(max(0.0, sin(uTime * 4.0 + hv * 60.0)), 20.0) * step(0.74, hv); totalEmissiveRadiance += vec3(1.0, 0.95, 0.6) * tw * 1.3 + vec3(0.04, 0.025, 0.0); }
+  if (uF1.z > 0.5) { float fl = h31(vox + floor(uTime * 7.0)); totalEmissiveRadiance += vec3(1.0, 0.35, 0.05) * (0.05 + 0.32 * fl); }
+  if (uF1.w > 0.5) { float tw = pow(max(0.0, sin(uTime * 3.0 + hv * 50.0)), 24.0) * step(0.76, hv); totalEmissiveRadiance += vec3(0.8, 0.95, 1.0) * tw * 1.3 + vec3(0.0, 0.03, 0.07); }
+  if (uF2.x > 0.5) { totalEmissiveRadiance += vec3(0.3, 1.0, 0.3) * (0.08 + 0.1 * sin(uTime * 2.5)); }
+  if (uF2.y > 0.5) { float arc = step(0.91, h31(vox + floor(uTime * 10.0))); totalEmissiveRadiance += vec3(0.5, 0.9, 1.0) * arc * 1.7 + vec3(0.0, 0.02, 0.06); }
+  if (uF2.z > 0.5) { float n2 = h31(vec3(vox.x, floor(vox.y * 0.5 - uTime * 1.5), vox.z)); totalEmissiveRadiance += vec3(0.5, 1.0, 0.1) * step(0.88, n2) * 0.8 + vec3(0.0, 0.03, 0.0); }
+  if (uF2.w > 0.5) { float w = sin(vP.x * 0.12 + uTime * 1.2 + sin(vP.y * 0.2 + uTime) * 2.0); vec3 ac = mix(vec3(0.2, 1.0, 0.6), vec3(0.7, 0.3, 1.0), 0.5 + 0.5 * sin(vP.x * 0.05 + uTime * 0.7)); totalEmissiveRadiance += ac * smoothstep(0.2, 1.0, w) * 0.4; }
+  if (uF3.x > 0.5) { float tw = pow(max(0.0, sin(uTime * 2.5 + hv * 80.0)), 10.0) * step(0.66, hv); totalEmissiveRadiance += vec3(0.9, 0.9, 1.0) * tw * 1.4 + vec3(0.12, 0.04, 0.26) * (0.5 + 0.5 * sin(uTime + vP.x * 0.1)); }
+  if (uF3.y > 0.5) { vec3 rb = 0.5 + 0.5 * cos(6.2831 * (vec3(0.0, 0.33, 0.67) + vP.x * 0.04 + uTime * 0.35)); diffuseColor.rgb = mix(diffuseColor.rgb, rb, 0.72); totalEmissiveRadiance += rb * 0.08; }
+  if (uF3.z > 0.5) { totalEmissiveRadiance += vec3(0.35, 0.1, 0.85) * step(0.93, h31(vox + floor(uTime * 3.0))) * 0.9; diffuseColor.rgb *= 0.85; }
+  if (uF3.w > 0.5) { float tw = pow(max(0.0, sin(uTime * 3.0 + hv * 70.0)), 18.0) * step(0.72, hv); totalEmissiveRadiance += vec3(1.0, 0.95, 0.7) * (0.1 + 0.08 * sin(uTime * 2.0)) + vec3(1.0, 1.0, 0.9) * tw * 1.3; }
+`;
+function fishMaterial(model, mods) {
   const m = new THREE.MeshLambertMaterial({ vertexColors: true });
-  m.userData.u = { uPhase: { value: 0 }, uAmp: { value: 0.3 }, uLen: { value: model.L }, uRay: { value: model.ray ? 1 : 0 } };
+  const F1 = new THREE.Vector4(0, 0, 0, 0), F2 = new THREE.Vector4(0, 0, 0, 0), F3 = new THREE.Vector4(0, 0, 0, 0), arr = [F1, F2, F3], comp = ['x', 'y', 'z', 'w'];
+  (mods || []).forEach(md => { const f = FX_FLAGS[md]; if (f) arr[f[0]][comp[f[1]]] = 1; });
+  m.userData.u = { uPhase: { value: 0 }, uAmp: { value: 0.3 }, uLen: { value: model.L }, uTime: { value: 0 }, uF1: { value: F1 }, uF2: { value: F2 }, uF3: { value: F3 } };
   m.onBeforeCompile = sh => {
     Object.assign(sh.uniforms, m.userData.u);
-    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nuniform float uPhase;uniform float uAmp;uniform float uLen;uniform float uRay;')
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nuniform float uPhase;uniform float uAmp;uniform float uLen;varying vec3 vP;varying vec3 vN;')
       .replace('#include <begin_vertex>', `#include <begin_vertex>
-        if (uRay > 0.5) { transformed.y += sin(uPhase - abs(transformed.z) * 0.22) * uAmp * abs(transformed.z) * 0.4; }
-        else {
-          float k = clamp((-0.02 * uLen - transformed.x) / (0.85 * uLen), 0.0, 1.0);
-          transformed.z += sin(uPhase + transformed.x * 0.3) * uAmp * k * k * uLen * 0.17;
-          float hd = clamp(transformed.x / (0.6 * uLen), 0.0, 1.0);
-          transformed.z -= sin(uPhase) * uAmp * hd * hd * uLen * 0.035;
-        }`);
+        vP = position; vN = normal;
+        float k = clamp((-0.02 * uLen - transformed.x) / (0.85 * uLen), 0.0, 1.0);
+        transformed.z += sin(uPhase + transformed.x * 0.3) * uAmp * k * k * uLen * 0.17;
+        float hd = clamp(transformed.x / (0.6 * uLen), 0.0, 1.0);
+        transformed.z -= sin(uPhase) * uAmp * hd * hd * uLen * 0.035;`);
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vP;varying vec3 vN;uniform float uTime;uniform vec4 uF1;uniform vec4 uF2;uniform vec4 uF3;\nfloat h31(vec3 p){ return fract(sin(dot(p, vec3(12.9898, 78.233, 37.719))) * 43758.5453); }')
+      .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n' + FX_GLSL);
   };
-  m.customProgramCacheKey = () => 'fishbend';
-  if (model.glow) m.emissive = new THREE.Color(model.glow).multiplyScalar(0.22);
+  m.customProgramCacheKey = () => 'fishfx';
+  if (model.glow) m.emissive = new THREE.Color(model.glow).multiplyScalar(0.05);
   return m;
 }
 function swayMaterial(h, amp, seed) {
@@ -118,6 +136,71 @@ function swayMaterial(h, amp, seed) {
 const _plainMat = new Map();
 const plainMat = () => { if (!_plainMat.has('p')) _plainMat.set('p', new THREE.MeshLambertMaterial({ vertexColors: true })); return _plainMat.get('p'); };
 const glowMat = () => { if (!_plainMat.has('g')) _plainMat.set('g', new THREE.MeshBasicMaterial({ vertexColors: true })); return _plainMat.get('g'); };
+
+
+/* ---- particle effects for modifiers ---- */
+const _fxTex = {};
+function fxTexture(kind) {
+  if (_fxTex[kind]) return _fxTex[kind];
+  const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d');
+  if (kind === 'soft') { const g = x.createRadialGradient(32, 32, 0, 32, 32, 30); g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(0.35, 'rgba(255,255,255,.55)'); g.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = g; x.fillRect(0, 0, 64, 64); }
+  else if (kind === 'star') { x.translate(32, 32); const g = x.createRadialGradient(0, 0, 0, 0, 0, 12); g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = g; x.fillRect(-32, -32, 64, 64); x.fillStyle = '#fff'; for (let i = 0; i < 4; i++) { x.rotate(Math.PI / 2); x.beginPath(); x.moveTo(-2, 0); x.lineTo(0, -30); x.lineTo(2, 0); x.closePath(); x.fill(); } }
+  else if (kind === 'flake') { x.translate(32, 32); x.strokeStyle = '#fff'; x.lineWidth = 3; for (let i = 0; i < 6; i++) { x.rotate(Math.PI / 3); x.beginPath(); x.moveTo(0, 0); x.lineTo(0, -26); x.moveTo(0, -14); x.lineTo(7, -20); x.moveTo(0, -14); x.lineTo(-7, -20); x.stroke(); } }
+  else if (kind === 'ring') { x.strokeStyle = '#fff'; x.lineWidth = 5; x.beginPath(); x.arc(32, 32, 22, 0, 7); x.stroke(); x.fillStyle = 'rgba(255,255,255,.25)'; x.fill(); }
+  else if (kind === 'bolt') { x.strokeStyle = '#fff'; x.lineWidth = 5; x.lineJoin = 'miter'; x.beginPath(); x.moveTo(38, 4); x.lineTo(22, 32); x.lineTo(38, 32); x.lineTo(24, 60); x.stroke(); }
+  const t = new THREE.CanvasTexture(c); return (_fxTex[kind] = t);
+}
+const FX_DEF = {
+  pearl: { tex: 'soft', col: [1, 0.85, 1], n: 8, size: 9, kind: 'twinkle' },
+  golden: { tex: 'star', col: [1, 0.86, 0.3], n: 12, size: 13, kind: 'twinkle' },
+  fiery: { tex: 'soft', col: [1, 0.42, 0.08], n: 18, size: 11, kind: 'rise', speed: 0.6 },
+  frosty: { tex: 'flake', col: [0.8, 0.95, 1], n: 12, size: 11, kind: 'fall', speed: 0.3 },
+  glowing: { tex: 'soft', col: [0.4, 1, 0.4], n: 3, size: 38, kind: 'halo' },
+  electric: { tex: 'bolt', col: [0.5, 0.9, 1], n: 6, size: 15, kind: 'flash' },
+  toxic: { tex: 'ring', col: [0.55, 1, 0.2], n: 10, size: 9, kind: 'rise', speed: 0.45 },
+  aurora: { tex: 'soft', col: [0.4, 1, 0.75], n: 10, size: 14, kind: 'orbit' },
+  cosmic: { tex: 'star', col: [0.85, 0.85, 1], n: 14, size: 11, kind: 'orbit' },
+  prismatic: { tex: 'soft', col: [1, 1, 1], n: 10, size: 14, kind: 'orbit', rainbow: true },
+  shadow: { tex: 'soft', col: [0.5, 0.2, 0.95], n: 14, size: 16, kind: 'rise', speed: 0.25 },
+  celestial: { tex: 'star', col: [1, 0.95, 0.7], n: 10, size: 14, kind: 'rise', speed: 0.35, halo: true },
+};
+class FishFX {
+  constructor(group, mods, L, mini) {
+    this.sys = [];
+    mods.forEach(m => {
+      const d = FX_DEF[m]; if (!d) return;
+      const n = mini ? Math.ceil(d.n * 0.5) : d.n, pos = new Float32Array(n * 3), colr = new Float32Array(n * 3);
+      const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('color', new THREE.BufferAttribute(colr, 3));
+      const mat = new THREE.PointsMaterial({ size: d.size, map: fxTexture(d.tex), vertexColors: true, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: false });
+      const pts = new THREE.Points(geo, mat); pts.frustumCulled = false; pts.renderOrder = 8; group.add(pts);
+      const ps = Array.from({ length: n }, (_, i) => ({ life: Math.random(), ox: (Math.random() - 0.5), oy: (Math.random() - 0.5), oz: (Math.random() - 0.5), ph: Math.random() * 6.28, sp: 0.6 + Math.random() * 0.8 }));
+      this.sys.push({ d, geo, mat, pts, ps, pos, colr, base: d.size });
+    });
+  }
+  update(dt, L, scale) {
+    for (const S of this.sys) {
+      const d = S.d; S.mat.size = S.base * (scale || 1);
+      S.ps.forEach((p, i) => {
+        p.life += dt * (d.kind === 'halo' ? 0.5 : 0.55) * p.sp; if (p.life > 1) { p.life -= 1; p.ox = Math.random() - 0.5; p.oy = Math.random() - 0.5; p.oz = Math.random() - 0.5; }
+        const t = p.life; let x = p.ox * L * 0.9 - L * 0.05, y = p.oy * L * 0.42, z = p.oz * L * 0.34, a = Math.sin(Math.PI * t);
+        switch (d.kind) {
+          case 'twinkle': a = Math.pow(Math.sin(Math.PI * t), 2); break;
+          case 'rise': y += t * L * (d.speed || 0.5); x -= t * L * 0.25; break;
+          case 'fall': y += (0.5 - t) * L * (d.speed || 0.5) * 2; x += Math.sin(t * 6 + p.ph) * L * 0.05; break;
+          case 'orbit': { const an = p.ph + t * 6.28 * 1.5; x = Math.cos(an) * L * 0.5 - L * 0.05; z = Math.sin(an) * L * 0.34; y = Math.sin(an * 1.3 + p.ph) * L * 0.22; break; }
+          case 'flash': a = Math.pow(Math.max(0, Math.sin(t * 20 + p.ph)), 6); break;
+          case 'halo': x = -L * 0.05; y = 0; z = 0; a = 0.35 + 0.2 * Math.sin(t * 6.28 + p.ph); break;
+        }
+        S.pos[i * 3] = x; S.pos[i * 3 + 1] = y; S.pos[i * 3 + 2] = z;
+        let c = d.col; if (d.rainbow) { const h = (t + p.ph) % 1; c = [0.5 + 0.5 * Math.cos(6.28 * h), 0.5 + 0.5 * Math.cos(6.28 * (h + 0.33)), 0.5 + 0.5 * Math.cos(6.28 * (h + 0.67))]; }
+        if (d.kind === 'rise' && d.col[0] > 0.9 && d.col[1] < 0.5) c = [1, 0.25 + 0.6 * (1 - t), 0.05];
+        S.colr[i * 3] = c[0] * a; S.colr[i * 3 + 1] = c[1] * a; S.colr[i * 3 + 2] = c[2] * a;
+      });
+      S.geo.attributes.position.needsUpdate = true; S.geo.attributes.color.needsUpdate = true;
+    }
+  }
+  dispose(group) { this.sys.forEach(S => { group.remove(S.pts); S.geo.dispose(); S.mat.dispose(); }); }
+}
 
 /* ---- tank static geometry ---- */
 const _floorGeo = {};
@@ -214,17 +297,17 @@ class TankScene3D {
   }
   syncFish() {
     const fs = fishIn(this.tank.id), ids = new Set(fs.map(f => f.id));
-    for (const [id, o] of this.fish) if (!ids.has(id)) { this.scene.remove(o.group); o.mat.dispose(); this.fish.delete(id); }
+    for (const [id, o] of this.fish) if (!ids.has(id)) { if (o.fx) o.fx.dispose(o.group); this.scene.remove(o.group); o.mat.dispose(); this.fish.delete(id); }
     for (const f of fs) {
       let o = this.fish.get(f.id), sig = f.sp + '|' + f.mods.join(',');
-      if (o && o.sig !== sig) { this.scene.remove(o.group); o.mat.dispose(); this.fish.delete(f.id); o = null; }
+      if (o && o.sig !== sig) { if (o.fx) o.fx.dispose(o.group); this.scene.remove(o.group); o.mat.dispose(); this.fish.delete(f.id); o = null; }
       if (!o) {
-        const sp = SPECIES[f.sp], model = fishModel(f.sp, f.mods, modelLength(sp, sp.t)), mat = fishMaterial(model), mesh = new THREE.Mesh(model.geo, mat), group = new THREE.Group();
-        mesh.userData.fishId = f.id; group.add(mesh); this.scene.add(group);
+        const sp = SPECIES[f.sp], model = fishModel(f.sp, f.mods, modelLength(sp, sp.t)), mat = fishMaterial(model, f.mods), mesh = new THREE.Mesh(model.geo, mat), group = new THREE.Group();
+        mesh.userData.fishId = f.id; group.add(mesh); this.scene.add(group); const fx = f.mods.some(m => FX_DEF[m]) ? new FishFX(group, f.mods, model.L, this.mini) : null;
         const hs = hash(f.id + this.tank.id);
         const st = { x: 12 + (hs % 1000) / 1000 * (this.W - 24), z: 12 + ((hs >>> 10) % 1000) / 1000 * (this.D - 24), y: 14 + ((hs >>> 5) % 1000) / 1000 * (this.WTR - 40), yaw: (hs % 628) / 100, pitch: 0, vx: 0, vy: 0, vz: 0, tx: 0, ty: 0, tz: 0, ph: (hs % 100) / 7, spd: model.L * (0.42 + (hs % 40) / 100), wait: 0, burst: 1 };
         st.tx = st.x; st.ty = st.y; st.tz = st.z; this.retarget(st, model.L);
-        o = { group, mesh, mat, model, st, sig }; this.fish.set(f.id, o);
+        o = { group, mesh, mat, model, st, sig, fx }; this.fish.set(f.id, o);
       }
       o.f = f;
     }
@@ -263,12 +346,13 @@ class TankScene3D {
       const gr = o.f.g >= 1 ? 1 : o.f.g, sc = 0.5 + 0.5 * Math.min(1, gr);
       o.group.position.set(s.x, s.y + Math.sin(s.ph * 0.5) * 0.4, s.z); o.group.rotation.y = s.yaw; o.group.rotation.x = Math.sin(s.ph * 0.5) * 0.03;
       o.mesh.rotation.z = s.pitch; o.group.scale.setScalar(sc);
-      o.mat.userData.u.uPhase.value = s.ph; o.mat.userData.u.uAmp.value = 0.28 + Math.min(0.7, (sp + Math.abs(s.vy)) / (L * 1.2));
+      o.mat.userData.u.uPhase.value = s.ph; o.mat.userData.u.uTime.value = this.t; if (o.fx) o.fx.update(dt, L, this.fxScale); o.mat.userData.u.uAmp.value = 0.28 + Math.min(0.7, (sp + Math.abs(s.vy)) / (L * 1.2));
     }
   }
   frame(dtReal) {
     if (!GL.init()) { const c = this.ctx; c.fillStyle = '#9fb3c8'; c.font = '16px sans-serif'; c.textAlign = 'center'; c.fillText('WebGL is required to display the aquarium', this.cv.width / 2, this.cv.height / 2); return; }
     if (this.key !== this.tank.type + '|' + this.tank.bg + '|' + this.tank.skin) this.rebuildStatic();
+    this.fxScale = this.cv.height / 700;
     this.syncDecor(); this.syncFish();
     const dt = Math.min(0.05, dtReal); this.t += dt;
     this.step(dt);
@@ -293,6 +377,7 @@ const Scenes = {
   bind(onFish) {
     this.list.forEach(s => s.dispose());
     this.list = [...document.querySelectorAll('canvas.tankscene')].map(cv => { const t = getTank(cv.dataset.tank); return t ? new TankScene3D(cv, t, cv.dataset.mini === '1', onFish) : null; }).filter(Boolean);
+    document.querySelectorAll('canvas.storescene').forEach(cv => { if (typeof StoreScene !== 'undefined') this.list.push(new StoreScene(cv, onFish, () => { UI.modal = { type: 'storeAdd' }; render(); })); });
     if (!this.running) { this.running = true; requestAnimationFrame(t => Scenes.loop(t)); }
   },
   loop(now) {
@@ -300,7 +385,7 @@ const Scenes = {
     this.list.forEach((s, i) => {
       if (!s.cv.isConnected) return;
       const r = s.cv.getBoundingClientRect(); if (r.bottom < 0 || r.top > innerHeight) { s.accum = 0; return; }
-      if (s.mini) { s.accum = (s.accum || 0) + dt; if ((this.n + i) % 2) return; s.frame(s.accum); s.accum = 0; } else s.frame(dt);
+      if (s.mini === true) { s.accum = (s.accum || 0) + dt; if ((this.n + i) % 2) return; s.frame(s.accum); s.accum = 0; } else s.frame(dt);
     });
     requestAnimationFrame(t => Scenes.loop(t));
   },
@@ -320,16 +405,16 @@ function renderThumb(key, w, h, make, dir, margin) {
   scene.traverse(o => { if (o.material && o.material.dispose && o.material !== _plainMat.get('p') && o.material !== _plainMat.get('g')) o.material.dispose(); });
   return (_thumbs[key] = cv.toDataURL());
 }
-const FISH_DIR = new THREE.Vector3(0.42, 0.5, 1).normalize();
+const FISH_DIR = new THREE.Vector3(0.28, 0.45, 1).normalize();
 function fishSVG(spId, mods, px) {
   const bucket = px <= 70 ? 150 : px <= 110 ? 230 : px <= 160 ? 340 : 520, h = Math.round(bucket * 0.66);
-  const sp = SPECIES[spId], url = renderThumb('f' + spId + '|' + mods.join(',') + '|' + bucket, bucket, h, () => { const mdl = fishModel(spId, mods, modelLength(sp, sp.t)); const m = new THREE.Mesh(mdl.geo, plainMatFor(mdl)); const g = new THREE.Group(); g.add(m); g.rotation.y = 0; return g; }, FISH_DIR, 0.04);
+  const sp = SPECIES[spId], url = renderThumb('f' + spId + '|' + mods.join(',') + '|' + bucket, bucket, h, () => { const mdl = fishModel(spId, mods, modelLength(sp, sp.t)); const m = new THREE.Mesh(mdl.geo, plainMatFor(mdl, mods)); const g = new THREE.Group(); g.add(m); g.rotation.y = 0; return g; }, FISH_DIR, 0.04);
   const prism = mods.includes('prismatic') ? ' prism' : '';
   const dw = Math.round(px * (px <= 70 ? 1.15 : 1)), glows = mods.map(m => MODS[m].glow).filter(Boolean).slice(0, 2);
   const filter = glows.length ? `filter:${glows.map(g => `drop-shadow(0 0 4px ${g})`).join(' ')};` : '';
   return `<span class="fw${prism}"><img src="${url}" style="width:${dw}px;height:auto;${filter}" alt="" draggable="false"></span>`;
 }
-function plainMatFor(mdl) { const m = new THREE.MeshLambertMaterial({ vertexColors: true }); if (mdl.glow) m.emissive = new THREE.Color(mdl.glow).multiplyScalar(0.22); return m; }
+function plainMatFor(mdl, mods) { const m = fishMaterial(mdl, mods || []); m.userData.u.uTime.value = 2.35; m.userData.u.uAmp.value = 0.05; return m; }
 function decorIcon(id, size) {
   const mod = decorModel(id), s = Math.round(size * 2), url = renderThumb('d' + id + s, s, s, () => { const g = new THREE.Group(); g.add(new THREE.Mesh(mod.geo, plainMat())); if (mod.glow) g.add(new THREE.Mesh(mod.glow, glowMat())); return g; }, ISO_DIR, 0.06);
   return `<img src="${url}" style="width:${size}px;height:${size}px;object-fit:contain" alt="" draggable="false">`;

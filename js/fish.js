@@ -24,10 +24,10 @@ const T = (k, len, sp, o) => Object.assign({ k, len, sp }, o || {});
 const F = (k, u1, u2, h, ap, o) => Object.assign({ k, u1, u2, h, ap: ap == null ? 0.5 : ap }, o || {});
 const ARCHS = {
   round:     { r: 1.9, pm: 0.52, ped: 0.2, top: 0.5, tail: T('round', 0.34, 0.26), dor: [F('sail', 0.3, 0.72, 0.16, 0.45)], anal: F('tri', 0.22, 0.4, 0.1, 0.4), pelv: { u: 0.58, len: 0.16 }, pect: { u: 0.7, len: 0.17 }, eye: { u: 0.84, r: 0.05 } },
-  goldfish:  { r: 1.7, pm: 0.5, ped: 0.2, top: 0.52, tail: T('fan', 0.5, 0.36), dor: [F('sail', 0.25, 0.7, 0.24, 0.35)], anal: F('tri', 0.2, 0.36, 0.14, 0.4), pelv: { u: 0.58, len: 0.2 }, pect: { u: 0.7, len: 0.2 }, eye: { u: 0.83, r: 0.055 }, scales: 1 },
+  goldfish:  { r: 1.7, pm: 0.5, ped: 0.2, top: 0.52, tail: T('fan2', 0.5, 0.34), dor: [F('sail', 0.25, 0.7, 0.24, 0.35)], anal: F('tri', 0.2, 0.36, 0.14, 0.4), pelv: { u: 0.58, len: 0.2 }, pect: { u: 0.7, len: 0.2 }, eye: { u: 0.83, r: 0.055 }, scales: 1 },
   comet:     { r: 2.5, pm: 0.5, ped: 0.2, top: 0.5, tail: T('fan', 0.75, 0.3), dor: [F('sail', 0.3, 0.7, 0.2, 0.35)], anal: F('tri', 0.2, 0.36, 0.1, 0.4), pelv: { u: 0.58, len: 0.16 }, pect: { u: 0.7, len: 0.2 }, eye: { u: 0.85, r: 0.05 }, scales: 1 },
   ranchu:    { r: 1.25, pm: 0.55, ped: 0.3, top: 0.5, tail: T('fan', 0.4, 0.3, { wav: 1 }), dor: [], anal: F('tri', 0.15, 0.3, 0.1, 0.4), pelv: { u: 0.55, len: 0.16 }, pect: { u: 0.7, len: 0.2 }, eye: { u: 0.86, r: 0.06, dy: -0.02 }, hump: 0.12, scales: 1 },
-  guppy:     { r: 3.4, pm: 0.5, ped: 0.22, top: 0.5, tail: T('delta', 0.62, 0.38), dor: [F('sail', 0.3, 0.55, 0.18, 0.7)], anal: F('tri', 0.3, 0.45, 0.07, 0.5), pelv: { u: 0.55, len: 0.1 }, pect: { u: 0.72, len: 0.12 }, eye: { u: 0.88, r: 0.055 } },
+  guppy:     { r: 3.4, pm: 0.5, ped: 0.22, top: 0.5, tail: T('delta', 0.5, 0.3), dor: [F('sail', 0.3, 0.55, 0.18, 0.7)], anal: F('tri', 0.3, 0.45, 0.07, 0.5), pelv: { u: 0.55, len: 0.1 }, pect: { u: 0.72, len: 0.12 }, eye: { u: 0.88, r: 0.055 } },
   swordtail: { r: 3.4, pm: 0.52, ped: 0.22, top: 0.5, tail: T('delta', 0.35, 0.2, { sword: 0.35 }), dor: [F('sail', 0.3, 0.55, 0.16, 0.6)], anal: F('tri', 0.3, 0.45, 0.07, 0.5), pelv: { u: 0.55, len: 0.1 }, pect: { u: 0.72, len: 0.12 }, eye: { u: 0.88, r: 0.05 } },
   platy:     { r: 2.4, pm: 0.5, ped: 0.24, top: 0.5, tail: T('round', 0.3, 0.24), dor: [F('sail', 0.3, 0.6, 0.15, 0.5)], anal: F('tri', 0.25, 0.4, 0.08, 0.5), pelv: { u: 0.55, len: 0.1 }, pect: { u: 0.72, len: 0.14 }, eye: { u: 0.86, r: 0.055 } },
   tetra:     { r: 3.5, pm: 0.45, ped: 0.2, top: 0.5, tail: T('fork', 0.28, 0.2), dor: [F('tri', 0.38, 0.55, 0.14, 0.4)], anal: F('sail', 0.18, 0.5, 0.08, 0.4), pelv: { u: 0.55, len: 0.09 }, pect: { u: 0.72, len: 0.1 }, eye: { u: 0.86, r: 0.07 }, scales: 1 },
@@ -54,7 +54,7 @@ const ARCHS = {
   moorish:   { r: 1.3, pm: 0.5, ped: 0.14, top: 0.5, tail: T('round', 0.25, 0.2), dor: [F('whip', 0.35, 0.7, 0.55, 0.3)], anal: F('sail', 0.2, 0.55, 0.14, 0.4), pelv: { u: 0.62, len: 0.12 }, pect: { u: 0.7, len: 0.12 }, eye: { u: 0.82, r: 0.05 }, snout: 0.16 },
   trigger:   { r: 1.7, pm: 0.5, ped: 0.2, top: 0.5, tail: T('round', 0.3, 0.24), dor: [F('tri', 0.66, 0.78, 0.14, 0.5), F('sail', 0.12, 0.55, 0.12, 0.5)], anal: F('sail', 0.12, 0.55, 0.12, 0.5), pelv: { u: 0.6, len: 0.07 }, pect: { u: 0.7, len: 0.1 }, eye: { u: 0.84, r: 0.05, dy: -0.04 }, scales: 1 },
   clown:     { r: 2.2, pm: 0.52, ped: 0.22, top: 0.5, tail: T('round', 0.26, 0.2), dor: [F('sail', 0.3, 0.8, 0.14, 0.4)], anal: F('sail', 0.22, 0.4, 0.08, 0.5), pelv: { u: 0.6, len: 0.1 }, pect: { u: 0.74, len: 0.14 }, eye: { u: 0.86, r: 0.055 }, outlineFins: 1 },
-  lionfish:  { r: 2.0, pm: 0.5, ped: 0.2, top: 0.5, tail: T('round', 0.28, 0.2), dor: [F('spiny', 0.12, 0.78, 0.48, 0.6, { rays: 10 })], anal: F('spiny', 0.18, 0.5, 0.2, 0.5, { rays: 4 }), pelv: { u: 0.6, len: 0.2 }, pect: { u: 0.7, len: 0.42, wide: 1 }, eye: { u: 0.86, r: 0.05 }, barbels: 1 },
+  lionfish:  { r: 2.0, pm: 0.5, ped: 0.2, top: 0.5, tail: T('round', 0.28, 0.2), dor: [F('spiny', 0.12, 0.78, 0.48, 0.6, { rays: 10 })], anal: F('spiny', 0.18, 0.5, 0.2, 0.5, { rays: 4 }), pelv: { u: 0.6, len: 0.2 }, pect: { u: 0.7, len: 0.3, wide: 1 }, eye: { u: 0.86, r: 0.05 }, barbels: 1 },
   mandarin:  { r: 2.8, pm: 0.5, ped: 0.2, top: 0.5, tail: T('round', 0.3, 0.22), dor: [F('sail', 0.2, 0.6, 0.2, 0.4)], anal: F('sail', 0.2, 0.45, 0.1, 0.5), pelv: { u: 0.6, len: 0.1 }, pect: { u: 0.72, len: 0.22, wide: 1 }, eye: { u: 0.87, r: 0.06 } },
   cardinal:  { r: 2.1, pm: 0.52, ped: 0.2, top: 0.5, tail: T('fork', 0.26, 0.2), dor: [F('tri', 0.5, 0.65, 0.15, 0.5), F('sail', 0.15, 0.4, 0.1, 0.5)], anal: F('sail', 0.15, 0.5, 0.1, 0.5), pelv: { u: 0.6, len: 0.08 }, pect: { u: 0.72, len: 0.1 }, eye: { u: 0.84, r: 0.075 }, scales: 1 },
   anthias:   { r: 3.0, pm: 0.5, ped: 0.2, top: 0.5, tail: T('fork', 0.34, 0.26, { lobes: 1 }), dor: [F('sail', 0.2, 0.7, 0.14, 0.7)], anal: F('sail', 0.2, 0.5, 0.08, 0.5), pelv: { u: 0.6, len: 0.12 }, pect: { u: 0.72, len: 0.12 }, eye: { u: 0.86, r: 0.06 }, scales: 1 },
@@ -65,20 +65,26 @@ const ARCHS = {
   parrot:    { r: 2.1, pm: 0.55, ped: 0.22, top: 0.5, tail: T('lunate', 0.3, 0.2), dor: [F('sail', 0.12, 0.76, 0.12, 0.5)], anal: F('sail', 0.12, 0.6, 0.1, 0.5), pelv: { u: 0.6, len: 0.1 }, pect: { u: 0.72, len: 0.16 }, eye: { u: 0.85, r: 0.05 }, beakTeeth: 1, scales: 2 },
   seadragon: { big: 1.3, r: 5.2, pm: 0.45, ped: 0.4, top: 0.5, tail: T('round', 0.12, 0.08), dor: [F('ribbon', 0.35, 0.65, 0.07, 0.5)], anal: null, pelv: { u: 0.6, len: 0 }, pect: { u: 0.78, len: 0.1 }, eye: { u: 0.9, r: 0.03 }, leaf: 1, snout: 0.2 },
   anglerfish:{ r: 1.35, pm: 0.5, ped: 0.15, top: 0.5, tail: T('round', 0.22, 0.2), dor: [F('sail', 0.2, 0.5, 0.15, 0.5)], anal: F('sail', 0.2, 0.5, 0.12, 0.5), pelv: { u: 0.6, len: 0.0 }, pect: { u: 0.7, len: 0.16 }, eye: { u: 0.83, r: 0.04, dy: -0.05 }, lure: 1, teeth: 2, bigmouth: 1 },
-  ray:       { ray: 1, wing: 0.9, tail: 0.5 },
-  manta:     { ray: 1, wing: 1.25, tail: 0.28, horns: 1 },
+  sturgeon:  { big: 1.3, r: 5, pm: 0.55, ped: 0.3, top: 0.55, tail: T('fork', 0.3, 0.2), dor: [F('tri', 0.12, 0.3, 0.1, 0.4)], anal: F('tri', 0.1, 0.24, 0.08, 0.4), pelv: { u: 0.4, len: 0.07 }, pect: { u: 0.7, len: 0.14 }, eye: { u: 0.88, r: 0.03 }, barbels: 4, snout: 0.24, scutes: 1 },
+  barracuda: { big: 1.3, r: 7, pm: 0.6, ped: 0.3, top: 0.5, tail: T('fork', 0.26, 0.18), dor: [F('tri', 0.5, 0.6, 0.07, 0.5), F('tri', 0.1, 0.22, 0.07, 0.5)], anal: F('tri', 0.1, 0.22, 0.06, 0.5), pelv: { u: 0.5, len: 0.05 }, pect: { u: 0.76, len: 0.07 }, eye: { u: 0.9, r: 0.03 }, teeth: 1, scales: 2 },
+  marlin:    { big: 1.35, r: 5, pm: 0.55, ped: 0.25, top: 0.5, tail: T('lunate', 0.3, 0.3), dor: [F('sail', 0.2, 0.86, 0.28, 0.25)], anal: F('tri', 0.12, 0.3, 0.1, 0.5), pelv: { u: 0.62, len: 0.14 }, pect: { u: 0.72, len: 0.16 }, eye: { u: 0.84, r: 0.03 }, beak: 0.32 },
+  hammer:    { big: 1.3, r: 4.6, pm: 0.55, ped: 0.25, top: 0.5, tail: T('lunate', 0.34, 0.3), dor: [F('tri', 0.32, 0.58, 0.3, 0.35)], anal: F('tri', 0.12, 0.24, 0.08, 0.4), pelv: { u: 0.48, len: 0.08 }, pect: { u: 0.68, len: 0.28, wide: 1 }, eye: { u: 0.97, r: 0.035 }, hammer: 1 },
+  grouper:   { r: 1.85, pm: 0.52, ped: 0.2, top: 0.5, tail: T('round', 0.3, 0.24), dor: [F('spiny', 0.25, 0.8, 0.14, 0.5)], anal: F('sail', 0.2, 0.5, 0.1, 0.5), pelv: { u: 0.6, len: 0.12 }, pect: { u: 0.7, len: 0.17 }, eye: { u: 0.85, r: 0.05 }, bigmouth: 1, scales: 1 },
+  oarfish:   { big: 1.5, r: 8, pm: 0.6, ped: 0.45, top: 0.5, tail: T('round', 0.1, 0.07), dor: [F('ribbon', 0.0, 0.95, 0.06, 0.5)], anal: null, pelv: { u: 0.6, len: 0.0 }, pect: { u: 0.8, len: 0.05 }, eye: { u: 0.92, r: 0.03 } },
 };
 const ARCH_OF = {
   goldfish: 'goldfish', minnow: 'tetra', comet: 'comet', guppy: 'guppy', platy: 'platy', swordtail: 'swordtail',
   betta: 'betta', neon: 'tetra', rasbora: 'tetra', angelfish: 'angel', molly: 'platy', dwarfgourami: 'gourami',
   discus: 'discus', oscar: 'cichlid', flowerhorn: 'flowerhorn', arowana: 'arowana', snakehead: 'snakehead', piranha: 'piranha',
   koi: 'koi', gourami: 'gourami', ranchu: 'ranchu', arapaima: 'arowana', redtail: 'catfish', gar: 'gar',
-  celestialkoi: 'koi', jadedragon: 'dragon', phoenixbetta: 'betta', goldarowana: 'arowana', stingray: 'ray', eel: 'eel',
+  celestialkoi: 'koi', jadedragon: 'dragon', phoenixbetta: 'betta', goldarowana: 'arowana', eel: 'eel',
   damsel: 'round', blenny: 'blenny', goby: 'tetra', cardinal: 'cardinal', anthias: 'anthias', firefish: 'firefish',
   clown: 'clown', yellowtang: 'tang', tomato: 'clown', gramma: 'anthias', chromis: 'cardinal', dottyback: 'tetra',
   bluetang: 'tang', mandarin: 'mandarin', flameangel: 'marangel', lionfish: 'lionfish', trigger: 'trigger', porcupine: 'urchin',
   moorish: 'moorish', emperor: 'marangel', queenangel: 'marangel', tuskfish: 'wrasse', wrasse: 'napoleon', moray: 'moray',
-  seadragon: 'seadragon', mantaray: 'manta', anglerfish: 'anglerfish', parrot: 'parrot', royalangel: 'marangel', opah: 'opah',
+  seadragon: 'seadragon', anglerfish: 'anglerfish', parrot: 'parrot', royalangel: 'marangel', opah: 'opah',
+  danio: 'tetra', mosquitofish: 'platy', cherrybarb: 'round', corydoras: 'catfish', jewel: 'cichlid', pike: 'snakehead', showa: 'koi', pacu: 'piranha', aurorad: 'discus', sturgeon: 'sturgeon', platinum: 'arowana',
+  yellowtail: 'round', pajama: 'cardinal', cleaner: 'wrasse', sailfinblenny: 'blenny', powderblue: 'tang', grouper: 'grouper', frenchangel: 'marangel', barracuda: 'barracuda', hammerhead: 'hammer', oarfish: 'oarfish', marlin: 'marlin',
 };
 const archOf = sp => ARCHS[ARCH_OF[sp.id] || sp.sh] || ARCHS.round;
 
@@ -107,7 +113,6 @@ function finH(k, t, ap, o) { // free-edge height 0..1 at position t along base
 }
 
 function archSize(A, L) {
-  if (A.ray) return { w: Math.ceil(L * (1 + A.tail * 0.8)) + 4, h: Math.ceil(L * A.wing * 0.85) + 6 };
   const P = bodyProfile(A);
   let topExt = P.tot * A.top + (A.hump || 0) * P.tot + (A.crest || 0), botExt = P.tot * (1 - A.top);
   (A.dor || []).forEach(d => (topExt = Math.max(topExt, P.tot * A.top + d.h + 0.02)));
@@ -125,17 +130,22 @@ function archSize(A, L) {
 /* ---- modifier tints (applied to base colour before lighting so volume is preserved) ---- */
 function modTint(m, c, u, v, x, y, fin) {
   switch (m) {
-    case 'pearl': return mixC(c, [[255, 214, 245], [201, 244, 255], [255, 250, 220]][Math.floor((u * 5 + v * 3) % 3 + 3) % 3], 0.5);
-    case 'spotted': return (hash('sp' + Math.floor(x / 3) + ',' + Math.floor(y / 3)) % 5 === 0 && (x % 3 < 2 && y % 3 < 2)) ? [255, 255, 255] : c;
-    case 'striped': return (Math.floor(y / 2) % 3 === 0) ? shadeC(c, -0.4) : c;
-    case 'dappled': return vnoise(u * 7, v * 5, 'dap') > 0.62 ? mixC(c, [255, 222, 240], 0.75) : c;
-    case 'fiery': return mixC(c, v < 0.3 ? [255, 226, 110] : v < 0.62 ? [255, 130, 10] : [200, 28, 28], 0.72);
-    case 'frosty': return (hash('fr' + x + ',' + y) % 23 === 0) ? [255, 255, 255] : mixC(c, v < 0.5 ? [232, 250, 255] : [110, 205, 255], 0.65);
-    case 'golden': return mixC(c, v < 0.3 ? [255, 244, 170] : v < 0.7 ? [255, 196, 20] : [190, 130, 10], 0.75);
-    case 'glowing': return mixC(c, ((u - 0.5) ** 2 + (v - 0.5) ** 2) < 0.1 ? [230, 255, 190] : [80, 230, 80], 0.68);
-    case 'cosmic': return (hash('co' + x + ',' + y) % 19 === 0) ? [255, 255, 255] : (hash('cx' + x + ',' + y) % 41 === 0) ? [140, 200, 255] : mixC(c, vnoise(u * 4, v * 3, 'neb') > 0.55 ? [120, 40, 170] : [34, 12, 90], 0.78);
-    case 'prismatic': return mixC(c, [[255, 80, 80], [255, 210, 70], [90, 255, 140], [80, 205, 255], [150, 90, 255], [255, 90, 215]][Math.floor(((u + v * 0.35) * 6 + 60) % 6)], 0.62);
-    case 'shadow': return (hash('sh' + x + ',' + y) % 13 === 0) ? [170, 110, 255] : mixC(c, [20, 4, 36], 0.76);
+    case 'pearl': return mixC(c, [[255, 214, 245], [201, 244, 255], [255, 250, 220]][Math.floor((u * 5 + v * 3) % 3 + 3) % 3], 0.6);
+    case 'spotted': return (hash('sp' + Math.floor(x / 3) + ',' + Math.floor(y / 3)) % 3 === 0 && (x % 3 < 2 && y % 3 < 2)) ? [250, 250, 250] : shadeC(c, -0.08);
+    case 'striped': return (Math.floor(y / 2) % 2 === 0) ? shadeC(c, -0.55) : c;
+    case 'dappled': return vnoise(u * 7, v * 5, 'dap') > 0.52 ? mixC(c, [255, 190, 222], 0.88) : c;
+    case 'marbled': { const n = Math.abs(Math.sin((u * 6 + vnoise(u * 4, v * 4, 'mb') * 4) * 1.4)); return n < 0.16 ? mixC(c, [240, 240, 248], 0.85) : shadeC(mixC(c, [120, 124, 140], 0.25), -0.05); }
+    case 'fiery': return mixC(c, v < 0.3 ? [255, 226, 110] : v < 0.62 ? [255, 130, 10] : [200, 28, 28], 0.78);
+    case 'frosty': return (hash('fr' + x + ',' + y) % 17 === 0) ? [255, 255, 255] : mixC(c, v < 0.5 ? [232, 250, 255] : [110, 205, 255], 0.72);
+    case 'golden': return mixC(c, v < 0.3 ? [255, 244, 170] : v < 0.7 ? [255, 196, 20] : [190, 130, 10], 0.82);
+    case 'glowing': return mixC(c, ((u - 0.5) ** 2 + (v - 0.5) ** 2) < 0.1 ? [230, 255, 190] : [80, 230, 80], 0.72);
+    case 'electric': return (hash('el' + x + ',' + y) % 9 === 0) ? [255, 255, 170] : mixC(c, [40, 120, 255], 0.6);
+    case 'toxic': return mixC(c, vnoise(u * 5, v * 5, 'tx') > 0.5 ? [130, 225, 40] : [105, 40, 160], 0.7);
+    case 'aurora': { const t = Math.sin((u * 5 + v * 2) * 1.3); return mixC(c, t > 0.2 ? [70, 255, 175] : t > -0.5 ? [120, 190, 255] : [190, 100, 255], 0.7); }
+    case 'cosmic': return (hash('co' + x + ',' + y) % 15 === 0) ? [255, 255, 255] : (hash('cx' + x + ',' + y) % 31 === 0) ? [140, 200, 255] : mixC(c, vnoise(u * 4, v * 3, 'neb') > 0.55 ? [130, 45, 185] : [34, 12, 95], 0.82);
+    case 'prismatic': return mixC(c, [[255, 80, 80], [255, 210, 70], [90, 255, 140], [80, 205, 255], [150, 90, 255], [255, 90, 215]][Math.floor(((u + v * 0.35) * 6 + 60) % 6)], 0.68);
+    case 'shadow': return (hash('sh' + x + ',' + y) % 13 === 0) ? [170, 110, 255] : mixC(c, [20, 4, 36], 0.8);
+    case 'celestial': return mixC(c, v < 0.5 ? [255, 250, 225] : [255, 226, 150], 0.78);
   }
   return c;
 }
@@ -168,6 +178,7 @@ function patternAt(s, A, u, v, x, y) {
       if (n > 0.64) o.t = 1;
       break;
     }
+    case 'hstripes': { if (Math.floor(v * 7) % 2 === 1 && u > 0.06 && u < 0.9) o.t = 1; break; }
     case 'lateral': {
       if (v > 0.36 && v < 0.5 && u < 0.86) o.t = 0.01; // handled in colour step
       break;

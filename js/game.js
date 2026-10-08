@@ -54,6 +54,9 @@ function importSave(raw, offline) {
     S.storeUp = Object.assign({ cases: 0, ads: 0, sign: 0, seats: 0, counter: 0, cashier: 0, collector: 0 }, d.storeUp);
     S.items = Object.assign({ mut1: 0, mut2: 0, mut3: 0 }, d.items);
     S.breedUp = Object.assign({ clutch: 0, cooldown: 0, match: 0, lineage: 0 }, d.breedUp);
+    const MIG = { stingray: 'sturgeon', mantaray: 'hammerhead' };
+    S.fish.forEach(f => { if (MIG[f.sp]) f.sp = MIG[f.sp]; });
+    S.eggs.forEach(e => { if (e.bred && MIG[e.bred.sp]) e.bred.sp = MIG[e.bred.sp]; });
     let gained = 0;
     if (offline) {
       const gap = clamp((Date.now() - (S.savedAt || Date.now())) / 1000, 0, MAX_OFFLINE);
@@ -394,7 +397,7 @@ function acceptCustomer(cid) {
   removeFishRefs(f.id);
   G.dirty = true;
   const lv = level();
-  if (lv > before) G.msg('⭐ Store level ' + lv + '! New items unlocked in the shop.', 'good');
+  if (lv > before) G.msg('Store level ' + lv + '! New items unlocked in the shop.', 'good');
   return { ok: true, offer: c.offer };
 }
 function declineCustomer(cid) { S.customers = S.customers.filter(c => c.id !== cid); return ok(); }
@@ -410,7 +413,7 @@ function growthRate(f, t) {
 }
 function matureFish(f, t) {
   f.g = 1; f.vb = tankBonus(t).value;
-  G.msg('🐟 ' + fishName(f) + ' is fully grown! (' + fmt(fishValue(f)) + ')', 'good');
+  G.msg(fishName(f) + ' is fully grown! (' + fmt(fishValue(f)) + ')', 'good');
   G.dirty = true;
 }
 function advanceGrowth(secs) {
