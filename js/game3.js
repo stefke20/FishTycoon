@@ -47,7 +47,7 @@ function rollExpedition(b) {
   for (let i = 0; i < n; i++) {
     let r = Math.random() * tot, sp = pool[pool.length - 1]; for (const s of pool) { r -= w(s); if (r <= 0) { sp = s; break; } }
     let mods = rollMods([], 0.08 * lab('genetics'), sp.w);
-    if (Math.random() < MODS[l.mod].p * (1 + 0.15 * expUp('sonar') + sup.luck) * 1.5) mods.push(l.mod);
+    if (mods.length < MAX_MODS && !mods.includes(l.mod) && Math.random() < MODS[l.mod].p * (1 + 0.15 * expUp('sonar') + sup.luck) * 1.5) mods.push(l.mod);
     catches.push({ sp: sp.id, mods });
   }
   const loot = { cash: 0, items: {} };

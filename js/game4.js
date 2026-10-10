@@ -1,8 +1,9 @@
 'use strict';
 /* ===== Quality-of-life layer: fish tags, auto-rules, tab unlocks, first-hour guide, away report, day/night clock, breeding planner ===== */
 
-const GAME_VERSION = '1.1.0';
+const GAME_VERSION = '1.2.0';
 const CHANGELOG = [
+  { v: '1.2.0', d: 'Tidier, safer and rebalanced', notes: ['Arrows and a dropdown in every tank to jump to the next or previous aquarium (also ← → on the keyboard)', 'Sections you can fold away on the Inventory, Store, Shop, Menu, Stats, Collection and tank pages; compact list for the Aquarium Hall', 'Egg manager: sort by rarity, filter by tier or water, identical eggs stack, and eggs can be destroyed (one, a stack, or everything shown)', 'Breeding page rebuilt: search, group by aquarium / species / rarity, ready-only filter and compact rows', 'Sell a tank back, or trade a small tank in for the next size up (Starter → Medium → Large → Grand → Colossal, and the reef line)', 'Sale tanks: the Display Handler and Auto-fill only sell fish from tanks you mark as Sale tanks — breeding stock and campaign fish are never sold by accident', 'A fish can carry at most 5 modifiers, and modifiers now add together instead of multiplying', 'The Breeding Nest upgrade is limited to 3 levels', 'Economy rebalance: slower growth and breeding for rarer fish, tier-ups follow your store level, the fish market gets saturated when flooded, and customers tire of identical fish'] },
   { v: '1.1.0', d: 'Quality of life', notes: ['Auto-rules: sell plain fish and keep only the best of each species automatically (Shop → Management)', 'Coloured fish tags (Breeding stock, Boss candidate, Show fish, Keeper, Sell soon) that every filter understands', 'Breeding planner: pick any target fish and see the cheapest chain of pairings', 'Day and night lighting with a lunch-time rush in the store', 'A "while you were away" card when you start the game', 'A six-step first-hour checklist with rewards', 'Home, Fish Shows, Expeditions, Research and the Campaign now unlock with your store level, with a one-time "new" card'] },
   { v: '1.0.0', d: 'First release', notes: ['Store, aquariums, breeding, expeditions, fish shows, daily quests, research tree and the Ocean Campaign'] },
 ];
@@ -13,6 +14,7 @@ const tabOpen = id => !TAB_REQ[id] || level() >= TAB_REQ[id];
 function ensureG4() {
   const legacy = !S.g4 && (S.sales > 0 || S.fish.length > 0 || S.time > 60);
   S.g4 = Object.assign({ seen: {}, fresh: {}, q: [], guide: {}, guideBonus: false, guideHide: false }, S.g4);
+  S.market = Object.assign({ glut: 0 }, S.market); S.demand = S.demand || {};
   S.rules = Object.assign({ on: false, list: [], sold: 0, money: 0, last: 0 }, S.rules);
   if (!S.settings.daymode) S.settings.daymode = 'auto';
   if (legacy) {
@@ -62,6 +64,12 @@ function ruleReserved(f) {
   if (S.contracts.some(c => contractMatches(c, f))) return 'order';
   const c = CAMPAIGN[campCur()]; if (c && campMatches(c.spec, f)) return 'boss';
   return null;
+}
+/* tag the fish closest to the current boss's demand as Boss candidates (protected from every sell rule) */
+function tagBossCandidates() {
+  const c = CAMPAIGN[campCur()]; if (!c) return fail('No boss left to beat');
+  const list = campCandidates(c.spec).filter(x => x.spOk && x.have.length).slice(0, 8); if (!list.length) return fail('No fish are close to the demand yet');
+  list.forEach(x => (x.f.tag = 'boss')); G.dirty = true; return { ok: true, n: list.length };
 }
 const ruleEligible = f => isAdult(f) && f.loc !== 'store' && !SPECIES[f.sp].ev && !f.fav && !tagKept(f) && !fishLocked(f) && !ruleReserved(f);
 /* what the rules would sell right now */
@@ -189,10 +197,10 @@ function planFor(spId, wanted) {
   const sp = SPECIES[spId]; if (!sp || sp.ev) return { err: 'Pick a normal species.' };
   const mods = [...new Set(wanted)].filter(m => MODS[m] && !MODS[m].ev).slice(0, 5), k = mods.length, full = (1 << k) - 1, w = sp.w;
   const pool = waterMods(w), tot = pool.reduce((a, m) => a + m.p, 0), pOf = m => (pool.find(x => x.id === m) || { p: 0 }).p;
-  const inh = clamp((BASE_INHERIT + 0.08 * S.breedUp.match + 0.03 * lab('bloodline') + campPerk('inherit')) * (1 + planBonus('inherit')), 0, 0.95);
-  const fresh = clamp((BASE_NEWMOD + 0.015 * S.breedUp.mutation + 0.01 * lab('splicing')) * (1 + planBonus('mod')), 0, 0.6);
+  const inh = clamp((BASE_INHERIT + 0.06 * S.breedUp.match + 0.03 * lab('bloodline') + campPerk('inherit')) * (1 + planBonus('inherit')), 0, 0.95);
+  const fresh = clamp((BASE_NEWMOD + 0.01 * S.breedUp.mutation + 0.008 * lab('splicing')) * (1 + planBonus('mod')), 0, 0.6);
   const eggs = 1 + S.breedUp.clutch + Math.floor(lab('cloning') / 2), modB = planBonus('mod');
-  const growT = GROW_TIME[sp.t] / (1 + planBonus('growth')), cd = breedCooldown() * (1 - clamp(planBonus('cool'), 0, 0.6));
+  const growT = GROW_TIME[sp.t] / (1 + planBonus('growth')), cd = breedCooldown() * (1 + 0.3 * k / 2) * (1 + 0.25 * (sp.t - 1)) * (1 - clamp(planBonus('cool'), 0, 0.6));
   const R = Math.max(2, S.earned / Math.max(600, S.time));
   const score = c => c.time + c.money / R;
   const maskOf = f => mods.reduce((m, id, i) => (f.mods.includes(id) ? m | (1 << i) : m), 0);
@@ -249,7 +257,7 @@ function planFor(spId, wanted) {
 /* ================= tick ================= */
 let _g4T = 0, _g4Phase = '', _g4Sig = -1;
 function tickG4(dt) {
-  tickRules(dt);
+  tickRules(dt); S.market.glut = Math.max(0, S.market.glut - MARKET_RECOVER * dt); decayDemand(dt);
   _g4T += dt; if (_g4T < 1) return; _g4T = 0;
   for (const id in TAB_REQ) if (tabOpen(id) && !S.g4.seen[id] && !S.g4.q.includes(id)) { S.g4.q.push(id); S.g4.fresh[id] = true; G.dirty = true; }
   const ph = clockPhase();
@@ -258,4 +266,119 @@ function tickG4(dt) {
     _g4Phase = ph.id; G.dirty = true;
   }
   const sig = guideClaimable(); if (sig !== _g4Sig) { _g4Sig = sig; G.dirty = true; }
+}
+
+/* ================= EGG MANAGEMENT ================= */
+const eggKey = e => (e.bred || e.wild ? e.id : e.kind || e.water + e.tier);   // identical shop eggs stack, bred and wild eggs are unique
+function eggSortKey(e, how) {
+  if (how === 'tier_asc') return e.tier * 1000 + (e.water === 'salt' ? 1 : 0);
+  if (how === 'water') return (e.water === 'salt' ? 0 : 1) * 1000 - e.tier;
+  if (how === 'new') return -parseInt(String(e.id).slice(1), 10);
+  return -e.tier * 1000 - (e.water === 'salt' ? 1 : 0);          // rarity, highest first
+}
+/* [{ key, egg, ids, n }] — stacks of identical eggs, sorted and filtered */
+function eggStacks(list, how, tier, water) {
+  const m = new Map();
+  for (const e of list) {
+    if (tier && tier !== 'all' && e.tier !== +tier) continue;
+    if (water && water !== 'all' && (e.water === 'salt' ? 'salt' : e.water.startsWith('ev_') ? 'ev' : 'fresh') !== water) continue;
+    const k = eggKey(e); if (!m.has(k)) m.set(k, { key: k, egg: e, ids: [] }); m.get(k).ids.push(e.id);
+  }
+  const out = [...m.values()]; out.forEach(s => (s.n = s.ids.length));
+  return out.sort((a, b) => eggSortKey(a.egg, how) - eggSortKey(b.egg, how) || String(a.key).localeCompare(String(b.key)));
+}
+function discardEggs(ids) {
+  const set = new Set(ids), n = S.eggs.filter(e => set.has(e.id)).length;
+  if (!n) return fail('No eggs to destroy');
+  S.eggs = S.eggs.filter(e => !set.has(e.id)); G.dirty = true; return { ok: true, n };
+}
+
+/* ================= SELLING & UPGRADING TANKS ================= */
+const TANK_NEXT = { starter: 'medium', medium: 'large', large: 'huge', huge: 'mega', reef_s: 'reef_m', reef_m: 'reef_l', reef_l: 'reef_g', reef_g: 'reef_x' };
+const TANK_REFUND = 0.5, TANK_TRADEIN = 0.5;
+function tankUpgradeSpent(t) { return TANK_UPGRADES.reduce((a, u) => { let c = 0; for (let l = 0; l < t.up[u.id]; l++) c += Math.round(u.costs[l] * tankType(t).mult); return a + c; }, 0); }
+const tankSellValue = t => Math.round(tankType(t).price * TANK_REFUND + tankUpgradeSpent(t) * TANK_REFUND);
+function sellTankCheck(t) {
+  if (!t) return 'Missing'; if (tankType(t).ev) return 'Event tanks cannot be sold';
+  if (fishIn(t.id).length) return 'Move or sell the fish in this tank first';
+  if (regularTanks().length <= 1) return 'You need to keep at least one tank';
+  return null;
+}
+function sellTank(tid) {
+  const t = getTank(tid), why = sellTankCheck(t); if (why) return fail(why);
+  const v = tankSellValue(t);
+  if (t.bg) S.decorInv[t.bg] = (S.decorInv[t.bg] || 0) + 1;
+  t.slots.forEach(id => { if (id) S.decorInv[id] = (S.decorInv[id] || 0) + 1; });
+  S.heroes.forEach(h => { if (h.tank === t.id) h.tank = null; });
+  S.tanks = S.tanks.filter(x => x !== t); S.money += v; S.earned += v; G.dirty = true;
+  return { ok: true, value: v, name: t.name };
+}
+/* trade a tank in for the next size up: keeps fish, decor, upgrades and name, pays the price difference */
+function tankNextInfo(t) {
+  const to = TANK_TYPE[TANK_NEXT[t.type]]; if (!to) return null;
+  const from = tankType(t), cost = Math.max(0, Math.round(to.price - from.price * TANK_TRADEIN));
+  return { to, from, cost, locked: level() < to.lvl ? to.lvl : 0 };
+}
+function upgradeTankType(tid) {
+  const t = getTank(tid), i = t && tankNextInfo(t); if (!i) return fail('This is already the biggest tank of its kind');
+  if (i.locked) return fail('Reach store level ' + i.locked + ' first');
+  if (!spend(i.cost)) return fail('Not enough money');
+  if (t.name === i.from.n || t.name.startsWith(i.from.n + ' #')) t.name = i.to.n + t.name.slice(i.from.n.length);
+  t.type = i.to.id; G.dirty = true; return { ok: true, to: i.to };
+}
+
+/* ================= SALE TANKS & RESERVED FISH ================= */
+/* The Display Handler (and Auto-fill) used to put every adult on display, so breeding stock and campaign fish got sold.
+   Now: only fish in a Sale tank (or tagged "Sell soon") are ever moved to the store automatically. */
+function toggleSaleTank(tid) {
+  const t = getTank(tid); if (!t) return fail('Missing'); if (tankType(t).ev) return fail('Event tanks hold event fish');
+  t.sale = !t.sale; return ok();
+}
+const hasSaleTank = () => S.tanks.some(t => t.sale);
+function reservedFish(f) {
+  if (f.fav || tagKept(f) || fishLocked(f)) return true;
+  if (S.contracts.some(c => contractMatches(c, f))) return true;
+  const c = CAMPAIGN[campCur()]; return !!(c && campMatches(c.spec, f));
+}
+function displayCandidates(auto) {
+  return S.fish.filter(f => isAdult(f) && f.loc !== 'store' && !SPECIES[f.sp].ev && !reservedFish(f)
+    && (!auto || f.tag === 'sell' || (getTank(f.loc) && getTank(f.loc).sale))).sort((a, b) => fishValue(b) * demandFactor(b) - fishValue(a) * demandFactor(a));
+}
+
+/* Breeding rest time grows with how rare the parents are: +30% per average modifier and +25% per tier above Common.
+   Stops a farm of fully-loaded top-tier fish from breeding as fast as a pair of plain goldfish. */
+function restFactor(a, b) {
+  const mods = (a.mods.length + b.mods.length) / 2, tier = (SPECIES[a.sp].t + SPECIES[b.sp].t) / 2;
+  return (1 + 0.3 * mods) * (1 + 0.25 * (tier - 1));
+}
+
+/* ================= FISH MARKET SATURATION ================= */
+/* The market only absorbs a few fish at a time: every fish sold there "floods" it a little (glut), which then drains away.
+   Dumping a whole tank at once pays much less — customers in your store are where the real money is. */
+const MARKET_RECOVER = 0.1, MARKET_STEP = 0.035, MARKET_FLOOR = 0.25;
+const marketMultAt = glut => clamp(1.1 - MARKET_STEP * glut, MARKET_FLOOR, 1);
+const marketMult = () => marketMultAt(S.market.glut || 0);
+const marketPrice = f => Math.round(fishValue(f) * quickSell() * marketMult() * demandFactor(f));
+/* what selling this list in one go would pay, as the glut climbs */
+function marketTotal(list) { let g = S.market.glut || 0, sum = 0; const seen = {}; for (const f of list) { const k = fishSig(f), d = Math.max(DEMAND_FLOOR, 1 - DEMAND_STEP * (((S.demand || {})[k] || 0) + (seen[k] || 0))); sum += fishValue(f) * quickSell() * marketMultAt(g) * d; g++; seen[k] = (seen[k] || 0) + 1; } return sum; }
+const marketLabel = () => { const m = marketMult(); return m >= 1 ? 'Market open — full price' : `Market saturated — paying ${Math.round(m * 100)}%`; };
+
+/* ================= DEMAND FOR A FISH TYPE ================= */
+/* Customers get bored of the same fish: every sale of a species+modifier combination lowers what customers will offer
+   for that exact type, and the demand recovers slowly. Breeding one perfect line and selling clones stops paying —
+   a varied collection does. */
+const DEMAND_STEP = 0.12, DEMAND_FLOOR = 0.2, DEMAND_RECOVER = 1 / 120;
+const fishSig = f => f.sp + ':' + f.mods.slice().sort().join(',');
+const demandFactor = f => Math.max(DEMAND_FLOOR, 1 - DEMAND_STEP * ((S.demand || {})[fishSig(f)] || 0));
+function noteDemand(f) { const k = fishSig(f); S.demand[k] = (S.demand[k] || 0) + 1; }
+function decayDemand(dt) { for (const k in S.demand) { S.demand[k] -= DEMAND_RECOVER * dt; if (S.demand[k] <= 0.01) delete S.demand[k]; } }
+
+/* offspring can only climb to a tier your store has unlocked (same levels as the shop's eggs) */
+const tierReachable = (water, tier) => water.startsWith('ev_') || level() >= (water === 'salt' ? SALT_EGG_UNLOCK_LEVEL : EGG_UNLOCK_LEVEL)[tier];
+/* choose `n` fish for the display cases: best value first, but a variety — not five clones of the same type while other types wait */
+function pickDisplay(list, n) {
+  const used = new Set(storeFish().map(fishSig)), out = [];
+  for (const f of list) { if (out.length >= n) break; const k = fishSig(f); if (!used.has(k)) { used.add(k); out.push(f); } }
+  for (const f of list) { if (out.length >= n) break; if (!out.includes(f)) out.push(f); }
+  return out;
 }

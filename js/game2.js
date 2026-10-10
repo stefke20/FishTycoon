@@ -79,7 +79,7 @@ function tickWater(dt) {
 const STAFF = [
   { id: 'feeder', n: 'Feeder', icon: '🍤', d: 'Feeds every tank automatically.', hire: [6000, 40000, 250000], wage: [30, 100, 320], every: [90, 60, 35] },
   { id: 'aquarist', n: 'Aquarist', icon: '🧪', d: 'Changes the water in tanks that get dirty. Higher levels clean earlier.', hire: [8000, 55000, 300000], wage: [40, 120, 360], every: [60, 40, 25], thresh: [45, 60, 75] },
-  { id: 'handler', n: 'Display Handler', icon: '🪣', d: 'Puts your best non-favourite adult fish into free display cases.', hire: [7000, 45000, 280000], wage: [30, 100, 300], every: [60, 40, 25] },
+  { id: 'handler', n: 'Display Handler', icon: '🪣', d: 'Puts the best adult fish from your Sale tanks (or tagged “Sell soon”) into free display cases. Never touches other tanks.', hire: [7000, 45000, 280000], wage: [30, 100, 300], every: [60, 40, 25] },
   { id: 'hatcher', n: 'Hatchery Tech', icon: '🥚', d: 'Hatches your eggs for you.', hire: [10000, 70000, 400000], wage: [40, 130, 380], every: [90, 60, 40] },
 ];
 const STAFF_BY_ID = {}; STAFF.forEach(s => (STAFF_BY_ID[s.id] = s));
@@ -102,7 +102,7 @@ function tickStaff(dt) {
     const t = (S.staffT[s.id] = (S.staffT[s.id] || 0) + dt * speed); if (t < s.every[l - 1]) continue; S.staffT[s.id] = 0;
     if (s.id === 'feeder') feedAll(true);
     else if (s.id === 'aquarist') S.tanks.forEach(tk => { if (wqOf(tk) < s.thresh[l - 1] && fishIn(tk.id).length) cleanTank(tk.id); });
-    else if (s.id === 'handler') fillStore();
+    else if (s.id === 'handler') fillStore(true);
     else if (s.id === 'hatcher') hatchAll(true);
   }
 }
@@ -191,7 +191,7 @@ function tickEventWelcome() {
 }
 
 /* ---------- contracts ---------- */
-function maxSpeciesTier() { const l = level(); return l >= 7 ? 5 : l >= 5 ? 4 : l >= 3 ? 3 : l >= 2 ? 2 : 1; }
+function maxSpeciesTier() { const l = level(); return l >= 8 ? 5 : l >= 6 ? 4 : l >= 4 ? 3 : l >= 2 ? 2 : 1; }
 function contractSpec(c) {
   if (c.sp) return SPECIES[c.sp].n + (c.mod ? ' with ' + MODS[c.mod].n : '');
   if (c.tier) return `Any tier ${c.tier} ${c.water === 'salt' ? 'saltwater' : 'freshwater'} fish`;
@@ -217,7 +217,7 @@ function genContract() {
   else if (kind === 'tier') { c.water = pick(waters); c.tier = Math.max(1, Math.min(maxT, 1 + Math.floor(Math.random() * maxT))); base = avgValue(speciesOf(c.water, c.tier).map(s => s.id)); }
   else if (kind === 'mod') { const m = pick(modPool); c.mod = m.id; base = 80 * BASE_VALUE[Math.max(1, Math.min(maxT, m.t + 1))] / 80 * m.m; }
   else if (kind === 'combo') { const s = pick(SPECIES_LIST.filter(s => !s.ev && !s.exp && s.t <= maxT && waters.includes(s.w))), m = pick(modPool); c.sp = s.id; c.mod = m.id; base = s.value * m.m; }
-  else { const m1 = pick(modPool); let m2 = pick(modPool); while (m2.id === m1.id) m2 = pick(modPool); c.mod = m1.id; c.mod2 = m2.id; base = BASE_VALUE[Math.min(maxT, 2)] * m1.m * m2.m; }
+  else { const m1 = pick(modPool); let m2 = pick(modPool); while (m2.id === m1.id) m2 = pick(modPool); c.mod = m1.id; c.mod2 = m2.id; base = BASE_VALUE[Math.min(maxT, 2)] * modMult([m1.id, m2.id]); }
   c.reward = Math.round(base * rnd(1.7, 2.8) * (1 + 0.1 * lab('broker')) / 5) * 5 + 20; c.rep = 1 + Math.floor(Math.random() * 3) + (c.mod2 ? 2 : 0);
   return c;
 }
@@ -264,7 +264,7 @@ const ACHIEVEMENTS = [
   { id: 'g5', n: 'Family Tree', d: 'Own a fish of generation 5', goal: 5, val: maxGen, reward: 8000 },
   { id: 'g12', n: 'Ancient Bloodline', d: 'Own a fish of generation 12', goal: 12, val: maxGen, reward: 200000 },
   { id: 'st3', n: 'Stack Attack', d: 'Own a fish with 3 modifiers', goal: 3, val: () => S.fish.reduce((a, f) => Math.max(a, f.g >= 1 ? f.mods.length : 0), 0), reward: 15000 },
-  { id: 'st6', n: 'Overloaded', d: 'Own a fish with 6 modifiers', goal: 6, val: () => S.fish.reduce((a, f) => Math.max(a, f.g >= 1 ? f.mods.length : 0), 0), reward: 400000 },
+  { id: 'st6', n: 'Fully Loaded', d: 'Own a fish with the maximum of 5 modifiers', goal: 5, val: () => S.fish.reduce((a, f) => Math.max(a, f.g >= 1 ? f.mods.length : 0), 0), reward: 400000 },
   { id: 't5', n: 'Legendary Catch', d: 'Hatch a tier 5 fish', goal: 1, val: () => S.fish.filter(f => f.g >= 1 && SPECIES[f.sp].t === 5).length, reward: 30000 },
   { id: 'c1', n: 'Special Delivery', d: 'Complete a special order', goal: 1, val: () => S.stats.contracts, reward: 500 },
   { id: 'c25', n: 'Reliable Supplier', d: 'Complete 25 special orders', goal: 25, val: () => S.stats.contracts, reward: 80000 },

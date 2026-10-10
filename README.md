@@ -33,6 +33,7 @@ Progress auto-saves to local storage (and fish keep growing while you're away, u
 
 ## v1.1 – quality of life
 - **Auto-rules** (Shop → Management → Auto-Sorter, then Inventory) – up to eight rules such as *sell adults with no modifiers below tier 3*, *keep the best 2 of each species* or *sell everything tagged "Sell soon"*. Preview what would be sold, run them on demand, or flip the master switch to run them every few seconds. Favourites, protected tags, fish on display, show entrants, fish that fit an open order and fish that satisfy the current campaign boss are never touched.
+- **Sale tanks** – mark a tank as a Sale tank (tank page → Sale tank). The Display Handler and Auto-fill only draw from Sale tanks and fish tagged “Sell soon”; breeding stock in normal tanks is never sold automatically, and bred eggs never auto-hatch into a Sale tank.
 - **Fish tags** – Breeding stock, Boss candidate, Show fish, Keeper (all protected) and Sell soon. Tag from any fish panel or tag everything you are looking at; the Inventory and Breeding filters have a Tag filter, and Sell all / Auto-fill skip protected tags.
 - **Progressive menu** – Home and Fish Shows unlock at store level 2, Expeditions and Research at 3, the Campaign at 4. A new player sees 10 tabs instead of 15, gets a one-time "new" card when something unlocks and a NEW badge until they visit it. Existing saves keep everything they already had.
 - **First-hour checklist** – six small goals (hatch, grow up, sell, clean, breed, reach level 2) with rewards and a completion bonus, shown on the Store page.

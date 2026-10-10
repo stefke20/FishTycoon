@@ -564,7 +564,7 @@ const Scenes = {
     const next = [], claim = (key, cv, refresh, make) => { let sc = old.get(key); if (sc) { old.delete(key); cv.replaceWith(sc.cv); refresh(sc); } else sc = make(); sc.skey = key; next.push(sc); return sc; };
     document.querySelectorAll('canvas.tankscene:not(.bossscene)').forEach(cv => {
       const t = getTank(cv.dataset.tank); if (!t) return; const mini = cv.dataset.mini === '1';
-      claim('tank:' + t.id + ':' + (mini ? 1 : 0), cv, sc => sc.refresh(t, onFish, onHero), () => new TankScene3D(cv, t, mini, onFish, onHero));
+      claim('tank:' + t.id + ':' + t.type + ':' + (mini ? 1 : 0), cv, sc => sc.refresh(t, onFish, onHero), () => new TankScene3D(cv, t, mini, onFish, onHero));
     });
     document.querySelectorAll('canvas.storescene').forEach(cv => { if (typeof StoreScene === 'undefined') return; const onSlot = () => { UI.modal = { type: 'storeAdd' }; render(); }; claim('store', cv, sc => { sc.onFish = onStoreFish; sc.onSlot = onSlot; }, () => new StoreScene(cv, onStoreFish, onSlot)); });
     document.querySelectorAll('canvas.expscene').forEach(cv => { if (typeof ExpScene !== 'undefined') claim('exp', cv, sc => {}, () => new ExpScene(cv)); });

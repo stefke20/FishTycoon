@@ -37,7 +37,7 @@ const RNODES = [
   { id: 'market', b: 'shop', row: 0, n: 'Market Research', icon: '📈', max: 10, cost: rc(5000, 2.05), desc: '+3% value on every fish, per level' },
   { id: 'wholesale', b: 'shop', row: 1, n: 'Egg Wholesaler', icon: '📦', max: 10, cost: rc(3500, 2), req: [['market', 1]], desc: 'Eggs cost 3% less, per level' },
   { id: 'broker', b: 'shop', row: 1, n: 'Contract Broker', icon: '🤝', max: 5, cost: rc(3000, 2.4), req: [['market', 1]], desc: 'Special orders pay 10% more and arrive faster, per level' },
-  { id: 'marketing', b: 'shop', row: 1, n: 'Marketing Campaign', icon: '📣', max: 8, cost: rc(8000, 2.1), req: [['market', 2]], desc: 'Customers arrive 8% more often, per level' },
+  { id: 'marketing', b: 'shop', row: 1, n: 'Marketing Campaign', icon: '📣', max: 8, cost: rc(8000, 2.1), req: [['market', 2]], desc: 'Customers arrive 5% more often, per level' },
   { id: 'negotiation', b: 'shop', row: 1, n: 'Negotiation Training', icon: '🗣️', max: 8, cost: rc(10000, 2.15), req: [['market', 2]], desc: 'Customers offer 3% more, per level' },
   { id: 'appraisal', b: 'shop', row: 2, n: 'Expert Appraisal', icon: '🔎', max: 6, cost: rc(25000, 2.3), req: [['negotiation', 2]], desc: 'The fish market pays 2% more, per level' },
   { id: 'loyalty', b: 'shop', row: 2, n: 'Loyalty Programme', icon: '🎟️', max: 6, cost: rc(20000, 2.2), req: [['marketing', 2]], desc: 'Customers wait 4 seconds longer, per level' },

@@ -6,13 +6,13 @@ const TIER_COLORS = ['', '#9fb3c8', '#4cc9a0', '#4d9fff', '#b36bff', '#ffb830'];
 
 const BASE_VALUE = [0, 18, 80, 320, 1300, 5500];
 const EGG_PRICE = [0, 10, 55, 380, 2600, 19000]; // high-tier eggs cost more than the fish they hatch: breed instead!
-const GROW_TIME = [0, 40, 80, 160, 320, 640]; // seconds at base speed
+const GROW_TIME = [0, 100, 240, 560, 1200, 2600]; // seconds at base speed
 const SALT_VALUE_MULT = 1.5;
 const SALT_EGG_MULT = 1.5;
-const EGG_UNLOCK_LEVEL = [0, 1, 2, 3, 5, 7];
-const SALT_EGG_UNLOCK_LEVEL = [0, 3, 4, 5, 6, 7];
+const EGG_UNLOCK_LEVEL = [0, 1, 2, 4, 6, 8];
+const SALT_EGG_UNLOCK_LEVEL = [0, 3, 5, 6, 8, 9];
 
-const LEVELS = [0, 0, 10, 30, 80, 160, 300, 600, 1100, 2000, 3500]; // sales needed for level index
+const LEVELS = [0, 0, 10, 25, 60, 140, 350, 850, 1900, 3700, 6800]; // sales needed for level index
 const MAX_LEVEL = LEVELS.length - 1;
 
 // shape: round | slender | tall | eel ; pattern: none|stripes|spots|band|patch|belly
@@ -144,40 +144,42 @@ CONSUMABLES.forEach(c => (CONSUMABLE[c.id] = c));
 
 /* Modifiers: t = tier, m = value multiplier, p = base chance on hatch/breed, glow = css drop-shadow colour */
 const MODS_LIST = [
-  { id: 'pearl', n: 'Pearlescent', t: 1, m: 1.5, p: 0.026, glow: '#ffd6f5', icon: '🫧', d: 'A pearly shimmer sweeps across the body' },
-  { id: 'spotted', n: 'Spotted', t: 1, m: 1.4, p: 0.026, glow: null, icon: '🔘', d: 'Bold white spots' },
-  { id: 'striped', n: 'Striped', t: 1, m: 1.4, p: 0.026, glow: null, icon: '🦓', d: 'Dark racing stripes' },
-  { id: 'dappled', n: 'Dappled', t: 1, m: 1.4, p: 0.026, glow: null, icon: '🌸', d: 'Soft pink blotches' },
-  { id: 'marbled', n: 'Marbled', t: 1, m: 1.45, p: 0.026, glow: null, icon: '🪨', d: 'Swirling marble veins' },
-  { id: 'fiery', n: 'Fiery', t: 2, m: 2.5, p: 0.01, glow: '#ff6a00', icon: '🔥', d: 'Burns with flickering flames' },
-  { id: 'frosty', n: 'Frosty', t: 2, m: 2.5, p: 0.01, glow: '#7fdcff', icon: '❄️', d: 'Ice crystals and drifting snow' },
-  { id: 'golden', n: 'Golden', t: 2, m: 2.5, p: 0.01, glow: '#ffd23f', icon: '✨', d: 'Gleaming gold with sparkles' },
-  { id: 'glowing', n: 'Glowing', t: 2, m: 2.5, p: 0.01, glow: '#7dff6b', icon: '💡', d: 'Pulses with soft green light' },
-  { id: 'electric', n: 'Electric', t: 2, m: 2.6, p: 0.009, glow: '#5ad8ff', icon: '⚡', d: 'Crackles with electric arcs' },
-  { id: 'toxic', n: 'Toxic', t: 2, m: 2.5, p: 0.009, glow: '#9bff3a', icon: '☣️', d: 'Oozes bubbling toxins' },
-  { id: 'aurora', n: 'Aurora', t: 2, m: 2.7, p: 0.008, glow: '#6bffc4', icon: '🌠', d: 'Northern-lights ribbons ripple over it' },
-  { id: 'cosmic', n: 'Cosmic', t: 3, m: 6, p: 0.0025, glow: '#a259ff', icon: '🌌', d: 'A twinkling galaxy swirls inside' },
-  { id: 'prismatic', n: 'Prismatic', t: 3, m: 6, p: 0.0025, glow: '#ffffff', icon: '🌈', d: 'Cycles through every colour' },
-  { id: 'shadow', n: 'Shadow', t: 3, m: 6, p: 0.0025, glow: '#6a00ff', icon: '🌑', d: 'Trailing wisps of living shadow' },
-  { id: 'celestial', n: 'Celestial', t: 3, m: 6.5, p: 0.002, glow: '#fff2b0', icon: '👼', d: 'A radiant halo and drifting motes of light' },
-  { id: 'camo', n: 'Camo', t: 1, m: 1.4, p: 0.026, glow: null, icon: '🪖', d: 'Jungle camouflage blotches' },
-  { id: 'bubbly', n: 'Bubbly', t: 1, m: 1.4, p: 0.026, glow: null, icon: '🫧', d: 'Translucent blue skin that blows bubbles' },
-  { id: 'candy', n: 'Candy', t: 2, m: 2.4, p: 0.009, glow: '#ff9ad5', icon: '🍬', d: 'Pink-and-white swirls with sprinkles' },
-  { id: 'ruby', n: 'Ruby', t: 2, m: 3, p: 0.007, glow: '#ff3050', icon: '♦️', d: 'Fins turn to glittering red rubies' },
-  { id: 'emerald', n: 'Emerald', t: 2, m: 3, p: 0.007, glow: '#30e070', icon: '💚', d: 'Fins turn to glittering green emeralds' },
-  { id: 'sapphire', n: 'Sapphire', t: 2, m: 3, p: 0.007, glow: '#4080ff', icon: '🔷', d: 'Fins turn to glittering blue sapphires' },
-  { id: 'neon', n: 'Neon', t: 2, m: 2.7, p: 0.008, glow: '#ff40d0', icon: '💖', d: 'Dark body traced with buzzing neon lines' },
-  { id: 'zombie', n: 'Zombie', t: 3, m: 5, p: 0.002, glow: null, icon: '🧟', d: 'Rotting flesh, chunks missing, dripping slime' },
-  { id: 'skeleton', n: 'Skeleton', t: 3, m: 5.5, p: 0.002, glow: null, icon: '💀', d: 'Nothing left but bones' },
-  { id: 'magma', n: 'Magma', t: 3, m: 6, p: 0.002, glow: '#ff5a10', icon: '🌋', d: 'Cooled lava crust with glowing cracks' },
-  { id: 'ghost', n: 'Ghost', t: 3, m: 6, p: 0.002, glow: '#bfe4ff', icon: '👻', d: 'See-through and trailing spirit wisps' },
-  { id: 'robot', n: 'Robot', t: 3, m: 5, p: 0.002, glow: null, icon: '🤖', d: 'Riveted steel plating and blinking LEDs' },
-  { id: 'glitch', n: 'Glitch', t: 3, m: 6, p: 0.0018, glow: '#ff30d0', icon: '👾', d: 'Flickers, tears and shifts colour' },
-  { id: 'diamond', n: 'Diamond', t: 4, m: 12, p: 0.0004, glow: '#d8f4ff', icon: '💎', d: 'Flawless crystal that throws rainbow flashes' },
-  { id: 'phoenix', n: 'Phoenix', t: 4, m: 14, p: 0.0003, glow: '#ff8a20', icon: '🐦‍🔥', d: 'Wreathed in rebirth flames and trailing embers' },
+  { id: 'pearl', n: 'Pearlescent', t: 1, m: 1.5, p: 0.0208, glow: '#ffd6f5', icon: '🫧', d: 'A pearly shimmer sweeps across the body' },
+  { id: 'spotted', n: 'Spotted', t: 1, m: 1.4, p: 0.0208, glow: null, icon: '🔘', d: 'Bold white spots' },
+  { id: 'striped', n: 'Striped', t: 1, m: 1.4, p: 0.0208, glow: null, icon: '🦓', d: 'Dark racing stripes' },
+  { id: 'dappled', n: 'Dappled', t: 1, m: 1.4, p: 0.0208, glow: null, icon: '🌸', d: 'Soft pink blotches' },
+  { id: 'marbled', n: 'Marbled', t: 1, m: 1.45, p: 0.0208, glow: null, icon: '🪨', d: 'Swirling marble veins' },
+  { id: 'fiery', n: 'Fiery', t: 2, m: 2.5, p: 0.007, glow: '#ff6a00', icon: '🔥', d: 'Burns with flickering flames' },
+  { id: 'frosty', n: 'Frosty', t: 2, m: 2.5, p: 0.007, glow: '#7fdcff', icon: '❄️', d: 'Ice crystals and drifting snow' },
+  { id: 'golden', n: 'Golden', t: 2, m: 2.5, p: 0.007, glow: '#ffd23f', icon: '✨', d: 'Gleaming gold with sparkles' },
+  { id: 'glowing', n: 'Glowing', t: 2, m: 2.5, p: 0.007, glow: '#7dff6b', icon: '💡', d: 'Pulses with soft green light' },
+  { id: 'electric', n: 'Electric', t: 2, m: 2.6, p: 0.0063, glow: '#5ad8ff', icon: '⚡', d: 'Crackles with electric arcs' },
+  { id: 'toxic', n: 'Toxic', t: 2, m: 2.5, p: 0.0063, glow: '#9bff3a', icon: '☣️', d: 'Oozes bubbling toxins' },
+  { id: 'aurora', n: 'Aurora', t: 2, m: 2.7, p: 0.0056, glow: '#6bffc4', icon: '🌠', d: 'Northern-lights ribbons ripple over it' },
+  { id: 'cosmic', n: 'Cosmic', t: 3, m: 6, p: 0.00113, glow: '#a259ff', icon: '🌌', d: 'A twinkling galaxy swirls inside' },
+  { id: 'prismatic', n: 'Prismatic', t: 3, m: 6, p: 0.00113, glow: '#ffffff', icon: '🌈', d: 'Cycles through every colour' },
+  { id: 'shadow', n: 'Shadow', t: 3, m: 6, p: 0.00113, glow: '#6a00ff', icon: '🌑', d: 'Trailing wisps of living shadow' },
+  { id: 'celestial', n: 'Celestial', t: 3, m: 6.5, p: 0.0009, glow: '#fff2b0', icon: '👼', d: 'A radiant halo and drifting motes of light' },
+  { id: 'camo', n: 'Camo', t: 1, m: 1.4, p: 0.0208, glow: null, icon: '🪖', d: 'Jungle camouflage blotches' },
+  { id: 'bubbly', n: 'Bubbly', t: 1, m: 1.4, p: 0.0208, glow: null, icon: '🫧', d: 'Translucent blue skin that blows bubbles' },
+  { id: 'candy', n: 'Candy', t: 2, m: 2.4, p: 0.0063, glow: '#ff9ad5', icon: '🍬', d: 'Pink-and-white swirls with sprinkles' },
+  { id: 'ruby', n: 'Ruby', t: 2, m: 3, p: 0.0049, glow: '#ff3050', icon: '♦️', d: 'Fins turn to glittering red rubies' },
+  { id: 'emerald', n: 'Emerald', t: 2, m: 3, p: 0.0049, glow: '#30e070', icon: '💚', d: 'Fins turn to glittering green emeralds' },
+  { id: 'sapphire', n: 'Sapphire', t: 2, m: 3, p: 0.0049, glow: '#4080ff', icon: '🔷', d: 'Fins turn to glittering blue sapphires' },
+  { id: 'neon', n: 'Neon', t: 2, m: 2.7, p: 0.0056, glow: '#ff40d0', icon: '💖', d: 'Dark body traced with buzzing neon lines' },
+  { id: 'zombie', n: 'Zombie', t: 3, m: 5, p: 0.0009, glow: null, icon: '🧟', d: 'Rotting flesh, chunks missing, dripping slime' },
+  { id: 'skeleton', n: 'Skeleton', t: 3, m: 5.5, p: 0.0009, glow: null, icon: '💀', d: 'Nothing left but bones' },
+  { id: 'magma', n: 'Magma', t: 3, m: 6, p: 0.0009, glow: '#ff5a10', icon: '🌋', d: 'Cooled lava crust with glowing cracks' },
+  { id: 'ghost', n: 'Ghost', t: 3, m: 6, p: 0.0009, glow: '#bfe4ff', icon: '👻', d: 'See-through and trailing spirit wisps' },
+  { id: 'robot', n: 'Robot', t: 3, m: 5, p: 0.0009, glow: null, icon: '🤖', d: 'Riveted steel plating and blinking LEDs' },
+  { id: 'glitch', n: 'Glitch', t: 3, m: 6, p: 0.00081, glow: '#ff30d0', icon: '👾', d: 'Flickers, tears and shifts colour' },
+  { id: 'diamond', n: 'Diamond', t: 4, m: 12, p: 0.00016, glow: '#d8f4ff', icon: '💎', d: 'Flawless crystal that throws rainbow flashes' },
+  { id: 'phoenix', n: 'Phoenix', t: 4, m: 14, p: 0.00012, glow: '#ff8a20', icon: '🐦‍🔥', d: 'Wreathed in rebirth flames and trailing embers' },
 ];
 const MODS = {};
 MODS_LIST.forEach(m => (MODS[m.id] = m));
+/* modifiers add up: a fish is worth base × (1 + Σ (m − 1)), so stacking five is strong but never explosive */
+const modMult = mods => 1 + mods.reduce((a, m) => a + (MODS[m].m - 1), 0);
 const MOD_TIER_COLORS = ['', '#9fb3c8', '#4cc9a0', '#ffb830', '#ff6ad5'];
 const MOD_TIER_NAMES = ['', 'Common', 'Uncommon', 'Rare', 'Mythic'];
 
@@ -203,7 +205,7 @@ const hallSlotPrice = n => Math.round(500 * Math.pow(3, n - START_HALL_SLOTS)); 
 /* Per-tank upgrades: cost = base * tank.mult */
 const TANK_UPGRADES = [
   { id: 'filter', n: 'Water Filter', icon: '🧪', max: 2, costs: [250, 1100], desc: '+1 water rating & +5% growth per level' },
-  { id: 'aerator', n: 'Aerator', icon: '🫧', max: 1, costs: [450], desc: '+1 water rating & +10% growth' },
+  { id: 'aerator', n: 'Aerator', icon: '🫧', max: 1, costs: [450], desc: '+10% growth and the glass stays clean a little longer' },
   { id: 'light', n: 'Grow Lights', icon: '💡', max: 5, costs: [300, 1200, 4000, 14000, 45000], desc: '+15% modifier chance per level' },
   { id: 'feeder', n: 'Auto-Feeder', icon: '🍽️', max: 1, costs: [600], desc: 'Feeds the tank automatically (costs food money)' },
   { id: 'uv', n: 'UV Sterilizer', icon: '🔆', max: 3, costs: [800, 3000, 11000], desc: 'Water gets dirty 25% slower per level' },
@@ -215,15 +217,15 @@ const TANK_UPGRADES = [
 
 /* Food */
 const FOOD = [
-  { n: 'Basic Flakes', mult: 2, price: 0 },
-  { n: 'Fish Pellets', mult: 3, price: 250 },
-  { n: 'Spirulina Blend', mult: 4, price: 1500 },
-  { n: 'Live Brine Shrimp', mult: 6, price: 8000 },
-  { n: 'Gourmet Krill', mult: 9, price: 40000 },
-  { n: 'Ambrosia Feed', mult: 14, price: 180000 },
-  { n: 'Phoenix Nectar', mult: 18, price: 700000 },
-  { n: 'Leviathan Feast', mult: 24, price: 2500000 },
-  { n: 'Cosmic Plankton', mult: 32, price: 10000000 },
+  { n: 'Basic Flakes', mult: 1.5, price: 0 },
+  { n: 'Fish Pellets', mult: 2, price: 250 },
+  { n: 'Spirulina Blend', mult: 2.5, price: 1500 },
+  { n: 'Live Brine Shrimp', mult: 3, price: 8000 },
+  { n: 'Gourmet Krill', mult: 4, price: 40000 },
+  { n: 'Ambrosia Feed', mult: 5, price: 180000 },
+  { n: 'Phoenix Nectar', mult: 6, price: 700000 },
+  { n: 'Leviathan Feast', mult: 7.5, price: 2500000 },
+  { n: 'Cosmic Plankton', mult: 9, price: 10000000 },
 ];
 const FED_DURATION = 45; // seconds a feeding lasts
 const FEED_COST_PER_FISH = 1;
@@ -285,7 +287,7 @@ SKINS.forEach(s => (SKIN[s.id] = s));
 /* Store upgrades */
 const STORE_UPGRADES = [
   { id: 'cases', n: 'Display Cases', icon: '🗄️', max: 9, cost: l => Math.round(250 * Math.pow(2.4, l)), desc: '+1 fish on display (more fish for customers to want)' },
-  { id: 'ads', n: 'Advertising', icon: '📣', max: 12, cost: l => Math.round(300 * Math.pow(2.2, l)), desc: 'Customers arrive 22% more often per level' },
+  { id: 'ads', n: 'Advertising', icon: '📣', max: 12, cost: l => Math.round(300 * Math.pow(2.2, l)), desc: 'Customers arrive 15% more often per level' },
   { id: 'sign', n: 'Shop Sign & Decor', icon: '🪧', max: 10, cost: l => Math.round(400 * Math.pow(2.3, l)), desc: 'Customers offer +6% more per level' },
   { id: 'seats', n: 'Comfy Seating', icon: '🛋️', max: 8, cost: l => Math.round(250 * Math.pow(2.2, l)), desc: '+10s customer patience per level' },
   { id: 'counter', n: 'Bigger Counter', icon: '🧾', max: 6, cost: l => Math.round(600 * Math.pow(2.7, l)), desc: '+1 customer can be in the shop at once per level' },
@@ -293,18 +295,19 @@ const STORE_UPGRADES = [
   { id: 'collector', n: "Collector's Club", icon: '🎩', max: 8, cost: l => Math.round(1500 * Math.pow(2.4, l)), desc: 'More collectors who pay big for modified fish' },
   { id: 'vip', n: 'VIP Lounge', icon: '🥂', max: 5, cost: l => Math.round(5000 * Math.pow(3, l)), desc: 'Wealthy VIP guests drop by (more often per level) and pay 2.5-4x for rare fish' },
   { id: 'quick', n: 'Express Checkout', icon: '⚡', max: 5, cost: l => Math.round(1200 * Math.pow(2.5, l)), desc: 'Customers finish browsing 12% faster per level' },
-  { id: 'auction', n: 'Auction House', icon: '🔨', max: 5, cost: l => Math.round(4000 * Math.pow(3, l)), desc: 'Fish market pays +4% more of a fish\'s value per level' },
+  { id: 'auction', n: 'Auction House', icon: '🔨', max: 5, cost: l => Math.round(4000 * Math.pow(3, l)), desc: 'Fish market pays +3% more of a fish\'s value per level' },
 ];
 const BREED_UPGRADES = [
-  { id: 'clutch', n: 'Breeding Nest', icon: '🪺', max: 5, cost: l => Math.round(1500 * Math.pow(3, l)), desc: '+1 egg per breeding' },
+  { id: 'clutch', n: 'Breeding Nest', icon: '🪺', max: 3, cost: l => Math.round(1500 * Math.pow(3, l)), desc: '+1 egg per breeding' },
   { id: 'cooldown', n: 'Breeding Aid', icon: '⏳', max: 6, cost: l => Math.round(800 * Math.pow(2.7, l)), desc: 'Breeding cooldown -15% per level' },
-  { id: 'match', n: 'Matchmaker', icon: '💘', max: 6, cost: l => Math.round(2000 * Math.pow(2.7, l)), desc: '+8% chance that each parent modifier is inherited, per level' },
-  { id: 'lineage', n: 'Lineage Records', icon: '📜', max: 6, cost: l => Math.round(3000 * Math.pow(2.9, l)), desc: '+25% chance of a higher-tier offspring per level' },
-  { id: 'mutation', n: 'Gene Splicer', icon: '🧫', max: 6, cost: l => Math.round(2500 * Math.pow(2.8, l)), desc: '+1.5% chance of one brand-new modifier on offspring, per level' },
+  { id: 'match', n: 'Matchmaker', icon: '💘', max: 6, cost: l => Math.round(2000 * Math.pow(2.7, l)), desc: '+6% chance that each parent modifier is inherited, per level' },
+  { id: 'lineage', n: 'Lineage Records', icon: '📜', max: 6, cost: l => Math.round(3000 * Math.pow(2.9, l)), desc: '+15% chance of a higher-tier offspring per level' },
+  { id: 'mutation', n: 'Gene Splicer', icon: '🧫', max: 6, cost: l => Math.round(2500 * Math.pow(2.8, l)), desc: '+1% chance of one brand-new modifier on offspring, per level' },
   { id: 'warmer', n: 'Egg Warmer', icon: '🔥', max: 4, cost: l => Math.round(1800 * Math.pow(2.6, l)), desc: 'Fish hatch already 15% grown, per level' },
 ];
-const BREED_COOLDOWN = 90;
-const BASE_INHERIT = 0.45;   // chance that each parent modifier is passed on
-const BASE_NEWMOD = 0.08;    // chance of one brand-new modifier on top
-const BASE_TIERUP = 0.07;
-const QUICK_SELL = 0.5;
+const MAX_MODS = 5;          // a fish can never carry more than this many modifiers
+const BREED_COOLDOWN = 420;
+const BASE_INHERIT = 0.40;   // chance that each parent modifier is passed on
+const BASE_NEWMOD = 0.05;    // chance of one brand-new modifier on top
+const BASE_TIERUP = 0.04;
+const QUICK_SELL = 0.3;

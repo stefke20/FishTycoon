@@ -17,14 +17,14 @@ function recordCard(big) {
 
 /* ---------- special orders ---------- */
 function contractsPanel() {
-  let h = `<h3>Special orders · ${S.contracts.length}/3</h3>`;
-  if (level() < 2) return h + `<div class="empty">Special orders unlock at store level 2.</div>`;
-  if (!S.contracts.length) return h + `<div class="empty">No orders right now — customers will request something soon.</div>`;
+  let h = '';
+  if (level() < 2) return fold('store:orders', 'Special orders', `<div class="empty">Special orders unlock at store level 2.</div>`, true);
+  if (!S.contracts.length) return fold('store:orders', 'Special orders', `<div class="empty">No orders right now — customers will request something soon.</div>`, true, '0/3');
   for (const c of S.contracts) {
     const n = S.fish.filter(f => contractMatches(c, f)).length;
     h += `<div class="card cust"><div class="eico">📜</div><div class="grow"><b>${contractSpec(c)}</b><div class="small dim">Expires in <span data-ctl="${c.id}">${mmss(c.left)}</span> · +${c.rep} reputation · ${n ? `<span class="good">${n} matching fish</span>` : 'no matching fish yet'}</div></div><div style="text-align:right"><div class="offer gold">${fmt(c.reward)}</div></div>${btn('Deliver', 'openContract', { x: c.id }, 'pri', !n)}</div>`;
   }
-  return h;
+  return fold('store:orders', 'Special orders', h, true, S.contracts.length + '/3');
 }
 
 /* ---------- management (staff & unlocks) ---------- */
@@ -37,6 +37,7 @@ function viewMgmt() {
     for (const x of hired) { const l = S.staff[x.id], pz = !!S.staffPaused[x.id], left = Math.max(0, Math.ceil((x.every[l - 1] - (S.staffT[x.id] || 0)) / (1 + 0.08 * lab('automation')))); h += `<div class="card staffcard ${pz ? 'paused' : ''}"><div class="row"><span class="eico">${x.icon}</span><div class="grow"><b>${x.n}</b> <span class="dim small">Lv ${l}/3</span><div class="small dim">${x.d}</div></div></div><div class="row" style="margin-top:8px"><span class="small">${pz ? '<span class="badc">⏸ Paused</span>' : `<span class="good">● Working</span> · next job in ${left}s`}</span><span class="grow"></span><span class="gold small">${pz ? '$0' : fmt(Math.round(x.wage[l - 1] * (1 - 0.05 * lab('automation'))))}/min</span></div><div class="row" style="margin-top:8px">${btn(pz ? '▶ Resume' : '⏸ Pause', 'pauseStaff', { x: x.id }, pz ? 'pri sm' : 'sm')}</div></div>`; }
     h += `</div>`;
   }
+  if (S.staff.handler > 0 && !hasSaleTank()) h += `<div class="warn" style="margin-top:0">🏷 Your Display Handler only displays fish from <b>Sale tanks</b>. Open a tank → “Sale tank” to mark one — otherwise it does nothing, so your breeding stock is never sold by accident.</div>`;
   h += `<h3>Hire & upgrade</h3>`;
   for (const x of STAFF) {
     const l = S.staff[x.id];
@@ -91,12 +92,13 @@ function viewCollection() {
     `<div class="seg" style="margin-top:22px">${[['species', 'Species'], ['mods', 'Modifiers']].map(([k, l]) => `<button class="${tab === k ? 'on' : ''}" data-act="bookTab" data-x="${k}">${l}</button>`).join('')}</div>`;
   if (tab === 'species') {
     for (const water of ['fresh', 'salt']) {
-      h += `<h3>${water === 'fresh' ? 'Freshwater' : 'Saltwater'}</h3>`;
+      let wb = '';
       for (let t = 1; t <= 5; t++) {
-        const list = speciesOf(water, t); h += `<div class="tierhead">${tierBadge(t)}<span class="dim small">${list.filter(s => S.book.sp[s.id]).length}/${list.length}</span></div><div class="bookgrid">`;
-        for (const s of list) { const d = S.book.sp[s.id]; h += d ? `<div class="card booktile">${fishSVG(s.id, [], 110)}<b>${s.n}</b><div class="small dim">Hatched ×${d.n}${d.best ? ' · best ' + fmt(d.best) : ''}</div></div>` : `<div class="card booktile unk"><div class="q">?</div><b>???</b><div class="small dim">${TIER_NAMES[t]} · ${s.f}</div></div>`; }
-        h += `</div>`;
+        const list = speciesOf(water, t); wb += `<div class="tierhead">${tierBadge(t)}<span class="dim small">${list.filter(s => S.book.sp[s.id]).length}/${list.length}</span></div><div class="bookgrid">`;
+        for (const s of list) { const d = S.book.sp[s.id]; wb += d ? `<div class="card booktile">${fishSVG(s.id, [], 110)}<b>${s.n}</b><div class="small dim">Hatched ×${d.n}${d.best ? ' · best ' + fmt(d.best) : ''}</div></div>` : `<div class="card booktile unk"><div class="q">?</div><b>???</b><div class="small dim">${TIER_NAMES[t]} · ${s.f}</div></div>`; }
+        wb += `</div>`;
       }
+      const lst = SPECIES_LIST.filter(s => s.w === water && !s.exp && !s.ev); h += fold('book:' + water, water === 'fresh' ? 'Freshwater' : 'Saltwater', wb, water === 'fresh', lst.filter(s => S.book.sp[s.id]).length + '/' + lst.length);
     }
     h += `<h3>Expedition species · ${SPECIES_LIST.filter(s => s.exp && S.book.sp[s.id]).length}/${EXP_SPECIES.length}</h3>`;
     for (const L of LOCATIONS) { const list = SPECIES_LIST.filter(s => s.exp === L.id); h += `<div class="tierhead"><span class="dim">${L.icon} ${L.n}</span><span class="dim small">${list.filter(s => S.book.sp[s.id]).length}/${list.length}</span></div><div class="bookgrid">${list.map(s => { const d = S.book.sp[s.id]; return d ? `<div class="card booktile">${fishSVG(s.id, [], 110)}<b>${s.n}</b><div class="small dim">${TIER_NAMES[s.t]} · hatched ×${d.n}</div></div>` : `<div class="card booktile unk"><div class="q">?</div><b>???</b><div class="small dim">${TIER_NAMES[s.t]} · ${L.n}</div></div>`; }).join('')}</div>`; }
@@ -105,12 +107,12 @@ function viewCollection() {
   } else {
     for (const t of [1, 2, 3, 4]) {
       const list = MODS_LIST.filter(m => !m.ev && !m.exp && m.t === t); h += `<div class="tierhead"><span class="chip m${t}">${MOD_TIER_NAMES[t]}</span><span class="dim small">${list.filter(m => S.book.mods[m.id]).length}/${list.length}</span></div><div class="modgrid">`;
-      for (const m of list) { const c = S.book.mods[m.id]; h += c ? `<div class="card"><span class="chip m${m.t}">${m.icon} ${m.n}</span><div class="small dim" style="margin-top:6px">${m.d}</div><div class="small gold">×${m.m} value · seen ${c}×</div></div>` : `<div class="card unk"><b class="dim">???</b><div class="small dim">Undiscovered ${MOD_TIER_NAMES[t]} modifier</div></div>`; }
+      for (const m of list) { const c = S.book.mods[m.id]; h += c ? `<div class="card"><span class="chip m${m.t}">${m.icon} ${m.n}</span><div class="small dim" style="margin-top:6px">${m.d}</div><div class="small gold">+${Math.round((m.m - 1) * 100)}% value · seen ${c}×</div></div>` : `<div class="card unk"><b class="dim">???</b><div class="small dim">Undiscovered ${MOD_TIER_NAMES[t]} modifier</div></div>`; }
       h += `</div>`;
     }
-    h += `<h3>Expedition modifiers</h3><div class="modgrid">${MODS_LIST.filter(m => m.exp).map(m => S.book.mods[m.id] ? `<div class="card"><span class="chip m${m.t}">${m.icon} ${m.n}</span><div class="small dim" style="margin-top:6px">${m.d}</div><div class="small gold">×${m.m} · ${LOCATION[m.exp].n}</div></div>` : `<div class="card unk"><b class="dim">???</b><div class="small dim">Found on expeditions: ${LOCATION[m.exp].n}</div></div>`).join('')}</div>`;
+    h += `<h3>Expedition modifiers</h3><div class="modgrid">${MODS_LIST.filter(m => m.exp).map(m => S.book.mods[m.id] ? `<div class="card"><span class="chip m${m.t}">${m.icon} ${m.n}</span><div class="small dim" style="margin-top:6px">${m.d}</div><div class="small gold">+${Math.round((m.m - 1) * 100)}% · ${LOCATION[m.exp].n}</div></div>` : `<div class="card unk"><b class="dim">???</b><div class="small dim">Found on expeditions: ${LOCATION[m.exp].n}</div></div>`).join('')}</div>`;
     const evm = MODS_LIST.filter(m => m.ev && S.book.mods[m.id]);
-    if (evm.length) { h += `<h3>Event modifiers</h3><div class="modgrid">${evm.map(m => `<div class="card"><span class="chip m${m.t}">${m.icon} ${m.n}</span><div class="small dim" style="margin-top:6px">${m.d}</div><div class="small gold">×${m.m} · ${EVENT[m.ev].short}</div></div>`).join('')}</div>`; }
+    if (evm.length) { h += `<h3>Event modifiers</h3><div class="modgrid">${evm.map(m => `<div class="card"><span class="chip m${m.t}">${m.icon} ${m.n}</span><div class="small dim" style="margin-top:6px">${m.d}</div><div class="small gold">+${Math.round((m.m - 1) * 100)}% · ${EVENT[m.ev].short}</div></div>`).join('')}</div>`; }
   }
   return h;
 }
@@ -162,9 +164,10 @@ function viewHome() {
 function viewStats() {
   const done = ACHIEVEMENTS.filter(a => S.ach[a.id]).length;
   const st = [['Total earned', fmt(S.earned)], ['Sales to customers', S.sales], ['Best single sale', fmt(S.bestValue || 0)], ['Eggs hatched', S.stats.hatched], ['Times bred', S.bredCount], ['Fish sold at market', S.stats.marketSold], ['Special orders done', S.stats.contracts], ['Fish owned', S.fish.length], ['Highest generation', maxGen()], ['Species discovered', bookCount() + ' / ' + bookTotal()], ['Event tokens earned', S.stats.tokens], ['Tanks cleaned', S.stats.cleaned], ['Staff wages / min', fmt(staffWage())], ['Play time', Math.round(S.time / 60) + ' min']];
-  let h = pageHead('Stats & Achievements', `${done} of ${ACHIEVEMENTS.length} achievements unlocked.${S.titles.length ? ' Titles: <b class="gold">' + S.titles.join(', ') + '</b>' : ''}`) + sanctuaryCard() + `<div class="statgrid">${st.map(([k, v]) => `<div class="card flat"><div class="lbl">${k}</div><div style="font-size:20px;font-weight:650">${v}</div></div>`).join('')}</div><h3>Achievements</h3><div class="grid sm">`;
-  for (const a of ACHIEVEMENTS) { const d = S.ach[a.id], v = Math.min(a.goal, a.val()); h += `<div class="card ach ${d ? 'done' : ''}"><div class="row"><b class="grow">${d ? '✓ ' : ''}${a.n}</b><span class="gold small">${fmt(a.reward)}</span></div><div class="small dim">${a.d}</div><div class="bar" style="margin-top:8px"><i style="width:${v / a.goal * 100}%"></i></div><div class="small dim" style="margin-top:3px">${d ? 'Completed' : fmt2(v) + ' / ' + fmt2(a.goal)}</div></div>`; }
-  return h + `</div>`;
+  let h = pageHead('Stats & Achievements', `${done} of ${ACHIEVEMENTS.length} achievements unlocked.${S.titles.length ? ' Titles: <b class="gold">' + S.titles.join(', ') + '</b>' : ''}`) + fold('stats:sanct', 'The Great Sanctuary', sanctuaryCard(), true, S.sanct + '/' + SANCT.length) + `<div class="statgrid">${st.map(([k, v]) => `<div class="card flat"><div class="lbl">${k}</div><div style="font-size:20px;font-weight:650">${v}</div></div>`).join('')}</div>`;
+  let ach = `<div class="grid sm">`;
+  for (const a of ACHIEVEMENTS) { const d = S.ach[a.id], v = Math.min(a.goal, a.val()); ach += `<div class="card ach ${d ? 'done' : ''}"><div class="row"><b class="grow">${d ? '✓ ' : ''}${a.n}</b><span class="gold small">${fmt(a.reward)}</span></div><div class="small dim">${a.d}</div><div class="bar" style="margin-top:8px"><i style="width:${v / a.goal * 100}%"></i></div><div class="small dim" style="margin-top:3px">${d ? 'Completed' : fmt2(v) + ' / ' + fmt2(a.goal)}</div></div>`; }
+  return h + fold('stats:ach', 'Achievements', ach + `</div>`, false, `${done}/${ACHIEVEMENTS.length}`);
 }
 function sanctuaryCard() {
   const done = S.sanct >= SANCT.length;

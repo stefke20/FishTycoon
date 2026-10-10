@@ -290,3 +290,38 @@ canvas.campscene{display:block;border-radius:var(--r);background:#0c3a64;max-wid
 .pn{width:26px;height:26px;border-radius:50%;background:var(--accent);color:#03231f;font-weight:700;display:flex;align-items:center;justify-content:center;flex:none}
 .notes{margin:4px 0 0;padding-left:20px;color:var(--dim);font-size:12px}
 .mbox:has(.planmods){width:min(720px,95vw)}
+
+/* ===== v1.2: folds, tank nav, egg manager, tidy breeding ===== */
+.fold{margin:14px 0 6px}
+.foldhead{display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--line);padding:2px 0 6px;margin-bottom:10px;min-height:30px}
+.foldtoggle{display:inline-flex;align-items:center;gap:8px;background:none;border:0;padding:2px 4px;color:var(--text);font-size:13px;letter-spacing:.6px;text-transform:uppercase;border-radius:8px}
+.foldtoggle:hover{background:rgba(255,255,255,.06)}
+.foldtoggle .car{display:inline-block;width:14px;color:var(--accent);font-size:14px}
+.fold:not(.open) .foldhead{margin-bottom:0}
+.fold.bgroup{margin:8px 0}.fold.bgroup .foldhead{border-bottom:0;margin-bottom:4px}.fold.bgroup .foldtoggle{text-transform:none;letter-spacing:0;font-size:14px}
+.fold .fold{margin-left:0}
+.tanknav{display:inline-flex;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:3px 6px}
+.tanknav select{max-width:170px;padding:4px 8px;font-size:12px}
+.tanknav .btn{font-size:18px;line-height:1;padding:4px 12px}
+.eggchip{position:relative}
+.eggchip .cnt{position:absolute;right:2px;top:2px;background:var(--accent);color:#03231f;border-radius:9px;font-size:10px;font-weight:700;padding:0 5px;line-height:15px}
+.eggctl{gap:8px;margin-bottom:8px;flex-wrap:wrap}
+.tierdot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px}
+.eggrow{display:flex;gap:12px;align-items:center;padding:10px 12px}
+.col{display:flex;flex-direction:column}
+.search{background:var(--raise);color:var(--text);border:1px solid var(--line2);border-radius:9px;padding:6px 10px;font:inherit;min-width:230px;user-select:text}
+.parents.compact{margin-bottom:12px}.parents.compact .card{padding:8px}
+.blist{display:flex;flex-direction:column;gap:4px}
+.brow{display:flex;align-items:center;gap:12px;padding:5px 12px;border-radius:10px;background:var(--panel);border:1px solid var(--line);cursor:pointer;transition:border-color .12s}
+.brow:hover{border-color:var(--line2)}.brow.sel{border-color:var(--accent);background:rgba(42,212,192,.1)}.brow.dis{opacity:.4}
+.bpic{width:50px;height:36px;display:flex;align-items:center;justify-content:center;flex:none;overflow:hidden}
+.bname{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bmods{display:flex;flex-wrap:wrap;align-items:center;gap:0}.bmods .chip{margin:1px 4px 1px 0}
+.bloc{min-width:96px;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bsel{font-size:12px;color:var(--accent);min-width:74px;text-align:right}
+.hallrow{padding:10px 14px;margin-bottom:6px}
+.eggs2{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:8px}
+.eggrow{display:flex;gap:12px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 12px}
+.eggpic{width:54px;flex:none;display:flex;justify-content:center}
+.eggbtns{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;max-width:210px}
+.parents.compact .card.parent{min-height:0}.parents.compact .card.parent.flat{padding:14px}

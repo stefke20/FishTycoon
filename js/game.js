@@ -10,6 +10,7 @@ const G = { dirty: true, msg: () => {}, flash: () => {} };
 
 const rnd = (a, b) => a + Math.random() * (b - a);
 const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+const shuffled = arr => { const a = arr.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
 function newTank(typeId, n) {
@@ -71,6 +72,10 @@ function importSave(raw, offline) {
     S.fish.forEach(f => { if (!f.name) f.name = defaultName(f.id); if (f.fav == null) f.fav = false; if (!S.lineage[f.id]) S.lineage[f.id] = { n: f.name, sp: f.sp, m: f.mods.slice(), p: f.parents || [], g: f.gen || 0 }; if (f.g >= 1) { if (!S.book.sp[f.sp]) S.book.sp[f.sp] = { n: 1, best: 0 }; f.mods.forEach(m => { if (!S.book.mods[m]) S.book.mods[m] = 1; }); } });
     S.items = Object.assign(Object.fromEntries(CONSUMABLES.map(c => [c.id, 0])), d.items);
     S.breedUp = Object.assign(Object.fromEntries(BREED_UPGRADES.map(u => [u.id, 0])), d.breedUp);
+    const trim = mods => (mods.length > MAX_MODS ? mods.slice().sort((a, b) => MODS[b].m - MODS[a].m).slice(0, MAX_MODS) : mods); // old saves: keep the five most valuable
+    S.fish.forEach(f => { if (f.mods.length > MAX_MODS) { f.mods = trim(f.mods); if (S.lineage[f.id]) S.lineage[f.id].m = f.mods.slice(); } });
+    S.eggs.forEach(e => { if (e.bred && e.bred.mods.length > MAX_MODS) e.bred.mods = trim(e.bred.mods); });
+    S.breedUp.clutch = Math.min(S.breedUp.clutch, 3);
     const MIG = { stingray: 'sturgeon', mantaray: 'hammerhead' };
     S.fish.forEach(f => { if (MIG[f.sp]) f.sp = MIG[f.sp]; });
     S.eggs.forEach(e => { if (e.bred && MIG[e.bred.sp]) e.bred.sp = MIG[e.bred.sp]; });
@@ -101,7 +106,7 @@ const customerCap = () => 2 + S.storeUp.counter;
 const foodMult = () => FOOD[S.food].mult;
 
 function tankType(t) { return TANK_TYPE[t.type]; }
-function rating(t) { return tankType(t).base + t.up.filter + t.up.aerator + lab('paradise'); }
+function rating(t) { return tankType(t).base + t.up.filter + lab('paradise'); }
 const tankCap = t => tankType(t).cap + lab('ecosystem');
 const fedDur = () => FED_DURATION * (1 + 0.1 * lab('metabolism'));
 function tankBonus(t) {
@@ -125,7 +130,7 @@ const wqValueMult = q => (q >= 80 ? 1 : 0.45 + 0.55 * Math.max(0, q) / 80);
 /* value of a fish; nowq ignores the water-quality penalty (used for records) */
 function fishValue(f, nowq) {
   let v = SPECIES[f.sp].value;
-  f.mods.forEach(m => (v *= MODS[m].m));
+  v *= modMult(f.mods);
   const t = f.loc && f.loc !== 'store' ? getTank(f.loc) : null;
   const vb = (t ? tankBonus(t).value : (f.vb || 0)) + globalValueBonus();
   return Math.round(v * (1 + vb) * (1 + medalBonus(f)) * (t && !nowq ? wqValueMult(wqOf(t)) : 1));
@@ -143,9 +148,12 @@ const waterMods = water => MODS_LIST.filter(m => (!m.ev && !m.exp) || 'ev_' + m.
 const maxTierOf = water => (water.startsWith('ev_') ? 3 : 5);
 function rollMods(existing, bonus, water) {
   const mods = existing.slice();
-  waterMods(water || 'fresh').forEach(m => {
+  const pool = waterMods(water || 'fresh').slice();
+  for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; } // random order so rare mods are not crowded out by the cap
+  for (const m of pool) {
+    if (mods.length >= MAX_MODS) break;
     if (!mods.includes(m.id) && Math.random() < m.p * (1 + bonus)) mods.push(m.id);
-  });
+  }
   return mods;
 }
 const NAME_POOL = ['Bubbles', 'Finley', 'Nemo', 'Goldie', 'Splash', 'Coral', 'Shelly', 'Marlin', 'Pebbles', 'Ripple', 'Sushi', 'Wanda', 'Biscuit', 'Neptune', 'Dory', 'Flash', 'Pearl', 'Mochi', 'Zippy', 'Captain', 'Gill', 'Fin Diesel', 'Moby', 'Squirt', 'Tide', 'Ziggy', 'Bruce', 'Sparkle', 'Nugget', 'Bubba', 'Pip', 'Mango', 'Ginger', 'Olive', 'Waffles', 'Jelly', 'Rocky', 'Misty', 'Doodle', 'Sunny', 'Comet', 'Poppy', 'Tango', 'Ollie', 'Skipper', 'Lulu', 'Boba', 'Kiwi', 'Atlas', 'Luna', 'Echo', 'Wasabi', 'Pickle', 'Maple', 'Basil', 'Cinder', 'Dash', 'Fern', 'Gizmo', 'Hazel'];
@@ -192,6 +200,7 @@ function buyConsumable(id) {
 }
 /* Mutagen: flat chance for one extra random modifier (weighted by base rarity) */
 function applyBoost(mods, boostId, water) {
+  if (mods.length >= MAX_MODS) return mods;
   if (!boostId || Math.random() >= CONSUMABLE[boostId].boost * (1 + 0.1 * lab('mutagenesis'))) return mods;
   const pool = waterMods(water || 'fresh').filter(m => !mods.includes(m.id));
   if (!pool.length) return mods;
@@ -332,7 +341,7 @@ function removeFishRefs(fid) {
   S.fish = S.fish.filter(f => f.id !== fid);
   S.customers = S.customers.filter(c => c.fishId !== fid);
 }
-const quickSell = () => QUICK_SELL + 0.04 * S.storeUp.auction + 0.02 * lab('appraisal');
+const quickSell = () => QUICK_SELL + 0.03 * S.storeUp.auction + 0.01 * lab('appraisal');
 function sellMarket(fid) {
   const f = getFish(fid);
   if (!f || !isAdult(f)) return fail('Only fully grown fish can be sold');
@@ -341,7 +350,7 @@ function sellMarket(fid) {
   noteRecord(f); S.stats.marketSold++; const bk = S.book.sp[f.sp]; if (bk) bk.best = Math.max(bk.best, fishValue(f));
   let price = 0, tokens = 0;
   if (SPECIES[f.sp].ev) tokens = awardTokens(f);        // event fish pay tokens only, never money
-  else { price = Math.round(fishValue(f) * quickSell()); S.money += price; S.earned += price; }
+  else { price = marketPrice(f); S.market.glut += 1; noteDemand(f); S.money += price; S.earned += price; }
   removeFishRefs(fid); G.dirty = true;
   return { ok: true, price, tokens };
 }
@@ -363,18 +372,21 @@ function feedAll(auto) {
   for (const t of S.tanks) { const r = feedTank(t.id); if (r.ok) n++; else if (r.err === 'Not enough money for food') return { ok: n > 0, err: r.err, n }; }
   return n ? { ok: true, n } : fail('Nothing needs feeding');
 }
-function fillStore() {
+/* auto = the Display Handler: it only ever draws from Sale tanks (or fish tagged "Sell soon"), never from your breeding stock.
+   The manual button may take from any tank, but still skips favourites, protected tags and fish reserved for orders or the campaign boss. */
+function fillStore(auto) {
   const free = storeCap() - storeFish().length;
   if (free <= 0) return fail('Your display cases are full');
-  const cand = S.fish.filter(f => isAdult(f) && f.loc !== 'store' && !f.fav && !tagKept(f) && !SPECIES[f.sp].ev && !fishLocked(f)).sort((a, b) => fishValue(b) - fishValue(a)).slice(0, free);
-  if (!cand.length) return fail('No fully grown fish to display');
+  const cand = pickDisplay(displayCandidates(auto), free);
+  if (!cand.length) return fail(auto ? 'No fish in a Sale tank to display' : 'No fish available to display (favourites, tagged and reserved fish are skipped)');
   cand.forEach(f => (f.loc = 'store')); G.dirty = true; return { ok: true, n: cand.length };
 }
 function hatchAll(auto) {
   if (!auto && !S.unlocks.hatchAll) return fail('Buy the Hatchery Console in Shop → Management first');
   let n = 0;
   for (const e of S.eggs.slice()) {
-    const t = S.tanks.filter(t => !canHatchIn(e, t)).sort((a, b) => rating(a) - rating(b) || tankFree(b) - tankFree(a))[0];
+    // bred and wild eggs never auto-hatch into a Sale tank — those fish are your breeding stock
+    const t = S.tanks.filter(t => !canHatchIn(e, t) && !(t.sale && (e.bred || e.wild))).sort((a, b) => (a.sale ? 1 : 0) - (b.sale ? 1 : 0) || rating(a) - rating(b) || tankFree(b) - tankFree(a))[0];
     if (t && hatchEgg(e.id, t.id).ok) n++;
   }
   return n ? { ok: true, n } : fail('No egg fits in any tank right now');
@@ -400,14 +412,14 @@ function parentBonus(a, b, key) {
    and there is a small extra chance of one brand-new modifier on top. */
 function breedOdds(a, b) {
   const sa = SPECIES[a.sp], sb = SPECIES[b.sp], water = sa.w;
-  const tierUp = clamp(BASE_TIERUP * (1 + 0.25 * S.breedUp.lineage) * (1 + parentBonus(a, b, 'tier')) + 0.02 * lab('evolution') + campPerk('tier'), 0, 0.6);
-  const inh = clamp((BASE_INHERIT + 0.08 * S.breedUp.match + 0.03 * lab('bloodline') + campPerk('inherit')) * (1 + parentBonus(a, b, 'inherit')), 0, 0.95);
-  const fresh = clamp((BASE_NEWMOD + 0.015 * S.breedUp.mutation + 0.01 * lab('splicing')) * (1 + parentBonus(a, b, 'mod')), 0, 0.6);
+  const tierUp = clamp(BASE_TIERUP * (1 + 0.15 * S.breedUp.lineage) * (1 + parentBonus(a, b, 'tier')) + 0.02 * lab('evolution') + campPerk('tier'), 0, 0.3);
+  const inh = clamp((BASE_INHERIT + 0.06 * S.breedUp.match + 0.03 * lab('bloodline') + campPerk('inherit')) * (1 + parentBonus(a, b, 'inherit')), 0, 0.95);
+  const fresh = clamp((BASE_NEWMOD + 0.01 * S.breedUp.mutation + 0.008 * lab('splicing')) * (1 + parentBonus(a, b, 'mod')), 0, 0.6);
   const species = sa.id === sb.id ? [{ sp: sa.id, p: 1 }] : [{ sp: sa.id, p: 0.5 }, { sp: sb.id, p: 0.5 }];
   const mods = {}, pool = waterMods(water), tot = pool.reduce((x, m) => x + m.p, 0);
   [a, b].forEach(f => f.mods.forEach(m => { mods[m] = 1 - (1 - (mods[m] || 0)) * (1 - inh); }));
   pool.forEach(m => { mods[m.id] = 1 - (1 - (mods[m.id] || 0)) * (1 - fresh * m.p / tot); });
-  return { species, tierUp, inh, fresh, mods, eggs: 1 + S.breedUp.clutch + Math.floor(lab('cloning') / 2) };
+  return { species, tierUp, inh, fresh, mods, max: MAX_MODS, eggs: 1 + S.breedUp.clutch + Math.floor(lab('cloning') / 2) };
 }
 function pickWeightedMod(water, have) {
   const pool = waterMods(water).filter(m => !have.includes(m.id)); if (!pool.length) return null;
@@ -428,19 +440,20 @@ function breedFish(aid, bid, boostId) {
   for (let i = 0; i < odds.eggs; i++) {
     let sp = pick([a, b]).sp, up = false;
     const s = SPECIES[sp];
-    if (s.t < maxTierOf(water) && Math.random() < odds.tierUp) { sp = pick(speciesOf(water, s.t + 1).filter(x => !x.exp)).id; up = true; }
+    if (s.t < maxTierOf(water) && tierReachable(water, s.t + 1) && Math.random() < odds.tierUp) { sp = pick(speciesOf(water, s.t + 1).filter(x => !x.exp)).id; up = true; }
     let mods = [];
     [a, b].forEach(p => p.mods.forEach(m => { if (!mods.includes(m) && Math.random() < odds.inh) mods.push(m); }));
     if (lab('chimera') && !mods.length) { const u = [...new Set(a.mods.concat(b.mods))]; if (u.length) mods.push(pick(u)); }
+    if (mods.length > MAX_MODS) mods = shuffled(mods).slice(0, MAX_MODS);
     const inherited = mods.length;
     let fresh = null;
-    if (Math.random() < odds.fresh) { fresh = pickWeightedMod(water, mods); if (fresh) mods.push(fresh); }
+    if (mods.length < MAX_MODS && Math.random() < odds.fresh) { fresh = pickWeightedMod(water, mods); if (fresh) mods.push(fresh); }
     mods = applyBoost(mods, boostId, water);
     const egg = { id: 'e' + S.nextId++, water, tier: SPECIES[sp].t, bred: { sp, mods, parents: [a.id, b.id], gen: Math.max(a.gen || 0, b.gen || 0) + 1 } };
     S.eggs.push(egg);
     made.push({ sp, mods, up, inherited, fresh });
   }
-  const cd = breedCooldown() * (1 - clamp(parentBonus(a, b, 'cool'), 0, 0.6));
+  const cd = breedCooldown() * restFactor(a, b) * (1 - clamp(parentBonus(a, b, 'cool'), 0, 0.6));
   a.ready = b.ready = S.time + cd;
   S.bredCount++;
   G.dirty = true;
@@ -450,7 +463,7 @@ function breedFish(aid, bid, boostId) {
 /* ---------- store ---------- */
 const CUSTOMER_NAMES = ['Ava', 'Ben', 'Chloe', 'Dmitri', 'Elena', 'Farid', 'Gina', 'Hugo', 'Iris', 'Jonas', 'Keiko', 'Liam', 'Mina', 'Noah', 'Olga', 'Pablo', 'Quinn', 'Rosa', 'Sven', 'Tara', 'Uma', 'Vic', 'Wren', 'Xavi', 'Yara', 'Zed'];
 const CUSTOMER_FACES = ['🧑', '👩', '👨', '🧓', '👧', '👦', '🧔', '👩‍🦰', '👨‍🦳', '🧑‍🎤', '🧑‍🔬', '🧑‍🍳'];
-function arrivalInterval() { return 16 / trafficMult() / ((1 + 0.3 * S.storeUp.ads) * (1 + 0.08 * lab('marketing')) * (1 + campPerk('cust'))); }
+function arrivalInterval() { return 28 / trafficMult() / ((1 + 0.15 * S.storeUp.ads) * (1 + 0.05 * lab('marketing')) * (1 + campPerk('cust'))); }
 function spawnCustomer() {
   const fs = storeFish();
   if (!fs.length || S.customers.length >= customerCap()) return;
@@ -470,7 +483,7 @@ function spawnCustomer() {
   const v = fishValue(f);
   const sign = 1 + 0.06 * S.storeUp.sign + 0.03 * lab('negotiation') + (lab('tycoon') ? 0.15 : 0);
   let mult = { browser: rnd(0.8, 1.15), enthusiast: rnd(1.1, 1.45), bargain: rnd(0.55, 0.8), collector: rnd(1.4, 2.1), vip: rnd(2.5, 4) }[type];
-  const offer = Math.max(1, Math.round(v * mult * sign));
+  const offer = Math.max(1, Math.round(v * mult * sign * demandFactor(f)));
   const pat = 40 + 10 * S.storeUp.seats + 4 * lab('loyalty'), browse = rnd(7, 14) * (1 - 0.12 * S.storeUp.quick);
   S.customers.push({
     id: 'c' + S.nextId++, name: pick(CUSTOMER_NAMES), face: pick(CUSTOMER_FACES), type, fishId: f.id,
@@ -484,7 +497,7 @@ function acceptCustomer(cid) {
   const f = getFish(c.fishId);
   if (!f) { S.customers = S.customers.filter(x => x !== c); return fail('Fish gone'); }
   noteRecord(f); awardTokens(f); const bk = S.book.sp[f.sp]; if (bk) bk.best = Math.max(bk.best, fishValue(f));
-  S.money += c.offer; S.earned += c.offer; S.sales++;
+  S.money += c.offer; S.earned += c.offer; S.sales++; noteDemand(f);
   S.bestValue = Math.max(S.bestValue || 0, c.offer);
   const before = level();
   removeFishRefs(f.id);
