@@ -1,19 +1,6 @@
 'use strict';
 /* ===== UI ===== */
 
-const Sfx = {
-  ctx: null,
-  play(kind) {
-    if (!S || !S.settings || !S.settings.sound) return;
-    try {
-      if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-      const c = this.ctx; if (c.state === 'suspended') c.resume();
-      const seq = { sale: [[880, 0.07], [1320, 0.13]], pop: [[420, 0.05], [660, 0.08]], buy: [[640, 0.05]], good: [[520, 0.07], [660, 0.07], [880, 0.12]], level: [[523, 0.1], [659, 0.1], [784, 0.1], [1047, 0.22]], err: [[190, 0.12]] }[kind]; if (!seq) return;
-      let t = c.currentTime;
-      seq.forEach(([f, d]) => { const o = c.createOscillator(), g = c.createGain(); o.type = kind === 'err' ? 'sawtooth' : 'triangle'; o.frequency.value = f; g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.1, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + d); o.connect(g); g.connect(c.destination); o.start(t); o.stop(t + d + 0.02); t += d * 0.9; });
-    } catch (e) {}
-  },
-};
 const UI = { tab: 'store', qty: 1, sort: 'value', onlyMods: false, tankId: null, shopCat: 'eggs', upTank: null, sel: [], modal: null, lastBreed: null, boost: null, selFish: null, filterTank: 'all', filterTag: 'all', homeTip: null, eggSort: 'tier', eggTier: 'all', eggWater: 'all', bgroup: 'tank', bmore: {}, bq: '' };
 const $ = s => document.querySelector(s);
 const pct = x => { const v = x * 100; return (v < 10 && v > 0 ? v.toFixed(1) : Math.round(v)) + '%'; };
@@ -94,7 +81,7 @@ function viewStore() {
   const fs = storeFish(), cap = storeCap();
   let h = pageHead('Your Store', `Display fully grown fish in your cases and customers will make offers. Click a tank in the shop to manage it.`,
     `${S.storeUp.cashier ? `<span class="pill">Cashier ${btn(S.cashierOn ? 'ON' : 'OFF', 'cashier', {}, 'sm')} <b>≥ ${Math.round(cashierThreshold() * 100)}%</b></span>` : ''}${storeCap() > fs.length ? btn('Auto-fill cases', 'fillStore') : ''}${btn('Upgrade store', 'goStoreUp', {}, 'pri')}`);
-  h += `<div class="scenewrap" style="position:relative"><canvas class="storescene"></canvas>${zoomCtl()}</div>`;
+  h += townBanner() + `<div class="scenewrap" style="position:relative"><canvas class="storescene"></canvas>${zoomCtl()}</div>`;
   h += `<div class="stats" style="margin-top:16px">${pill('Sales', S.sales)}${pill('Total earned', fmt(S.earned))}${pill('Best sale', fmt(S.bestValue || 0))}${clockPill() + pill('Next customer', '~' + Math.round(arrivalInterval()) + 's')}${pill('Display cases', fs.length + '/' + cap)}</div>`;
   h += guideCard() + fold('store:record', 'Most valuable fish yet', recordCard(false), true);
   const ready = S.customers.filter(c => c.ready), browsing = S.customers.length - ready.length;
@@ -104,14 +91,14 @@ function viewStore() {
   for (const c of ready) {
     const f = getFish(c.fishId); if (!f) continue;
     const v = fishValue(f), r = c.offer / v, cols = ['#7ec8ff', '#ffb870', '#9be8b0', '#d6a8ff', '#ffa8c8'];
-    const desc = { vip: 'VIP guest — pays a premium', browser: 'Just browsing', enthusiast: `Really wants a ${SPECIES[f.sp].n}`, bargain: 'Hunting for a bargain', collector: 'Collector — loves modified fish' }[c.type];
+    const desc = { vip: 'VIP guest — pays a premium', event: `${(TOWN_EVENT[S.town.cur ? S.town.cur.id : 'school'] || {}).icon || '🎟'} Here for the event`, browser: 'Just browsing', enthusiast: `Really wants a ${SPECIES[f.sp].n}`, bargain: 'Hunting for a bargain', collector: 'Collector — loves modified fish' }[c.type];
     h += `<div class="card cust"><div class="av" style="background:${cols[hash(c.id) % 5]}">${c.name[0]}</div>
       <div class="grow"><b>${c.name}</b> <span class="dim">· ${desc}</span><div class="small dim">wants ${esc(f.name)} · ${esc(fishName(f))}</div><div class="bar pat" style="margin-top:7px;max-width:200px"><i data-pat="${c.id}" style="width:${Math.max(0, c.pat / c.patMax * 100)}%"></i></div></div>
       <div style="text-align:right"><div class="offer ${r >= 1 ? 'good' : r < 0.8 ? 'badc' : ''}">${fmt(c.offer)}</div><div class="small dim">${Math.round(r * 100)}% of ${fmt(v)}</div></div>
       <div class="row" style="gap:6px;flex-wrap:nowrap">${btn('Accept', 'accept', { x: c.id }, 'pri')}${btn('✕', 'decline', { x: c.id }, 'sm bad')}</div></div>`;
   }
   h += `</div><div><h3>Display cases</h3><div class="casegrid">`;
-  for (const f of fs) h += `<div class="casecard"><div data-act="openFish" data-x="${f.id}" style="cursor:pointer">${fishPic(f, 70)}</div><div class="grow" style="min-width:0"><div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${f.fav ? '<span class="gold">★</span> ' : ''}${esc(f.name)}${tagDot(f)}</div><div class="small dim" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(fishName(f))}</div><div class="gold small">${fmt(fishValue(f))}</div></div>${btn('Take back', 'unstore', { x: f.id }, 'sm ghost')}</div>`;
+  for (const f of fs) h += `<div class="casecard"><div data-act="openFish" data-x="${f.id}" style="cursor:pointer">${fishPic(f, 70)}</div><div class="grow" style="min-width:0"><div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${f.fav ? '<span class="gold">★</span> ' : ''}${esc(f.name)}${tagDot(f)}</div><div class="small dim" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(fishName(f))}</div><div class="gold small">${fmt(fishValue(f))}${S.town.cur && townWants(S.town.cur, f) ? ' <span class="wantflag">★ in demand</span>' : ''}</div></div>${btn('Take back', 'unstore', { x: f.id }, 'sm ghost')}</div>`;
   for (let i = fs.length; i < cap; i++) h += `<div class="casecard emptyc" data-act="storeAdd">＋ Add a fish</div>`;
   return h + `</div>${contractsPanel()}</div></div>`;
 }
@@ -270,12 +257,12 @@ function viewShop() {
 /* ---------- INVENTORY ---------- */
 /* ---------- MENU ---------- */
 function viewMenu() {
-  const settings = `<div class="row"><button class="boost-chip ${S.settings.sound ? 'on' : ''}" data-act="setting" data-x="sound">Sound effects: ${S.settings.sound ? 'On' : 'Off'}</button><button class="boost-chip ${S.settings.fx ? 'on' : ''}" data-act="setting" data-x="fx">Modifier particle effects: ${S.settings.fx ? 'On' : 'Off'}</button></div><div class="row" style="margin-top:12px"><span class="dim small">Seasonal events</span><select data-change="evPreview"><option value="auto" ${S.settings.event === 'auto' ? 'selected' : ''}>Real calendar dates</option><option value="all" ${S.settings.event === 'all' ? 'selected' : ''}>Preview: all events active</option>${EVENTS.map(e => `<option value="${e.id}" ${S.settings.event === e.id ? 'selected' : ''}>Preview: ${e.n}</option>`).join('')}</select></div>${daymodeRow()}<div class="dim small" style="margin-top:8px">Shortcuts: 1–9 switch pages · + / − zoom the tank or store · 0 resets the view · ← → switch tank · Esc closes dialogs</div>`;
+  const settings = `<div class="row"><button class="boost-chip ${S.settings.fx ? 'on' : ''}" data-act="setting" data-x="fx">Modifier particle effects: ${S.settings.fx ? 'On' : 'Off'}</button></div><div class="row" style="margin-top:12px"><span class="dim small">Seasonal events</span><select data-change="evPreview"><option value="auto" ${S.settings.event === 'auto' ? 'selected' : ''}>Real calendar dates</option><option value="all" ${S.settings.event === 'all' ? 'selected' : ''}>Preview: all events active</option>${EVENTS.map(e => `<option value="${e.id}" ${S.settings.event === e.id ? 'selected' : ''}>Preview: ${e.n}</option>`).join('')}</select></div>${daymodeRow()}<div class="dim small" style="margin-top:8px">Shortcuts: 1–9 switch pages · + / − zoom the tank or store · 0 resets the view · ← → switch tank · Esc closes dialogs</div>`;
   const stats = `<div class="stats">${pill('Fish owned', S.fish.length)}${pill('Times bred', S.bredCount)}${pill('Total earned', fmt(S.earned))}${pill('Play time', Math.round(S.time / 60) + ' min')}</div>`;
   const mods = `<div class="card">${MODS_LIST.map(m => `<div class="row" style="padding:5px 0"><span class="chip m${m.t}" style="min-width:128px">${m.icon} ${m.n}</span><span class="dim small grow">${m.d}</span><span class="gold small">+${Math.round((m.m - 1) * 100)}%</span></div>`).join('')}</div>`;
   return pageHead('Menu', 'Saves happen automatically every 10 seconds. Fish keep growing while you are away (up to 4 hours).') +
     `<div class="row">${btn('Save now', 'save', {}, 'pri')}${btn('How to play', 'help')}${btn('Export save', 'export')}${btn('Import save', 'import')}${btn('Reset game', 'reset', {}, 'bad')}</div>` +
-    fold('menu:settings', 'Settings', settings, true) + fold('menu:stats', 'Statistics', stats, false) + fold('menu:version', 'Version ' + GAME_VERSION + ' & changelog', versionCard(), false) + fold('menu:mods', 'Modifier list', mods, false, MODS_LIST.length + ' modifiers');
+    fold('menu:settings', 'Settings', settings, true) + fold('menu:sound', '🔊 Sound & music', soundSettings(), true) + fold('menu:story', '📖 Story journal', journalPanel(), false, CHAPTERS.filter(c => S.story.done[c.id]).length + '/' + CHAPTERS.length) + fold('menu:stats', 'Statistics', stats, false) + fold('menu:version', 'Version ' + GAME_VERSION + ' & changelog', versionCard(), false) + fold('menu:mods', 'Modifier list', mods, false, MODS_LIST.length + ' modifiers');
 }
 
 /* ---------- MODALS ---------- */
@@ -309,6 +296,7 @@ function modalHTML() {
     case 'away': h += awayModal(); break;
     case 'rulesPrev': h += rulesPreviewModal(); break;
     case 'planner': h += plannerModal(); break;
+    case 'story': return storyModal(m);
     case 'pickTank': {
       const f = getFish(m.id), sp = SPECIES[f.sp];
       h += `<h2>Move ${esc(fishName(f))}</h2>` + S.tanks.map(t => {
@@ -432,7 +420,7 @@ const ACT = {
   fillStore: () => { const r = fillStore(); res(r); if (r.ok) { toast(`Put ${r.n} fish on display`, 'good'); Sfx.play('pop'); } },
   hatchAll: () => { const r = hatchAll(); res(r); if (r.ok) { toast(`Hatched ${r.n} egg${r.n > 1 ? 's' : ''}`, 'good'); Sfx.play('pop'); } },
   sortBy: d => { UI.sort = d.x; }, onlyMods: () => { UI.onlyMods = !UI.onlyMods; }, setQty: d => { UI.qty = +d.x; },
-  setting: d => { S.settings[d.x] = !S.settings[d.x]; G.lowFx = !S.settings.fx; if (d.x === 'sound' && S.settings.sound) Sfx.play('good'); },
+  setting: d => { S.settings[d.x] = !S.settings[d.x]; G.lowFx = !S.settings.fx; Sfx.apply(); if (d.x === 'sound' && S.settings.sound) Sfx.play('good'); },
   noop: () => toast('Locked — reach a higher store level / get a saltwater tank', 'bad'),
   tab: d => { UI.tab = d.x; delete S.g4.fresh[d.x]; if (d.x !== 'hall') UI.tankId = null; },
   openTank: d => { UI.tankId = d.x; UI.tab = 'hall'; },

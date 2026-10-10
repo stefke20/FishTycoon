@@ -1,8 +1,9 @@
 'use strict';
 /* ===== Quality-of-life layer: fish tags, auto-rules, tab unlocks, first-hour guide, away report, day/night clock, breeding planner ===== */
 
-const GAME_VERSION = '1.2.0';
+const GAME_VERSION = '1.3.0';
 const CHANGELOG = [
+  { v: '1.3.0', d: 'Estate, weather, sound and a story', notes: ['Home grows into an estate: living room, a garden with a pond and an aquarium gallery with a walk-through glass tunnel — each in three upgrade levels with a permanent perk', 'Hall of Fame now holds 60 fish: the top 20 in the living room, the next freshwater fish in the pond and the next saltwater fish in the gallery', 'Weather in the store (sun, clouds, rain, storms, snow): rain and storms keep people home, but those who come are serious buyers', 'Local events — school trips, conventions, a chef, weddings, tourist buses — send a rush of customers who want one kind of fish and pay extra for it', 'Sound and music: generated sound effects, ambience (water, rain, crickets, birds) and a live-composed soundtrack that follows the time of day, weather and events — with volume controls in the Menu', 'A story told on illustrated cards: twelve chapters about Uncle Barnaby’s shop, with a journal in the Menu'] },
   { v: '1.2.0', d: 'Tidier, safer and rebalanced', notes: ['Arrows and a dropdown in every tank to jump to the next or previous aquarium (also ← → on the keyboard)', 'Sections you can fold away on the Inventory, Store, Shop, Menu, Stats, Collection and tank pages; compact list for the Aquarium Hall', 'Egg manager: sort by rarity, filter by tier or water, identical eggs stack, and eggs can be destroyed (one, a stack, or everything shown)', 'Breeding page rebuilt: search, group by aquarium / species / rarity, ready-only filter and compact rows', 'Sell a tank back, or trade a small tank in for the next size up (Starter → Medium → Large → Grand → Colossal, and the reef line)', 'Sale tanks: the Display Handler and Auto-fill only sell fish from tanks you mark as Sale tanks — breeding stock and campaign fish are never sold by accident', 'A fish can carry at most 5 modifiers, and modifiers now add together instead of multiplying', 'The Breeding Nest upgrade is limited to 3 levels', 'Economy rebalance: slower growth and breeding for rarer fish, tier-ups follow your store level, the fish market gets saturated when flooded, and customers tire of identical fish'] },
   { v: '1.1.0', d: 'Quality of life', notes: ['Auto-rules: sell plain fish and keep only the best of each species automatically (Shop → Management)', 'Coloured fish tags (Breeding stock, Boss candidate, Show fish, Keeper, Sell soon) that every filter understands', 'Breeding planner: pick any target fish and see the cheapest chain of pairings', 'Day and night lighting with a lunch-time rush in the store', 'A "while you were away" card when you start the game', 'A six-step first-hour checklist with rewards', 'Home, Fish Shows, Expeditions, Research and the Campaign now unlock with your store level, with a one-time "new" card'] },
   { v: '1.0.0', d: 'First release', notes: ['Store, aquariums, breeding, expeditions, fish shows, daily quests, research tree and the Ocean Campaign'] },
@@ -15,8 +16,10 @@ function ensureG4() {
   const legacy = !S.g4 && (S.sales > 0 || S.fish.length > 0 || S.time > 60);
   S.g4 = Object.assign({ seen: {}, fresh: {}, q: [], guide: {}, guideBonus: false, guideHide: false }, S.g4);
   S.market = Object.assign({ glut: 0 }, S.market); S.demand = S.demand || {};
+  if (typeof ensureG5 === 'function') ensureG5(); if (typeof ensureG6 === 'function') ensureG6(); if (typeof ensureG7 === 'function') ensureG7();
   S.rules = Object.assign({ on: false, list: [], sold: 0, money: 0, last: 0 }, S.rules);
   if (!S.settings.daymode) S.settings.daymode = 'auto';
+  if (S.settings.music == null) S.settings.music = true; if (S.settings.ambient == null) S.settings.ambient = true;
   if (legacy) {
     for (const id in TAB_REQ) if (level() >= TAB_REQ[id]) S.g4.seen[id] = true;
     GUIDE.forEach(g => (S.g4.guide[g.id] = true)); S.g4.guideBonus = true; S.g4.guideHide = true;
@@ -169,6 +172,7 @@ function lightTint(soft) {
   const { k, warm } = sunAt(lightHour());
   let c = mixRGB([104, 120, 188], [255, 255, 255], k);
   c = mixRGB(c, [255, 190, 130], warm * 0.55);
+  c = mixRGB(c, [96, 108, 132], wxNow().dim * 0.8);
   if (soft) c = mixRGB(c, [255, 255, 255], 0.5);
   return c;
 }
@@ -176,7 +180,7 @@ const TRAFFIC_PTS = [[0, 0.5], [5, 0.5], [7, 0.8], [9, 1.0], [10.5, 1.15], [12.2
 function trafficMult() {
   const h = trafficHour(); let i = 1; while (i < TRAFFIC_PTS.length - 1 && TRAFFIC_PTS[i][0] < h) i++;
   const [h0, v0] = TRAFFIC_PTS[i - 1], [h1, v1] = TRAFFIC_PTS[i];
-  return v0 + (v1 - v0) * smooth((h - h0) / (h1 - h0 || 1));
+  return (v0 + (v1 - v0) * smooth((h - h0) / (h1 - h0 || 1))) * wxTraffic();
 }
 function clockPhase() {
   const h = trafficHour();
@@ -257,7 +261,7 @@ function planFor(spId, wanted) {
 /* ================= tick ================= */
 let _g4T = 0, _g4Phase = '', _g4Sig = -1;
 function tickG4(dt) {
-  tickRules(dt); S.market.glut = Math.max(0, S.market.glut - MARKET_RECOVER * dt); decayDemand(dt);
+  tickRules(dt); tickWeather(dt); S.market.glut = Math.max(0, S.market.glut - MARKET_RECOVER * dt); decayDemand(dt);
   _g4T += dt; if (_g4T < 1) return; _g4T = 0;
   for (const id in TAB_REQ) if (tabOpen(id) && !S.g4.seen[id] && !S.g4.q.includes(id)) { S.g4.q.push(id); S.g4.fresh[id] = true; G.dirty = true; }
   const ph = clockPhase();
@@ -266,6 +270,7 @@ function tickG4(dt) {
     _g4Phase = ph.id; G.dirty = true;
   }
   const sig = guideClaimable(); if (sig !== _g4Sig) { _g4Sig = sig; G.dirty = true; }
+  tickStory();
 }
 
 /* ================= EGG MANAGEMENT ================= */

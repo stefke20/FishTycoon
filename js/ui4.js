@@ -40,7 +40,7 @@ function rulesPreviewModal() {
 
 /* ---------- new-feature cards & tab hints ---------- */
 const NEW_INFO = {
-  home: ['🏠', 'Home', 'Your living room, with a big aquarium that shows the 20 most valuable fish you have ever owned.'],
+  home: ['🏠', 'Home', 'Your estate: a living room with a big aquarium, and later a garden pond and an aquarium gallery. Upgrade each for a permanent perk.'],
   shows: ['🏆', 'Fish Shows', 'Enter your best fish in shows and tournaments for prize money, medals (permanent value) and fame.'],
   exp: ['⛵', 'Expeditions', 'Send boats to far-away waters and bring home wild eggs of exclusive species with wild modifiers.'],
   research: ['🔬', 'Research', 'Spend research points on permanent upgrades across six branches of the tree.'],
@@ -94,10 +94,12 @@ function awayModal() {
 }
 
 /* ---------- clock ---------- */
-const clockPillHTML = () => { const p = clockPhase(), t = trafficMult(); return `${p.icon} <b>${clockText()}</b> ${p.n}${t >= 1.15 ? ` <span class="good small">customers ×${t.toFixed(1)}</span>` : t <= 0.7 ? ` <span class="dim small">customers ×${t.toFixed(1)}</span>` : ''}`; };
+const clockPillHTML = () => { const p = clockPhase(), t = trafficMult(), w = wxNow(); return `${p.icon} <b>${clockText()}</b> ${p.n} · ${w.icon} ${w.n}${S.town.cur ? ' · ' + TOWN_EVENT[S.town.cur.id].icon : ''}${t >= 1.15 ? ` <span class="good small">customers ×${t.toFixed(1)}</span>` : t <= 0.7 ? ` <span class="dim small">customers ×${t.toFixed(1)}</span>` : ''}`; };
 const clockPill = () => `<span class="pill" data-clockpill title="Game time — customers come more often at lunch and in the evening (set the lighting in the Menu)">${clockPillHTML()}</span>`;
 let _tintKey = '';
 function liveG4() {
+  document.querySelectorAll('[data-townt]').forEach(el => { if (S.town.cur) el.textContent = mmss(S.town.cur.left); });
+  document.querySelectorAll('[data-townbar]').forEach(el => { if (S.town.cur) el.style.width = Math.round(S.town.cur.left / S.town.cur.total * 100) + '%'; });
   document.querySelectorAll('[data-clockpill]').forEach(el => { const h = clockPillHTML(); if (el._h !== h) { el._h = h; el.innerHTML = h; } });
   const a = lightTint(false), b = lightTint(true), key = a.join() + '|' + b.join();
   if (key !== _tintKey) { _tintKey = key; const r = document.documentElement.style; r.setProperty('--dn-tint', `rgb(${a})`); r.setProperty('--dn-soft', `rgb(${b})`); if (typeof Scenes !== 'undefined') Scenes.list.forEach(s => s.dayNight && s.dayNight(sunAt(lightHour()))); }
@@ -167,6 +169,7 @@ function changeG4(e) {
 function checkPopups() {
   if (UI.modal || (typeof DRAG !== 'undefined' && DRAG.ghost) || mouseDown) return false;
   if (S.g4.q.length) { UI.modal = { type: 'newFeature', ids: S.g4.q.slice() }; S.g4.q.forEach(id => (S.g4.seen[id] = true)); S.g4.q = []; return true; }
+  if (S.story.queue.length) { const id = S.story.queue[0], rt = startChapter(id); UI.modal = { type: 'story', id, page: 0, reward: rt }; Sfx.play('card'); return true; }
   return false;
 }
 
@@ -314,4 +317,23 @@ changeG4 = function (e) {
   if (k === 'bgroup') { UI.bgroup = v; return true; }
   if (k === 'bq') { UI.bq = v; return true; }
   return _changeG4(e);
+};
+
+/* ---------- local event banner (Store) ---------- */
+function townBanner() {
+  const ev = S.town.cur; if (!ev) return '';
+  const d = TOWN_EVENT[ev.id], have = storeFish().filter(f => townWants(ev, f)).length;
+  return `<div class="card townbanner"><div class="tbicon">${d.icon}</div><div class="grow"><b>${d.n}</b> <span class="dim small">· ends in <span data-townt>${mmss(ev.left)}</span></span><div class="small dim">${d.d} They want <b class="gold">${townWantText(ev)}</b> — offers ×${d.want} for those, ×${d.other} for everything else. Arrivals ×${d.traffic}.</div><div class="bar" style="margin-top:6px"><i data-townbar style="width:${Math.round(ev.left / ev.total * 100)}%"></i></div></div><div style="text-align:right">${ev.id === 'tourists' ? '' : have ? `<div class="good small">${have} in your cases</div>` : '<div class="badc small">None in your cases!</div>'}<div class="small dim">${ev.sold} sold · ${fmt(ev.earned)}</div></div></div>`;
+}
+
+/* ---------- sound settings (Menu) ---------- */
+function soundSettings() {
+  const row = (key, vol, label, hint) => `<div class="row sndrow"><button class="boost-chip ${S.settings[key] !== false ? 'on' : ''}" data-act="setting" data-x="${key}" style="min-width:150px">${label}: ${S.settings[key] !== false ? 'On' : 'Off'}</button><input type="range" min="0" max="100" value="${Math.round((S.settings[vol] == null ? { vol: 0.8, mvol: 0.45, avol: 0.5 }[vol] : S.settings[vol]) * 100)}" data-change="vol" data-x="${vol}" style="width:200px"><span class="dim small">${hint}</span></div>`;
+  return row('sound', 'vol', 'Sound effects', 'sales, clicks, thunder, door bell') + row('music', 'mvol', 'Music', 'generated live — it follows the time of day, the weather and events') + row('ambient', 'avol', 'Ambience', 'water, rain, crickets and birdsong') + `<div class="row" style="margin-top:8px"><span class="dim small">Now playing: <b>${Sfx.moodName()}</b></span><span class="grow"></span>${btn('Test sound', 'sfxTest', {}, 'sm')}</div>`;
+}
+Object.assign(ACT4, { sfxTest: () => { Sfx.play('level'); return false; } });
+const _changeG4b = changeG4;
+changeG4 = function (e) {
+  if (e.target.dataset.change === 'vol') { S.settings[e.target.dataset.x] = +e.target.value / 100; Sfx.apply(); Sfx.play('pop'); return true; }
+  return _changeG4b(e);
 };

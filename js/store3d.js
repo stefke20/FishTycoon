@@ -274,7 +274,7 @@ class StoreScene {
         const late = c.age > 2, st = late ? pick(BROWSE_SPOTS) : DOOR;
         p = new Person(app, st); p.speed = 24 + (hash(c.id) % 8); p.c = c; p.state = 'browse'; p.wait = rnd(0.5, 2); p.spot = null;
         if (!late) { p.g.rotation.y = -Math.PI / 2; p.yaw = -Math.PI / 2; p.navTo(DOOR_IN[0], DOOR_IN[1]); p.entering = true; }
-        this.scene.add(p.g); this.people.set(c.id, p);
+        this.scene.add(p.g); this.people.set(c.id, p); if (!late && typeof Sfx !== 'undefined') Sfx.play('bell');
       }
       p.c = c;
       if (c.ready) {
@@ -315,10 +315,20 @@ class StoreScene {
     const ctx = this.ctx; ctx.clearRect(0, 0, this.cv.width, this.cv.height); ctx.drawImage(GL.r.domElement, 0, 0);
     this.overlay(ctx, dt);
   }
-  frame(dt) { if (!this._dn) { this._dn = 1; this.dayNight(sunAt(lightHour())); } this.frameDt(dt); }
+  frame(dt) {
+    if (!this._dn) { this._dn = 1; this.dayNight(sunAt(lightHour())); }
+    if (!this.wx) {   // rain outside the door and on the window
+      this.wx = new WxFX(this.scene, { x0: 200, x1: 232, y0: 0, y1: 78, z0: -1.9, z1: -0.5 }, 70); this.winRain = new WindowRain(54, 38, this.scene, [0.9, SHOP.WH - 49, SHOP.D - 90], Math.PI / 2);
+    }
+    const kind = S.wx.kind; this.wx.update(dt, kind); this.winRain.update(dt, kind);
+    if (S.wx.flash && this._flash !== S.wx.flash) { this._flash = S.wx.flash; this.flashT = 0.4; const w = this.cv.parentElement; if (w) { w.classList.add('flash'); setTimeout(() => w.classList.remove('flash'), 450); } }
+    if (this.flashT > 0) { this.flashT -= dt; this.dayNight(sunAt(lightHour())); }
+    this.frameDt(dt);
+  }
   /* the street behind the door follows the time of day */
   dayNight(sun) {
-    if (!this.street) return; const c = mixRGB(mixRGB([14, 22, 52], [207, 233, 245], sun.k), [255, 170, 110], sun.warm * 0.5);
+    if (!this.street) return; let c = mixRGB(mixRGB([14, 22, 52], [207, 233, 245], sun.k), [255, 170, 110], sun.warm * 0.5);
+    c = mixRGB(c, [70, 82, 100], wxNow().dim * 0.9); if (this.flashT > 0) c = [255, 255, 255];
     this.street.material.color.setRGB(c[0] / 255, c[1] / 255, c[2] / 255);
   }
   proj(x, y, z) { const v = new THREE.Vector3(x, y, z).project(this.cam); return [(v.x + 1) / 2 * this.cv.width, (1 - v.y) / 2 * this.cv.height]; }
@@ -339,7 +349,7 @@ class StoreScene {
       const pp = this.proj(p.g.position.x, 40, p.g.position.z);
       if (!c.ready) { if (!p.moving) bubble('…', pp[0], pp[1], '#9fb3c8'); return; }
       const r = c.offer / fishValue(f);
-      bubble((c.type === 'collector' ? '★ ' : c.type === 'vip' ? '👑 ' : '') + fmt(c.offer), pp[0], pp[1], r >= 1 ? '#2fb46a' : r < 0.8 ? '#e0505a' : '#5a7a9a', c.pat / c.patMax);
+      bubble((c.type === 'collector' ? '★ ' : c.type === 'vip' ? '👑 ' : c.type === 'event' ? '🎟 ' : '') + fmt(c.offer), pp[0], pp[1], r >= 1 ? '#2fb46a' : r < 0.8 ? '#e0505a' : '#5a7a9a', c.pat / c.patMax);
     });
     this.floats = this.floats.filter(f => (f.t += dt) < 1.6); this.floats.forEach(f => { const p = this.proj(192, 44 + f.t * 24, 120); ctx.globalAlpha = Math.max(0, 1 - f.t / 1.6); ctx.font = `700 ${Math.round(20 * k)}px system-ui`; ctx.fillStyle = '#ffd36a'; ctx.fillText(f.txt, p[0], p[1]); ctx.globalAlpha = 1; });
   }

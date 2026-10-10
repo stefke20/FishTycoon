@@ -572,7 +572,9 @@ const Scenes = {
     document.querySelectorAll('canvas.campscene').forEach(cv => { if (typeof CampScene !== 'undefined') claim('camp', cv, sc => {}, () => new CampScene(cv)); });
     document.querySelectorAll('canvas.bossscene').forEach(cv => { const i = +cv.dataset.idx; claim('boss:' + i, cv, sc => {}, () => new BossScene(cv, i)); });
     document.querySelectorAll('canvas.homescene').forEach(cv => { if (typeof HomeScene === 'undefined') return; claim('home', cv, sc => {}, () => new HomeScene(cv)); });
-    old.forEach((sc, k) => { if (k === 'store' || k === 'home' || k === 'exp' || k === 'show' || k === 'camp') this.cache.set(k, sc); else sc.dispose(); });
+    document.querySelectorAll('canvas.gardenscene').forEach(cv => { if (typeof GardenScene === 'undefined') return; claim('garden', cv, sc => {}, () => new GardenScene(cv)); });
+    document.querySelectorAll('canvas.galleryscene').forEach(cv => { if (typeof GalleryScene === 'undefined') return; claim('gallery', cv, sc => {}, () => new GalleryScene(cv)); });
+    old.forEach((sc, k) => { if (k === 'store' || k === 'home' || k === 'garden' || k === 'gallery' || k === 'exp' || k === 'show' || k === 'camp') this.cache.set(k, sc); else sc.dispose(); });
     this.list = next;
     if (!this.running) { this.running = true; requestAnimationFrame(t => Scenes.loop(t)); }
   },

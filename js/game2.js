@@ -142,7 +142,7 @@ function noteHof(f) {
   const i = S.hof.findIndex(x => x.id === f.id);
   if (i >= 0) { if (v > S.hof[i].value) S.hof[i] = e; else { S.hof[i].name = f.name; return; } }
   else S.hof.push(e);
-  S.hof.sort((a, b) => b.value - a.value); S.hof.length = Math.min(S.hof.length, 20);
+  S.hof.sort((a, b) => b.value - a.value); S.hof.length = Math.min(S.hof.length, HOF_MAX);
 }
 function seedHof() { S.fish.forEach(f => { if (f.g >= 1) noteHof(f); }); }
 function noteRecord(f) {

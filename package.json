@@ -1,6 +1,6 @@
 {
   "name": "fish-tycoon",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "A Fish Tycoon inspired idle/management game",
   "author": "stefke20",
   "main": "main.js",

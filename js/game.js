@@ -116,16 +116,16 @@ function tankBonus(t) {
   t.slots.forEach(id => id && add(DECOR_BY_ID[id].b));
   add(SKIN[t.skin].b);
   const u = t.up;
-  b.growth += 0.05 * u.filter + 0.10 * u.aerator + 0.06 * u.heater + 0.05 * lab('nutrition') + sanctGrowth() + campPerk('growth');
+  b.growth += 0.05 * u.filter + 0.10 * u.aerator + 0.06 * u.heater + 0.05 * lab('nutrition') + sanctGrowth() + campPerk('growth') + estatePerk('growth');
   b.value += 0.04 * u.spot;
-  b.mod += 0.15 * u.light + 0.08 * lab('genetics') + campPerk('mod');
+  b.mod += 0.15 * u.light + 0.08 * lab('genetics') + campPerk('mod') + estatePerk('mod');
   b.inherit += 0.06 * u.dna;
   b.cool += 0.12 * u.nest;
   b.wq += 0.25 * u.uv + 0.07 * lab('chemistry');
   const hero = S.heroes.find(h => h.tank === t.id); if (hero && HERO[hero.kind]) add(HERO[hero.kind].b);
   return b;
 }
-const globalValueBonus = () => sanctValue() + campPerk('value') + fameBonus() + streakBonus() + 0.03 * lab('market') + EVENTS.reduce((a, e) => a + (S.charms[e.id] ? EVENT_CHARM_VALUE : 0), 0);
+const globalValueBonus = () => estatePerk('value') + sanctValue() + campPerk('value') + fameBonus() + streakBonus() + 0.03 * lab('market') + EVENTS.reduce((a, e) => a + (S.charms[e.id] ? EVENT_CHARM_VALUE : 0), 0);
 const wqValueMult = q => (q >= 80 ? 1 : 0.45 + 0.55 * Math.max(0, q) / 80);
 /* value of a fish; nowq ignores the water-quality penalty (used for records) */
 function fishValue(f, nowq) {
@@ -471,23 +471,24 @@ function spawnCustomer() {
   const avail = fs.filter(f => !taken.has(f.id));
   if (!avail.length) return;
   let type = 'browser';
-  const r = Math.random();
+  const r = Math.random(), serious = wxNow().serious, tev = S.town.cur, guest = !!tev && Math.random() < 0.8, match = guest ? avail.filter(x => townWants(tev, x)) : [];
   const modded = avail.filter(f => f.mods.length);
   const rich = avail.filter(f => f.mods.length || SPECIES[f.sp].t >= 3);
   const collectP = (0.05 + 0.04 * S.storeUp.collector);
-  if (S.storeUp.vip && rich.length && Math.random() < 0.04 * S.storeUp.vip) type = 'vip';
+  if (guest) type = 'event';
+  else if (S.storeUp.vip && rich.length && Math.random() < 0.04 * S.storeUp.vip) type = 'vip';
   else if (modded.length && r < collectP) type = 'collector';
-  else if (r < collectP + 0.18) type = 'enthusiast';
-  else if (r < collectP + 0.33) type = 'bargain';
-  const f = type === 'vip' ? rich.sort((x, y) => fishValue(y) - fishValue(x))[Math.floor(Math.random() * Math.min(3, rich.length))] : type === 'collector' ? pick(modded) : pick(avail);
+  else if (r < collectP + 0.18 + 0.12 * serious) type = 'enthusiast';
+  else if (r < collectP + 0.33 + 0.12 * serious - 0.15 * serious) type = 'bargain';
+  const f = type === 'event' ? (match.length ? pick(match) : pick(avail)) : type === 'vip' ? rich.sort((x, y) => fishValue(y) - fishValue(x))[Math.floor(Math.random() * Math.min(3, rich.length))] : type === 'collector' ? pick(modded) : pick(avail);
   const v = fishValue(f);
   const sign = 1 + 0.06 * S.storeUp.sign + 0.03 * lab('negotiation') + (lab('tycoon') ? 0.15 : 0);
-  let mult = { browser: rnd(0.8, 1.15), enthusiast: rnd(1.1, 1.45), bargain: rnd(0.55, 0.8), collector: rnd(1.4, 2.1), vip: rnd(2.5, 4) }[type];
-  const offer = Math.max(1, Math.round(v * mult * sign * demandFactor(f)));
+  let mult = { browser: rnd(0.8, 1.15), enthusiast: rnd(1.1, 1.45), bargain: rnd(0.55, 0.8), collector: rnd(1.4, 2.1), vip: rnd(2.5, 4), event: rnd(1.0, 1.25) }[type];
+  const offer = Math.max(1, Math.round(v * mult * sign * demandFactor(f) * wxOfferMult() * (type === 'event' ? townOfferMult(f) : 1)));
   const pat = 40 + 10 * S.storeUp.seats + 4 * lab('loyalty'), browse = rnd(7, 14) * (1 - 0.12 * S.storeUp.quick);
   S.customers.push({
     id: 'c' + S.nextId++, name: pick(CUSTOMER_NAMES), face: pick(CUSTOMER_FACES), type, fishId: f.id,
-    offer, pat, patMax: pat, age: 0, browse, ready: false,
+    offer, pat, patMax: pat, age: 0, browse, ready: false, ev: type === 'event',
   });
   G.dirty = true;
 }
@@ -497,7 +498,7 @@ function acceptCustomer(cid) {
   const f = getFish(c.fishId);
   if (!f) { S.customers = S.customers.filter(x => x !== c); return fail('Fish gone'); }
   noteRecord(f); awardTokens(f); const bk = S.book.sp[f.sp]; if (bk) bk.best = Math.max(bk.best, fishValue(f));
-  S.money += c.offer; S.earned += c.offer; S.sales++; noteDemand(f);
+  S.money += c.offer; S.earned += c.offer; S.sales++; noteDemand(f); townNoteSale(c, c.offer);
   S.bestValue = Math.max(S.bestValue || 0, c.offer);
   const before = level();
   removeFishRefs(f.id);

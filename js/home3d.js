@@ -55,13 +55,25 @@ const homeRugGeo = () => homeGeo('rug', g => {
   for (let z = 0; z < d; z += 3) { g.set(-1, 0, z, '#e8d9a0'); g.set(w, 0, z, '#e8d9a0'); }
 });
 
-class HomeScene extends TankScene3D {
-  constructor(canvas) {
-    super(canvas, HOME_TANK, false, () => {}, null);
+
+const homeBookcaseGeo = () => homeGeo('bookcase', g => {
+  const w = 58, h = 88, d = 14; g.box(0, 0, 0, w, h, d, woodFn('#6a4630', 4)); g.box(2, 3, 2, w - 2, h - 3, d, '#3a2416');
+  for (const y of [3, 24, 45, 66]) g.box(2, y, 2, w - 2, y + 1, d, '#8a6a46');
+  for (const [y0, seed] of [[4, 1], [25, 2], [46, 3], [67, 4]]) { let x = 4; for (let i = 0; i < 9; i++) { const bw = 3 + (hash('b' + seed + i) % 3), bh = 12 + (hash('h' + seed + i) % 6); if (x + bw > w - 3) break; g.box(x, y0 + 1, 4, x + bw - 1, y0 + bh, d - 3, ['#c0453a', '#2f5f7a', '#e0b030', '#4a8a5a', '#8a52c8', '#e8e0cc'][hash('c' + seed + i) % 6]); x += bw + 1; } }
+});
+const homeArmchairGeo = () => homeGeo('armchair', g => { const fab = (x, y, z) => shadeC(_hx('#3a7a8a'), (hash(x + ',' + y + ',' + z) % 7 === 0 ? -0.06 : 0.02)); g.box(0, 0, 0, 38, 12, 34, fab); g.box(0, 12, 26, 38, 38, 34, fab); g.box(0, 12, 0, 7, 26, 33, fab); g.box(31, 12, 0, 38, 26, 33, fab); g.box(7, 12, 1, 31, 17, 26, shadeC(_hx('#4a96a8'), 0.03)); for (const [x, z] of [[2, 2], [34, 2], [2, 30], [34, 30]]) g.box(x, -3, z, x + 2, 0, z + 2, '#3a2a20'); });
+const homeStatueGeo = () => homeGeo('statue', g => { g.box(-9, 0, -9, 9, 20, 9, (x, y, z) => W_('#d8d0c0', (y % 5 === 0 ? -0.08 : 0))); g.box(-11, 20, -11, 11, 22, 11, '#c8c0b0'); g.ell(0, 36, 0, 15, 8, 5, (x, y, z, dx, dy) => shadeC(_hx('#f0c848'), dy * 0.2)); g.line([13, 36, 0], [24, 44, 0], '#f0c848', 1.4); g.line([13, 36, 0], [24, 28, 0], '#f0c848', 1.4); g.ell(-8, 38, 3, 1.5, 1.5, 1.5, '#2a2a2a'); g.line([-4, 44, 0], [4, 49, 0], '#f0c848', 1.2); });
+const homeGlobeGeo = () => homeGeo('globe', g => { g.cyl(0, 0, 5, 0, 1, '#5a3a22'); g.cyl(0, 0, 1, 2, 12, '#8a6a46'); g.ell(0, 20, 0, 9, 9, 9, (x, y, z, dx, dy, dz) => (Math.sin(dx * 5 + dz * 3) + Math.cos(dy * 6) > 0.4 ? '#4a9a5a' : '#3a78b8')); });
+
+/* a tank whose fish are the Hall of Fame: boop them, lure them with the mouse, sprinkle food (living room, garden pond, gallery) */
+class HofTankScene extends TankScene3D {
+  constructor(canvas, tank, venue) {
+    super(canvas, tank, false, () => {}, null);
+    this.venue = venue || 'living';
     this.onFish = id => this.boop(id);
     this.zp.noPan = true; this.food = []; this.tip = null; this.vmap = new Map(); this.hofKey = null; this.vf = [];
-    this.buildRoom();
-    this.camBox = new THREE.Box3(new THREE.Vector3(-4, -6, -4), new THREE.Vector3(HOME.W + 4, HOME.WH + 8, HOME.D + 4));
+    this.pelGeo = new THREE.BoxGeometry(1.8, 1.8, 1.8); this.pelMat = new THREE.MeshBasicMaterial({ color: 0xd9a35a });
+    this.setup();
     this.refit();
     const cv = canvas;
     cv.addEventListener('mousedown', e => { if (e.button !== 0) return; this.down = { t: performance.now(), x: e.clientX, y: e.clientY, moved: false }; this.holding = true; this.updateLure(e); });
@@ -73,16 +85,74 @@ class HomeScene extends TankScene3D {
     });
     cv.addEventListener('mouseleave', () => { this.lure = null; });
   }
-  makeRoot() { const g = new THREE.Group(); g.position.set(HOME.TX, HOME.TY, HOME.TZ); this.scene.add(g); return g; }
+  makeRoot() { const g = new THREE.Group(), p = this.rootPos(); g.position.set(p[0], p[1], p[2]); this.scene.add(g); return g; }
+  rootPos() { return [0, 0, 0]; }
+  hofSlice() { return S.hof; }
+  get fishScale() { return 1; }
   /* the 20 most valuable fish you ever owned — even the ones you sold */
   fishList() {
-    const key = S.hof.map(e => e.id + ':' + e.value + ':' + e.name).join(',');
+    const hs = this.hofSlice(), key = hs.map(e => e.id + ':' + e.value + ':' + e.name).join(',');
     if (key !== this.hofKey) {
       this.hofKey = key;
-      this.vf = S.hof.map(e => { const id = 'hof:' + e.id; let f = this.vmap.get(id); if (!f) { f = { id, g: 1, vb: 0, loc: 'home', fav: false }; this.vmap.set(id, f); } f.sp = e.sp; f.mods = e.mods; f.name = e.name; f.e = e; return f; });
+      this.vf = hs.map(e => { const id = 'hof:' + e.id; let f = this.vmap.get(id); if (!f) { f = { id, g: 1, vb: 0, loc: 'home', fav: false }; this.vmap.set(id, f); } f.big = this.fishScale || 1; f.sp = e.sp; f.mods = e.mods; f.name = e.name; f.e = e; return f; });
     }
     return this.vf;
   }
+  /* mouse position -> point inside the tank (tank-local coordinates) */
+  updateLure(e) {
+    const r = this.cv.getBoundingClientRect(); this.mouse.set((e.clientX - r.left) / r.width * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1); this.ray.setFromCamera(this.mouse, this.cam);
+    const o = this.root.worldToLocal(this.ray.ray.origin.clone()), d = this.ray.ray.direction.clone(); if (Math.abs(d.z) < 1e-4) return;
+    const t = (this.D * 0.5 - o.z) / d.z, p = o.addScaledVector(d, t);
+    if (p.x < 6 || p.x > this.W - 6 || p.y < FLOOR_Y || p.y > this.WTR + 4) { this.lure = null; return; }
+    this.lure = { x: p.x, y: Math.min(this.WTR - 6, Math.max(FLOOR_Y + 6, p.y)), z: this.D * 0.5 };
+    const hit = this.pick(e); this.pickedFish = !!(hit && hit.fishId);
+  }
+  dropFood(p) { for (let i = 0; i < 7; i++) { const m = new THREE.Mesh(this.pelGeo, this.pelMat); m.position.set(p.x + (Math.random() - 0.5) * 14, this.WTR - 2, this.D * 0.5 + (Math.random() - 0.5) * 20); m.userData.age = 0; this.root.add(m); this.food.push(m); } if (this.food.length > 40) this.root.remove(this.food.shift()); Sfx.play('pop'); }
+  boop(id) {
+    const o = this.fish.get(id); if (!o) return; const s = o.st;
+    s.vx += (Math.random() - 0.5) * 120; s.vz += (Math.random() - 0.5) * 120; s.vy += 30; s.burst = 2.4; s.wait = 0; this.retarget(s, o.model.L);
+    for (let i = 0; i < 10; i++) this.bubbles.push({ x: s.x + (Math.random() - 0.5) * 8, y: s.y + (Math.random() - 0.5) * 6, z: s.z + (Math.random() - 0.5) * 8, vy: 16 + Math.random() * 14 });
+    this.tip = { id, t: 4.5 }; Sfx.play('pop'); this.pickedFish = true;
+  }
+  step(dt) {
+    this.dtLast = dt;
+    for (const o of this.fish.values()) {
+      const s = o.st;
+      if (this.lure) { const d = Math.hypot(this.lure.x - s.x, this.lure.y - s.y, this.lure.z - s.z); if (d < 260) { s.tx = this.lure.x + Math.sin(this.t * 2 + o.model.L) * 14; s.ty = this.lure.y + Math.cos(this.t * 1.7 + o.model.L) * 8; s.tz = this.lure.z + Math.sin(this.t * 1.3 + o.model.L) * 18; s.wait = 0; s.burst = 1.15; } }
+      else if (this.food.length) {
+        let best = null, bd = 1e9; for (const f of this.food) { const d = Math.hypot(f.position.x - s.x, f.position.y - s.y, f.position.z - s.z); if (d < bd) { bd = d; best = f; } }
+        if (best && bd < 190) { s.tx = best.position.x; s.ty = best.position.y; s.tz = best.position.z; s.wait = 0; s.burst = 1.2; if (bd < 9 + o.model.L * 0.3) { best.userData.eaten = true; for (let i = 0; i < 3; i++) this.bubbles.push({ x: s.x, y: s.y, z: s.z, vy: 18 + Math.random() * 10 }); } }
+      }
+    }
+    super.step(dt);
+    for (const f of this.food) { f.userData.age += dt; if (f.position.y > FLOOR_Y + 2) f.position.y -= 8 * dt; if (f.userData.age > 40) f.userData.eaten = true; }
+    this.food = this.food.filter(f => { if (f.userData.eaten) { this.root.remove(f); return false; } return true; });
+  }
+  drawSel() {
+    if (!this.tip) return; const o = this.fish.get(this.tip.id); if (!o) { this.tip = null; return; }
+    this.tip.t -= this.dtLast || 0.016; if (this.tip.t <= 0) { this.tip = null; return; }
+    const f = o.f, e = f.e, ctx = this.ctx, cv = this.cv, k = cv.height / 700, v = new THREE.Vector3(); o.group.getWorldPosition(v); v.project(this.cam);
+    const x = (v.x + 1) / 2 * cv.width, y = (1 - v.y) / 2 * cv.height - 22 * k, lines = [`${f.name}`, fishName({ g: 1, sp: f.sp, mods: f.mods }), fmt(e.value)];
+    ctx.save(); ctx.globalAlpha = Math.min(1, this.tip.t); ctx.font = `700 ${Math.round(13 * k)}px "Segoe UI", system-ui, sans-serif`; const w = Math.max(...lines.map(l => ctx.measureText(l).width)) + 20 * k, h = 58 * k, bx = x - w / 2, by = y - h;
+    ctx.fillStyle = 'rgba(255,255,255,0.96)'; ctx.strokeStyle = '#e0b030'; ctx.lineWidth = 2 * k; ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(bx, by, w, h, 9 * k); else ctx.rect(bx, by, w, h); ctx.moveTo(x - 6 * k, by + h - 0.5); ctx.lineTo(x, by + h + 9 * k); ctx.lineTo(x + 6 * k, by + h - 0.5); ctx.fill(); ctx.stroke();
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#1b2a3c'; ctx.fillText(lines[0], x, by + 14 * k); ctx.font = `600 ${Math.round(11 * k)}px "Segoe UI", system-ui, sans-serif`; ctx.fillStyle = '#5a6a7c'; ctx.fillText(lines[1], x, by + 29 * k); ctx.font = `800 ${Math.round(14 * k)}px "Segoe UI", system-ui, sans-serif`; ctx.fillStyle = '#c08a10'; ctx.fillText(lines[2], x, by + 45 * k); ctx.restore();
+  }
+}
+
+class HomeScene extends HofTankScene {
+  constructor(canvas) { super(canvas, HOME_TANK, 'living'); }
+  rootPos() { return [HOME.TX, HOME.TY, HOME.TZ]; }
+  hofSlice() { return S.hof.slice(0, 20); }
+  setup() { this.buildRoom(); this.extras = null; this.lvlSeen = -1; this.buildExtras(); this.camBox = new THREE.Box3(new THREE.Vector3(-4, -6, -4), new THREE.Vector3(HOME.W + 4, HOME.WH + 8, HOME.D + 4)); }
+  /* furniture that comes with the living-room upgrade levels */
+  buildExtras() {
+    const lvl = Math.max(1, estLvl('living')); if (lvl === this.lvlSeen) return; this.lvlSeen = lvl;
+    if (this.extras) this.scene.remove(this.extras); this.extras = new THREE.Group(); this.scene.add(this.extras); const mat = plainMat();
+    const put = (geo, x, y, z, ry, s) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.rotation.y = ry || 0; if (s) m.scale.setScalar(s); this.extras.add(m); return m; };
+    if (lvl >= 2) { put(homeBookcaseGeo(), 226, 1, 6, 0, 1.1); put(homeArmchairGeo(), 232, 1, 92, -Math.PI / 2); put(homeGlobeGeo(), 196, 1, 24, 0, 1.0); const pot = put(potGeo(), 150, 1, 14, 0); }
+    if (lvl >= 3) { put(homeStatueGeo(), 30, 1, 196, 0, 1.0); put(homeStatueGeo(), 272, 1, 190, 0, 0.8); for (const [x, z] of [[272, 120], [52, 60]]) put(potGeo(), x, 1, z, 0, 1.2); put(homeLampGeo(), 36, 1, 100, 0); const sh = new THREE.Mesh(homeShadeGeo(), new THREE.MeshBasicMaterial({ color: 0xfff0b0 })); sh.position.set(36, 1, 100); this.extras.add(sh); }
+  }
+  /* the living room's own frame() keeps the cat and trophies moving */
   buildRoom() {
     const sc = this.scene, W = HOME.W, D = HOME.D, WH = HOME.WH, mat = plainMat();
     sc.add(new THREE.HemisphereLight(0xfff0dc, 0x7a6a5a, 0.55)); const d = new THREE.DirectionalLight(0xffe2b0, 0.55); d.position.set(-0.7, 1, 0.5); sc.add(d);
@@ -127,53 +197,12 @@ class HomeScene extends TankScene3D {
     this.me.g.position.set(150, 10.5, 168); this.me.yaw = Math.PI / 2; this.me.g.rotation.y = Math.PI / 2; sc.add(this.me.g);
     this.me.legL.rotation.z = Math.PI / 2; this.me.legR.rotation.z = Math.PI / 2; this.me.armL.rotation.z = 0.5; this.me.armR.rotation.z = 0.5;
     this.me.body.children.forEach(c => { if (c === this.me.legL || c === this.me.legR) c.position.y = 11; });
-    // food pellet mesh template
-    this.pelGeo = new THREE.BoxGeometry(1.8, 1.8, 1.8); this.pelMat = new THREE.MeshBasicMaterial({ color: 0xd9a35a });
-  }
-  /* mouse position -> point inside the tank (tank-local coordinates) */
-  updateLure(e) {
-    const r = this.cv.getBoundingClientRect(); this.mouse.set((e.clientX - r.left) / r.width * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1); this.ray.setFromCamera(this.mouse, this.cam);
-    const o = this.root.worldToLocal(this.ray.ray.origin.clone()), d = this.ray.ray.direction.clone(); if (Math.abs(d.z) < 1e-4) return;
-    const t = (this.D * 0.5 - o.z) / d.z, p = o.addScaledVector(d, t);
-    if (p.x < 6 || p.x > this.W - 6 || p.y < FLOOR_Y || p.y > this.WTR + 4) { this.lure = null; return; }
-    this.lure = { x: p.x, y: Math.min(this.WTR - 6, Math.max(FLOOR_Y + 6, p.y)), z: this.D * 0.5 };
-    const hit = this.pick(e); this.pickedFish = !!(hit && hit.fishId);
-  }
-  dropFood(p) { for (let i = 0; i < 7; i++) { const m = new THREE.Mesh(this.pelGeo, this.pelMat); m.position.set(p.x + (Math.random() - 0.5) * 14, this.WTR - 2, this.D * 0.5 + (Math.random() - 0.5) * 20); m.userData.age = 0; this.root.add(m); this.food.push(m); } if (this.food.length > 40) this.root.remove(this.food.shift()); Sfx.play('pop'); }
-  boop(id) {
-    const o = this.fish.get(id); if (!o) return; const s = o.st;
-    s.vx += (Math.random() - 0.5) * 120; s.vz += (Math.random() - 0.5) * 120; s.vy += 30; s.burst = 2.4; s.wait = 0; this.retarget(s, o.model.L);
-    for (let i = 0; i < 10; i++) this.bubbles.push({ x: s.x + (Math.random() - 0.5) * 8, y: s.y + (Math.random() - 0.5) * 6, z: s.z + (Math.random() - 0.5) * 8, vy: 16 + Math.random() * 14 });
-    this.tip = { id, t: 4.5 }; Sfx.play('pop'); this.pickedFish = true;
-  }
-  step(dt) {
-    this.dtLast = dt;
-    for (const o of this.fish.values()) {
-      const s = o.st;
-      if (this.lure) { const d = Math.hypot(this.lure.x - s.x, this.lure.y - s.y, this.lure.z - s.z); if (d < 260) { s.tx = this.lure.x + Math.sin(this.t * 2 + o.model.L) * 14; s.ty = this.lure.y + Math.cos(this.t * 1.7 + o.model.L) * 8; s.tz = this.lure.z + Math.sin(this.t * 1.3 + o.model.L) * 18; s.wait = 0; s.burst = 1.15; } }
-      else if (this.food.length) {
-        let best = null, bd = 1e9; for (const f of this.food) { const d = Math.hypot(f.position.x - s.x, f.position.y - s.y, f.position.z - s.z); if (d < bd) { bd = d; best = f; } }
-        if (best && bd < 190) { s.tx = best.position.x; s.ty = best.position.y; s.tz = best.position.z; s.wait = 0; s.burst = 1.2; if (bd < 9 + o.model.L * 0.3) { best.userData.eaten = true; for (let i = 0; i < 3; i++) this.bubbles.push({ x: s.x, y: s.y, z: s.z, vy: 18 + Math.random() * 10 }); } }
-      }
-    }
-    super.step(dt);
-    for (const f of this.food) { f.userData.age += dt; if (f.position.y > FLOOR_Y + 2) f.position.y -= 8 * dt; if (f.userData.age > 40) f.userData.eaten = true; }
-    this.food = this.food.filter(f => { if (f.userData.eaten) { this.root.remove(f); return false; } return true; });
   }
   frame(dt) {
     if (!this.me) return super.frame(dt);
-    const t = this.t; this.me.head.rotation.y = Math.sin(t * 0.5) * 0.3; this.me.body.position.y = Math.sin(t * 1.6) * 0.15;
+    this.buildExtras(); const t = this.t; this.me.head.rotation.y = Math.sin(t * 0.5) * 0.3; this.me.body.position.y = Math.sin(t * 1.6) * 0.15;
     this.cat.scale.set(1, 1 + Math.sin(t * 1.4) * 0.035, 1); this.cat.position.y = 3;
     const n = Math.min(8, Math.floor(Object.keys(S.ach).length / 4)); this.trophies.forEach((tr, i) => (tr.visible = i < n));
     super.frame(dt);
-  }
-  drawSel() {
-    if (!this.tip) return; const o = this.fish.get(this.tip.id); if (!o) { this.tip = null; return; }
-    this.tip.t -= this.dtLast || 0.016; if (this.tip.t <= 0) { this.tip = null; return; }
-    const f = o.f, e = f.e, ctx = this.ctx, cv = this.cv, k = cv.height / 700, v = new THREE.Vector3(); o.group.getWorldPosition(v); v.project(this.cam);
-    const x = (v.x + 1) / 2 * cv.width, y = (1 - v.y) / 2 * cv.height - 22 * k, lines = [`${f.name}`, fishName({ g: 1, sp: f.sp, mods: f.mods }), fmt(e.value)];
-    ctx.save(); ctx.globalAlpha = Math.min(1, this.tip.t); ctx.font = `700 ${Math.round(13 * k)}px "Segoe UI", system-ui, sans-serif`; const w = Math.max(...lines.map(l => ctx.measureText(l).width)) + 20 * k, h = 58 * k, bx = x - w / 2, by = y - h;
-    ctx.fillStyle = 'rgba(255,255,255,0.96)'; ctx.strokeStyle = '#e0b030'; ctx.lineWidth = 2 * k; ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(bx, by, w, h, 9 * k); else ctx.rect(bx, by, w, h); ctx.moveTo(x - 6 * k, by + h - 0.5); ctx.lineTo(x, by + h + 9 * k); ctx.lineTo(x + 6 * k, by + h - 0.5); ctx.fill(); ctx.stroke();
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#1b2a3c'; ctx.fillText(lines[0], x, by + 14 * k); ctx.font = `600 ${Math.round(11 * k)}px "Segoe UI", system-ui, sans-serif`; ctx.fillStyle = '#5a6a7c'; ctx.fillText(lines[1], x, by + 29 * k); ctx.font = `800 ${Math.round(14 * k)}px "Segoe UI", system-ui, sans-serif`; ctx.fillStyle = '#c08a10'; ctx.fillText(lines[2], x, by + 45 * k); ctx.restore();
   }
 }

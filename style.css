@@ -325,3 +325,30 @@ canvas.campscene{display:block;border-radius:var(--r);background:#0c3a64;max-wid
 .eggpic{width:54px;flex:none;display:flex;justify-content:center}
 .eggbtns{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;max-width:210px}
 .parents.compact .card.parent{min-height:0}.parents.compact .card.parent.flat{padding:14px}
+
+/* ===== v1.3: estate ===== */
+.estseg{margin:0 0 14px}
+.pips{display:inline-flex;gap:5px}.pips i{width:12px;height:12px;border-radius:50%;background:rgba(255,255,255,.12);border:1px solid var(--line2)}.pips i.on{background:var(--gold);border-color:var(--gold);box-shadow:0 0 6px rgba(255,194,74,.6)}
+.estnext{margin-top:12px;padding:10px 12px;border-radius:10px;background:rgba(42,212,192,.07);border:1px solid rgba(42,212,192,.25)}
+.estlock{text-align:center;max-width:620px;margin:10px auto}.estlock .estcard{text-align:left;margin-top:14px;box-shadow:none}
+
+.townbanner{display:flex;gap:14px;align-items:center;margin:0 0 12px;border-color:rgba(255,194,74,.45);background:linear-gradient(90deg,rgba(255,194,74,.1),rgba(255,194,74,0))}
+.tbicon{width:46px;height:46px;border-radius:12px;background:rgba(255,194,74,.15);display:flex;align-items:center;justify-content:center;font-size:26px;flex:none}
+.wantflag{color:var(--gold);font-weight:700;font-size:11px}
+.scenewrap.flash::after{background:#fff!important;opacity:.55;animation:flashfade .4s ease-out forwards}
+@keyframes flashfade{to{opacity:0}}
+.sndrow{margin:8px 0;gap:14px}.sndrow input[type=range]{accent-color:var(--accent)}
+
+/* ===== v1.3: story cards ===== */
+.mbox:has(.storycard){width:min(780px,95vw);padding:0;overflow:hidden}
+.mbox:has(.storycard) .x{z-index:3;background:rgba(0,0,0,.4)}
+.storycard{display:flex;flex-direction:column}
+.storyart{position:relative;aspect-ratio:16/9;background:radial-gradient(ellipse at 50% 30%,var(--sky1),var(--sky2) 80%);display:flex;align-items:center;justify-content:center}
+.storyart img{width:100%;height:100%;object-fit:contain}
+.storyart::after{content:"";position:absolute;inset:0;box-shadow:inset 0 0 90px rgba(0,0,0,.55);pointer-events:none}
+.storychap{position:absolute;left:16px;top:12px;font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:rgba(255,255,255,.75);z-index:2}
+.storybody{padding:16px 24px 20px;background:linear-gradient(180deg,#14263d,#101e31)}
+.storyspeaker{font-weight:700;font-size:15px;letter-spacing:.3px}
+.storytext{font-size:16px;line-height:1.55;margin:6px 0 4px;color:#e6eef8;min-height:74px}.storytext.narr{font-style:italic;color:#b8c8dc}
+.storyreward{margin-top:8px;padding:8px 12px;border-radius:10px;background:rgba(255,194,74,.1);border:1px solid rgba(255,194,74,.35)}
+.storydots{display:inline-flex;gap:6px}.storydots i{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.18)}.storydots i.on{background:var(--accent)}
