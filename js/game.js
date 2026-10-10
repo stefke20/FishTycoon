@@ -227,7 +227,7 @@ function buyHallSlot() {
 function tankUpgradeCost(t, u) {
   const lvl = t.up[u.id];
   if (lvl >= u.max) return null;
-  return Math.round(u.costs[lvl] * tankType(t).mult);
+  return tankUpCostAt(t, u, lvl);
 }
 function buyTankUpgrade(tid, uid) {
   const t = getTank(tid), u = TANK_UPGRADES.find(x => x.id === uid);
@@ -463,7 +463,7 @@ function breedFish(aid, bid, boostId) {
 /* ---------- store ---------- */
 const CUSTOMER_NAMES = ['Ava', 'Ben', 'Chloe', 'Dmitri', 'Elena', 'Farid', 'Gina', 'Hugo', 'Iris', 'Jonas', 'Keiko', 'Liam', 'Mina', 'Noah', 'Olga', 'Pablo', 'Quinn', 'Rosa', 'Sven', 'Tara', 'Uma', 'Vic', 'Wren', 'Xavi', 'Yara', 'Zed'];
 const CUSTOMER_FACES = ['🧑', '👩', '👨', '🧓', '👧', '👦', '🧔', '👩‍🦰', '👨‍🦳', '🧑‍🎤', '🧑‍🔬', '🧑‍🍳'];
-function arrivalInterval() { return 28 / trafficMult() / ((1 + 0.15 * S.storeUp.ads) * (1 + 0.05 * lab('marketing')) * (1 + campPerk('cust'))); }
+function arrivalInterval() { return 24 / trafficMult() / ((1 + 0.15 * S.storeUp.ads) * (1 + 0.05 * lab('marketing')) * (1 + campPerk('cust'))); }
 function spawnCustomer() {
   const fs = storeFish();
   if (!fs.length || S.customers.length >= customerCap()) return;

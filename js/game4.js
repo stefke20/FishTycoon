@@ -296,7 +296,7 @@ function discardEggs(ids) {
 /* ================= SELLING & UPGRADING TANKS ================= */
 const TANK_NEXT = { starter: 'medium', medium: 'large', large: 'huge', huge: 'mega', reef_s: 'reef_m', reef_m: 'reef_l', reef_l: 'reef_g', reef_g: 'reef_x' };
 const TANK_REFUND = 0.5, TANK_TRADEIN = 0.5;
-function tankUpgradeSpent(t) { return TANK_UPGRADES.reduce((a, u) => { let c = 0; for (let l = 0; l < t.up[u.id]; l++) c += Math.round(u.costs[l] * tankType(t).mult); return a + c; }, 0); }
+function tankUpgradeSpent(t) { return TANK_UPGRADES.reduce((a, u) => { let c = 0; for (let l = 0; l < t.up[u.id]; l++) c += tankUpCostAt(t, u, l); return a + c; }, 0); }
 const tankSellValue = t => Math.round(tankType(t).price * TANK_REFUND + tankUpgradeSpent(t) * TANK_REFUND);
 function sellTankCheck(t) {
   if (!t) return 'Missing'; if (tankType(t).ev) return 'Event tanks cannot be sold';
@@ -358,7 +358,7 @@ function restFactor(a, b) {
 const MARKET_RECOVER = 0.1, MARKET_STEP = 0.035, MARKET_FLOOR = 0.25;
 const marketMultAt = glut => clamp(1.1 - MARKET_STEP * glut, MARKET_FLOOR, 1);
 const marketMult = () => marketMultAt(S.market.glut || 0);
-const marketPrice = f => Math.round(fishValue(f) * quickSell() * marketMult() * demandFactor(f));
+const marketPrice = f => Math.max(1, Math.round(fishValue(f) * quickSell() * marketMult() * demandFactor(f)));
 /* what selling this list in one go would pay, as the glut climbs */
 function marketTotal(list) { let g = S.market.glut || 0, sum = 0; const seen = {}; for (const f of list) { const k = fishSig(f), d = Math.max(DEMAND_FLOOR, 1 - DEMAND_STEP * (((S.demand || {})[k] || 0) + (seen[k] || 0))); sum += fishValue(f) * quickSell() * marketMultAt(g) * d; g++; seen[k] = (seen[k] || 0) + 1; } return sum; }
 const marketLabel = () => { const m = marketMult(); return m >= 1 ? 'Market open — full price' : `Market saturated — paying ${Math.round(m * 100)}%`; };
@@ -382,3 +382,4 @@ function pickDisplay(list, n) {
   for (const f of list) { if (out.length >= n) break; if (!out.includes(f)) out.push(f); }
   return out;
 }
+const tankUpCostAt = (t, u, l) => px(Math.round(u.costs[l] * tankType(t).mult));

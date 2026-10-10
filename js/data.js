@@ -12,7 +12,7 @@ const SALT_EGG_MULT = 1.5;
 const EGG_UNLOCK_LEVEL = [0, 1, 2, 4, 6, 8];
 const SALT_EGG_UNLOCK_LEVEL = [0, 3, 5, 6, 8, 9];
 
-const LEVELS = [0, 0, 10, 25, 60, 140, 350, 850, 1900, 3700, 6800]; // sales needed for level index
+const LEVELS = [0, 0, 10, 25, 60, 140, 320, 700, 1300, 2200, 3400]; // sales needed for level index
 const MAX_LEVEL = LEVELS.length - 1;
 
 // shape: round | slender | tall | eel ; pattern: none|stripes|spots|band|patch|belly
@@ -200,7 +200,7 @@ const TANK_TYPE = {};
 TANK_TYPES.forEach(t => (TANK_TYPE[t.id] = t));
 const START_HALL_SLOTS = 3;
 const MAX_HALL_SLOTS = 12;
-const hallSlotPrice = n => Math.round(500 * Math.pow(3, n - START_HALL_SLOTS)); // price of slot number n+1
+let hallSlotPrice = n => Math.round(500 * Math.pow(3, n - START_HALL_SLOTS)); // price of slot number n+1
 
 /* Per-tank upgrades: cost = base * tank.mult */
 const TANK_UPGRADES = [
