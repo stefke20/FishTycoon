@@ -12,7 +12,7 @@ const SALT_EGG_MULT = 1.5;
 const EGG_UNLOCK_LEVEL = [0, 1, 2, 4, 6, 8];
 const SALT_EGG_UNLOCK_LEVEL = [0, 3, 5, 6, 8, 9];
 
-const LEVELS = [0, 0, 10, 25, 60, 140, 320, 700, 1300, 2200, 3400]; // sales needed for level index
+const LEVELS = [0, 0, 10, 25, 60, 140, 320, 700, 1500, 2800, 4800]; // sales needed for level index
 const MAX_LEVEL = LEVELS.length - 1;
 
 // shape: round | slender | tall | eel ; pattern: none|stripes|spots|band|patch|belly
